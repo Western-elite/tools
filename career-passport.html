@@ -2185,6 +2185,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       if(rows&&rows[0]&&rows[0].data&&rows[0].data.ordB){localStorage.setItem("we_dials2",JSON.stringify(rows[0].data));}fin();
     });
   }
+  var _backfilled=false;
+  function backfillScoreboard(){
+    if(!window.sbReady()||_backfilled)return;_backfilled=true;
+    var stamp=new Date().toISOString();
+    var d=dayAll();Object.keys(d).forEach(function(id){var days=d[id]||{};Object.keys(days).forEach(function(day){window.sbUpsert("scoreboard",{agent_id:id,day:day,data:days[day],updated_at:stamp});});});
+    var e=exAll();Object.keys(e).forEach(function(id){window.sbUpsert("extras",{agent_id:id,data:e[id],updated_at:stamp});});
+    try{var dl=JSON.parse(localStorage.getItem("we_dials2"));if(dl&&dl.ordB)window.sbUpsert("dials",{id:1,data:dials(),updated_at:stamp});}catch(_e){}
+  }
   window.__weScoreRefresh=function(){
     var dt=document.getElementById("dataTab");if(!dt||dt.style.display==="none")return;
     pullScoreboard(function(){
@@ -2290,7 +2298,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     w.innerHTML=h;
     w.querySelectorAll(".dl-in").forEach(function(i){i.addEventListener("input",function(){var d=dials();var k=this.getAttribute("data-dk"),di=this.getAttribute("data-di");var val=this.value===""?"":parseFloat(this.value);if(di===""){d[k]=val;}else{d[k][parseInt(di,10)]=val;}saveDials(d);renderGrid();renderTeam();refreshPanel();});});
   }
-  function showData(){buildDataTab();renderDaily();renderGrid();renderDials();document.getElementById("dashboard").style.display="none";var pb=document.getElementById("passportBody");if(pb)pb.style.display="none";var hn=document.getElementById("ppHint");if(hn)hn.style.display="none";document.getElementById("dataTab").style.display="";window.scrollTo({top:0});pullScoreboard(function(){if(document.getElementById("dataTab").style.display==="none")return;renderDaily();renderGrid();renderDials();try{renderTeam();}catch(e){}});}
+  function showData(){buildDataTab();renderDaily();renderGrid();renderDials();document.getElementById("dashboard").style.display="none";var pb=document.getElementById("passportBody");if(pb)pb.style.display="none";var hn=document.getElementById("ppHint");if(hn)hn.style.display="none";document.getElementById("dataTab").style.display="";window.scrollTo({top:0});backfillScoreboard();pullScoreboard(function(){if(document.getElementById("dataTab").style.display==="none")return;renderDaily();renderGrid();renderDials();try{renderTeam();}catch(e){}});}
   function showDash(){document.getElementById("dataTab").style.display="none";document.getElementById("dashboard").style.display="";var hn=document.getElementById("ppHint");if(hn)hn.style.display="";buildTeam();renderTeam();window.scrollTo({top:0});}
 
   function buildPanel(){
