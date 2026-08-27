@@ -1940,7 +1940,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function delAgentData(id){localStorage.removeItem("wem_agent_"+id);}
   /* ---- live passport sync (active only when WE_WEBHOOK is set) ---- */
   function agName(id){var l=roster();for(var i=0;i<l.length;i++)if(l[i].id===id)return l[i].name;return id;}
-  function ppWK(){return (window.WE_WEBHOOK||"").trim();}
+  function ppWK(){return ((window.sbReady&&window.sbReady())?"1":"")||(window.WE_WEBHOOK||"").trim();}
   var _ppTmr=null;
   function pushPassport(){if(!window.sbReady()||ACTIVE==null)return;var id=ACTIVE;clearTimeout(_ppTmr);_ppTmr=setTimeout(function(){if(id!==ACTIVE)return;window.sbUpsert("passports",{agent:agName(id),data:(agentData(id)||collect()),updated_at:new Date().toISOString()});},2500);}
   function pullPassport(id){if(!window.sbReady())return;var nm=agName(id);window.sbSelect("passports","agent=eq."+encodeURIComponent(nm)+"&select=data&limit=1").then(function(rows){if(id!==ACTIVE)return;if(!rows||!rows.length)return;var d=rows[0].data;if(!d||typeof d!=="object"||!d.v)return;setAgentData(id,d);apply(d);try{renderDash();}catch(e){}});}
@@ -2194,10 +2194,12 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     try{var dl=JSON.parse(localStorage.getItem("we_dials2"));if(dl&&dl.ordB)window.sbUpsert("dials",{id:1,data:dials(),updated_at:stamp});}catch(_e){}
   }
   window.__weScoreRefresh=function(){
-    var dt=document.getElementById("dataTab");if(!dt||dt.style.display==="none")return;
     pullScoreboard(function(){
-      try{var ae=document.activeElement;if(ae&&/dd-in|ms-in|dl-in|dd-att/.test(ae.className||""))return;}catch(e){}
-      renderDaily();renderGrid();renderDials();try{renderTeam();}catch(e){}
+      var editing=false;try{var ae=document.activeElement;editing=!!(ae&&/dd-in|ms-in|dl-in|dd-att/.test(ae.className||""));}catch(e){}
+      var dt=document.getElementById("dataTab");
+      if(dt&&dt.style.display!=="none"&&!editing){renderDaily();renderGrid();renderDials();}
+      try{renderTeam();}catch(e){}
+      try{if(window.__wePanelRefresh)window.__wePanelRefresh();}catch(e){}
     });
   };
   function n(v){var f=parseFloat(v);return isNaN(f)?null:f;}
@@ -2337,6 +2339,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){setTimeout(refreshPanel,60);});
     document.addEventListener("change",function(e){if(e.target&&e.target.id==="cvLevel")setTimeout(refreshPanel,60);});
     buildPanel();buildTeam();renderTeam();window.__wePanelRefresh=refreshPanel;window.__weTeamRefresh=renderTeam;
+    try{if(window.__weScoreRefresh)window.__weScoreRefresh();}catch(e){}
+    setTimeout(function(){try{if(window.__weScoreRefresh)window.__weScoreRefresh();}catch(e){}},1500);
   },140);});
 })();
 
