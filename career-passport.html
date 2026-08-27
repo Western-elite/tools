@@ -1980,6 +1980,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     if(!editing&&ACTIVE!=null&&(Date.now()-_lastEdit)>8000){pullPassport(ACTIVE);}
     try{if(window.__histRefresh)window.__histRefresh();}catch(e){}
     try{if(window.__weCheckComments)window.__weCheckComments();}catch(e){}
+    try{if(window.__weScoreRefresh)window.__weScoreRefresh();}catch(e){}
   }
   function startAutoRefresh(){if(_arTimer)return;_arTimer=setInterval(autoRefresh,60000);}
   var MGR_SALT="WE-mgr-v1",MGR_VER="7d645f54a00aa";
@@ -2155,14 +2156,42 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   var DEF={ordB:[99.0,99.3,99.5,99.7],calB:[85,90,93,96],pay:[18.00,20.00,22.50,25.50],win:30,
            gOrder:99.0,gAcct:98.0,gCall:85,goalCall:90,goalOrder:99,goalAcct:98,goalAns:"",goalAvail:"",goalWow:90};
   function dials(){try{var d=JSON.parse(localStorage.getItem("we_dials2"));if(d&&d.ordB)return Object.assign(JSON.parse(JSON.stringify(DEF)),d);}catch(e){}return JSON.parse(JSON.stringify(DEF));}
-  function saveDials(d){localStorage.setItem("we_dials2",JSON.stringify(d));}
+  function saveDials(d){localStorage.setItem("we_dials2",JSON.stringify(d));pushDials();}
   function exAll(){try{return JSON.parse(localStorage.getItem("we_extras")||"{}");}catch(e){return{};}}
   function exGet(id){var o=exAll();return o[id]||{};}
-  function exSet(id,patch){if(!id)return;var o=exAll();o[id]=Object.assign({},o[id]||{},patch);localStorage.setItem("we_extras",JSON.stringify(o));}
+  function exSet(id,patch){if(!id)return;var o=exAll();o[id]=Object.assign({},o[id]||{},patch);localStorage.setItem("we_extras",JSON.stringify(o));pushExtras(id);}
   function dayAll(){try{return JSON.parse(localStorage.getItem("we_daily")||"{}");}catch(e){return{};}}
   function saveDay(o){localStorage.setItem("we_daily",JSON.stringify(o));}
   function getDay(id,date){var o=dayAll();return (o[id]&&o[id][date])||{};}
-  function setDay(id,date,patch){var o=dayAll();o[id]=o[id]||{};o[id][date]=Object.assign({},o[id][date]||{},patch);saveDay(o);}
+  function setDay(id,date,patch){var o=dayAll();o[id]=o[id]||{};o[id][date]=Object.assign({},o[id][date]||{},patch);saveDay(o);pushDaily(id,date);}
+
+  /* ---- Supabase sync for the daily scoreboard (daily counts + mgr score + dials) ---- */
+  var _pendDay={},_dayTmr=null,_pendEx={},_exTmr=null,_dlTmr=null;
+  function pushDaily(id,date){if(!window.sbReady()||!id||!date)return;_pendDay[id+"|"+date]=1;clearTimeout(_dayTmr);_dayTmr=setTimeout(flushDaily,2000);}
+  function flushDaily(){var keys=Object.keys(_pendDay);_pendDay={};keys.forEach(function(kk){var i=kk.indexOf("|");var id=kk.slice(0,i),date=kk.slice(i+1);window.sbUpsert("scoreboard",{agent_id:id,day:date,data:getDay(id,date),updated_at:new Date().toISOString()});});}
+  function pushExtras(id){if(!window.sbReady()||!id)return;_pendEx[id]=1;clearTimeout(_exTmr);_exTmr=setTimeout(flushExtras,2000);}
+  function flushExtras(){var ids=Object.keys(_pendEx);_pendEx={};ids.forEach(function(id){window.sbUpsert("extras",{agent_id:id,data:exGet(id),updated_at:new Date().toISOString()});});}
+  function pushDials(){if(!window.sbReady())return;clearTimeout(_dlTmr);_dlTmr=setTimeout(function(){window.sbUpsert("dials",{id:1,data:dials(),updated_at:new Date().toISOString()});},1500);}
+  function pullScoreboard(cb){
+    if(!window.sbReady()){if(cb)cb();return;}
+    var done=0;function fin(){done++;if(done>=3&&cb)cb();}
+    window.sbSelect("scoreboard","select=agent_id,day,data&limit=100000").then(function(rows){
+      if(rows&&rows.length){var o=dayAll();rows.forEach(function(r){if(!r.agent_id||!r.day)return;o[r.agent_id]=o[r.agent_id]||{};o[r.agent_id][r.day]=r.data||{};});saveDay(o);}fin();
+    });
+    window.sbSelect("extras","select=agent_id,data&limit=100000").then(function(rows){
+      if(rows&&rows.length){var o=exAll();rows.forEach(function(r){if(!r.agent_id)return;o[r.agent_id]=r.data||{};});localStorage.setItem("we_extras",JSON.stringify(o));}fin();
+    });
+    window.sbSelect("dials","id=eq.1&select=data&limit=1").then(function(rows){
+      if(rows&&rows[0]&&rows[0].data&&rows[0].data.ordB){localStorage.setItem("we_dials2",JSON.stringify(rows[0].data));}fin();
+    });
+  }
+  window.__weScoreRefresh=function(){
+    var dt=document.getElementById("dataTab");if(!dt||dt.style.display==="none")return;
+    pullScoreboard(function(){
+      try{var ae=document.activeElement;if(ae&&/dd-in|ms-in|dl-in|dd-att/.test(ae.className||""))return;}catch(e){}
+      renderDaily();renderGrid();renderDials();try{renderTeam();}catch(e){}
+    });
+  };
   function n(v){var f=parseFloat(v);return isNaN(f)?null:f;}
   function num(v){return (v===""||v==null||isNaN(parseFloat(v)))?null:parseFloat(v);}
   function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
@@ -2261,7 +2290,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     w.innerHTML=h;
     w.querySelectorAll(".dl-in").forEach(function(i){i.addEventListener("input",function(){var d=dials();var k=this.getAttribute("data-dk"),di=this.getAttribute("data-di");var val=this.value===""?"":parseFloat(this.value);if(di===""){d[k]=val;}else{d[k][parseInt(di,10)]=val;}saveDials(d);renderGrid();renderTeam();refreshPanel();});});
   }
-  function showData(){buildDataTab();renderDaily();renderGrid();renderDials();document.getElementById("dashboard").style.display="none";var pb=document.getElementById("passportBody");if(pb)pb.style.display="none";var hn=document.getElementById("ppHint");if(hn)hn.style.display="none";document.getElementById("dataTab").style.display="";window.scrollTo({top:0});}
+  function showData(){buildDataTab();renderDaily();renderGrid();renderDials();document.getElementById("dashboard").style.display="none";var pb=document.getElementById("passportBody");if(pb)pb.style.display="none";var hn=document.getElementById("ppHint");if(hn)hn.style.display="none";document.getElementById("dataTab").style.display="";window.scrollTo({top:0});pullScoreboard(function(){if(document.getElementById("dataTab").style.display==="none")return;renderDaily();renderGrid();renderDials();try{renderTeam();}catch(e){}});}
   function showDash(){document.getElementById("dataTab").style.display="none";document.getElementById("dashboard").style.display="";var hn=document.getElementById("ppHint");if(hn)hn.style.display="";buildTeam();renderTeam();window.scrollTo({top:0});}
 
   function buildPanel(){
