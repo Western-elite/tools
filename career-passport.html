@@ -472,7 +472,9 @@
   .mp-tbl th{background:var(--blue);color:#fff;text-align:left;padding:7px 14px;font-size:11px;letter-spacing:.03em;}
   .mp-tbl td{padding:9px 14px;border-bottom:1px solid var(--line);}
   .mp-tbl .mp-lab{font-weight:700;color:#3d4750;}
-  .mp-tbl .mp-mo,.mp-tbl .mp-5{font-weight:800;font-size:15px;}
+  .mp-tbl .mp-last,.mp-tbl .mp-this,.mp-tbl .mp-t5d{font-weight:800;font-size:15px;}
+  /* Answered call & Availability show only on the manager/supervisor view, not the agent's */
+  body.agentview #metricPanel tr[data-m="answered"],body.agentview #metricPanel tr[data-m="avail"]{display:none;}
   .mp-tbl .mp-goal{color:var(--ink);font-weight:800;}
   .mp-ok{color:#1f6b41;} .mp-bad{color:#C00000;}
   .mp-place{padding:10px 14px;background:var(--lightblue);font-size:13.5px;color:#3d4750;}
@@ -809,7 +811,7 @@
      ════════════════════════════════════════════════════════════════ -->
 <script>
 window.SUPABASE_URL = "https://zjihkljmgwjfyjzjqlse.supabase.co";   /* your project URL (already filled in) */
-window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqaWhrbGptZ3dqZnlqempxbHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4Mzk5NzIsImV4cCI6MjEwMzQxNTk3Mn0.JFbNuoHRRMPxK4Ers3GbZFUEKkepRr337PR_QrvH148";   /* PASTE your anon public key here (the long eyJ... string) */
+window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... string) */
 (function(){
   function base(){return (window.SUPABASE_URL||"").replace(/\/+$/,"");}
   function hdr(extra){var k=window.SUPABASE_KEY||"";var h={apikey:k,Authorization:"Bearer "+k,"Content-Type":"application/json"};if(extra)for(var x in extra)h[x]=extra[x];return h;}
@@ -935,7 +937,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><td>Level 3 &mdash; Advanced Agent</td><td class="price">$22.50/hr</td></tr>
       <tr><td>Level 4 &mdash; Standard Setter &amp; Team Leader</td><td class="price">$25/hr</td></tr>
       <tr><td>Senior Agent <span class="sub">&mdash; after 4 quarters at Level 4</span></td><td class="price">+$1.00/hr</td></tr>
-      <tr><td>Endorsements (each) <span class="sub">&mdash; available at Level 3+</span></td><td class="price">up to +$1.75/hr total</td></tr>
+      <tr><td>Endorsements (each) <span class="sub">&mdash; available at Level 3+</span></td><td class="price">up to +$2.00/hr total</td></tr>
     </table>
     <div class="callout"><i>There is no fixed timeline. Advancement is earned by meeting the required performance gates, completing training, demonstrating competency, and sustaining performance for the required review period.</i></div>
 
@@ -959,7 +961,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       </ul>
     </div>
 
-    <div class="callout good">Beginning at Level 3, agents may earn up to an additional $1.75/hr through five cross-training endorsements. A Level 4 agent who sustains Level 4 and all Level 1 endorsements (Trainer, Poster, SDR) for four consecutive quarters becomes eligible for Senior Agent and an additional $1.00/hr. See section 7.</div>
+    <div class="callout good">Beginning at Level 3, agents may earn up to an additional $2.00/hr through five cross-training endorsements. A Level 4 agent who sustains Level 4 and all Level 1 endorsements (Trainer, Poster, SDR) for four consecutive quarters becomes eligible for Senior Agent and an additional $1.00/hr. See section 7.</div>
 
     <div class="subh">Acknowledgment &amp; digital signature</div>
     <div class="callout good ov-sign">
@@ -1349,7 +1351,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <div class="subh">Poster endorsement sign-off</div>
       <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Posting Lead:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
       </div></td></tr>
-      <tr><td><b>SDR</b></td><td>Able and willing to complete cross-training as a Sales Development Representative (SDR) and fill in when needed.</td><td class="price">+$0.25</td><td class="chkcell"><input type="checkbox" class="chk-box" title="Training completed"> Training<br><input type="checkbox" class="chk-box" title="Manager approval"> Approval</td><td><input type="date" class="field-cell"></td></tr>
+      <tr><td><b>SDR</b></td><td>Able and willing to complete cross-training as a Sales Development Representative (SDR) and fill in when needed.</td><td class="price">+$0.50</td><td class="chkcell"><input type="checkbox" class="chk-box" title="Training completed"> Training<br><input type="checkbox" class="chk-box" title="Manager approval"> Approval</td><td><input type="date" class="field-cell"></td></tr>
     </table>
 
     <div class="subh">Level 2 Endorsements <span>&mdash; optional; not required for Senior Agent</span></div>
@@ -2220,6 +2222,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   }
   function avgMetric(id,key,days){var o=dayAll(),dd=o[id]||{};var t=new Date();t.setHours(0,0,0,0);var cut=new Date(t);cut.setDate(t.getDate()-(days-1));
     var s=0,cnt=0;Object.keys(dd).forEach(function(ds){var dt=new Date(ds+"T00:00:00");if(dt>=cut&&dt<=t){var v=dayVal(dd[ds],key);if(v!=null){s+=v;cnt++;}}});return {avg:cnt?s/cnt:null,n:cnt};}
+  function monthRange(offset){var t=new Date();t.setHours(0,0,0,0);var start=new Date(t.getFullYear(),t.getMonth()+offset,1);var end=new Date(t.getFullYear(),t.getMonth()+offset+1,0);end.setHours(23,59,59,999);return {start:start,end:end};}
+  function rangeMetric(id,key,start,end){var o=dayAll(),dd=o[id]||{};var s=0,cnt=0;Object.keys(dd).forEach(function(ds){var dt=new Date(ds+"T00:00:00");if(dt>=start&&dt<=end){var v=dayVal(dd[ds],key);if(v!=null){s+=v;cnt++;}}});return {avg:cnt?s/cnt:null,n:cnt};}
 
   var RAW=[{k:"zoom",lab:"Zoom",g:"call"},{k:"vc",lab:"V.Creator",g:"call"},{k:"onphone",lab:"On-phone hrs",g:"call"},{k:"avail",lab:"Avail hrs",g:"call"},{k:"inbound",lab:"Inbound",g:"call"},{k:"outbound",lab:"Outbound",g:"call"},{k:"missed",lab:"Missed",g:"call"},{k:"orders",lab:"Orders",g:"ord"},{k:"cod",lab:"COD orders",g:"ord"},{k:"acctErr",lab:"Acct errors",g:"ord"},{k:"trip",lab:"Trip charge",g:"oe"},{k:"code",lab:"Incorrect code",g:"oe"},{k:"missord",lab:"Missed order",g:"oe"},{k:"addr",lab:"Address",g:"oe"},{k:"dtw",lab:"Date/Time win",g:"oe"},{k:"oentry",lab:"Order entry",g:"oe"},{k:"mrf",lab:"MRF",g:"oe"},{k:"pdriver",lab:"Prev driver",g:"oe"}];var ORDCAT_KEYS=["trip","code","missord","addr","dtw","oentry","mrf","pdriver"];
   var DAYPCT=[{k:"call",lab:"V.Cr"},{k:"answered",lab:"Ans"},{k:"avail",lab:"Avail"},{k:"order",lab:"Order"},{k:"acct",lab:"Acct"}];
@@ -2306,8 +2310,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function buildPanel(){
     if(document.getElementById("metricPanel"))return;var wrap=document.querySelector("#passportBody .wrap");if(!wrap)return;
     var p=document.createElement("div");p.id="metricPanel";
-    var rows=METRICS.map(function(m){return '<tr data-m="'+m.k+'"><td class="mp-lab">'+m.lab+'</td><td class="mp-mo">—</td><td class="mp-5">—</td><td class="mp-goal">—</td></tr>';}).join("");
-    p.innerHTML='<table class="mp-tbl"><tr><th>Metric</th><th>Past month</th><th>5-day trailing</th><th id="mpGatesHdr">Gates</th></tr>'+rows+'</table><div class="mp-place" id="mpPlace">Current placement: <b id="mpLevel">—</b> <span id="mpPay"></span></div>';
+    var rows=METRICS.map(function(m){return '<tr data-m="'+m.k+'"><td class="mp-lab">'+m.lab+'</td><td class="mp-last">—</td><td class="mp-this">—</td><td class="mp-t5d">—</td><td class="mp-goal">—</td></tr>';}).join("");
+    p.innerHTML='<table class="mp-tbl"><tr><th>Metric</th><th>Last month</th><th>This month</th><th>T5D</th><th id="mpGatesHdr">Gates</th></tr>'+rows+'</table><div class="mp-place" id="mpPlace">Current placement: <b id="mpLevel">—</b> <span id="mpPay"></span></div>';
     wrap.insertBefore(p,wrap.firstChild);
   }
   function cls(avg,goal){if(avg==null||goal==null||goal==="")return "";return avg>=goal?"mp-ok":"mp-bad";}
@@ -2321,11 +2325,16 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function refreshPanel(){
     buildPanel();var id=activeId();if(!id)return;var d=dials();
     var _lvl=curLevelNum();var _gh=document.getElementById("mpGatesHdr");if(_gh)_gh.innerHTML="Gates"+(_lvl?' <span style="font-weight:600;opacity:.8">&middot; Level '+_lvl+'</span>':"");
-    METRICS.forEach(function(m){var mo=(m.wow?wowAvg(id,30).avg:avgMetric(id,m.k,30).avg),f5=(m.wow?wowAvg(id,5).avg:avgMetric(id,m.k,5).avg),goal=(m.k==="call"||m.k==="order"||m.k==="acct")?levelGate(m.k):d[m.goal];
+    var _lm=monthRange(-1),_tm=monthRange(0);
+    METRICS.forEach(function(m){
+      var last=(m.wow?wowAvg(id,30).avg:rangeMetric(id,m.k,_lm.start,_lm.end).avg),
+          thism=(m.wow?wowAvg(id,30).avg:rangeMetric(id,m.k,_tm.start,_tm.end).avg),
+          t5=(m.wow?wowAvg(id,5).avg:avgMetric(id,m.k,5).avg),
+          goal=(m.k==="call"||m.k==="order"||m.k==="acct")?levelGate(m.k):d[m.goal];
       var tr=document.querySelector('#metricPanel tr[data-m="'+m.k+'"]');if(!tr)return;
-      var moC=tr.querySelector(".mp-mo"),f5C=tr.querySelector(".mp-5"),gC=tr.querySelector(".mp-goal");
-      moC.textContent=fp(mo);f5C.textContent=fp(f5);gC.textContent=(goal===""||goal==null)?"—":(goal+"%");
-      moC.className="mp-mo "+cls(mo,goal);f5C.className="mp-5 "+cls(f5,goal);
+      var lC=tr.querySelector(".mp-last"),tC=tr.querySelector(".mp-this"),fC=tr.querySelector(".mp-t5d"),gC=tr.querySelector(".mp-goal");
+      lC.textContent=fp(last);tC.textContent=fp(thism);fC.textContent=fp(t5);gC.textContent=(goal===""||goal==null)?"—":(goal+"%");
+      lC.className="mp-last "+cls(last,goal);tC.className="mp-this "+cls(thism,goal);fC.className="mp-t5d "+cls(t5,goal);
     });
     var r=placement(id,d);document.getElementById("mpLevel").textContent=levelLabel(r.level);
     document.getElementById("mpPay").textContent=(r.pay==null?"":("· "+money(r.pay)+"/hr"))+(r.n?("  ·  "+r.n+"-day avg"):"");
