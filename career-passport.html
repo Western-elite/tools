@@ -819,6 +819,7 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
   window.sbUpsert=function(t,row){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t,{method:"POST",headers:hdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(row)}).catch(function(){});};
   window.sbInsert=function(t,row){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t,{method:"POST",headers:hdr({Prefer:"return=minimal"}),body:JSON.stringify(row)}).catch(function(){});};
   window.sbSelect=function(t,q){if(!window.sbReady())return Promise.resolve([]);return fetch(base()+"/rest/v1/"+t+"?"+q,{headers:hdr()}).then(function(r){return r.ok?r.json():[];}).then(function(j){return Array.isArray(j)?j:[];}).catch(function(){return [];});};
+  window.sbDelete=function(t,q){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t+"?"+q,{method:"DELETE",headers:hdr({Prefer:"return=minimal"})}).catch(function(){});};
 })();
 </script>
 <div id="lockScreen" style="display:none"><div class="lock-card"><div class="lk-lock">WESTERN <span>ELITE</span></div><h2 id="lockTitle">Manager Master</h2><p id="lockSub">Enter the manager password to continue.</p><input id="lockPw" type="password" placeholder="Manager password" autocomplete="off"><button id="lockBtn">Unlock</button><div class="lk-msg" id="lockMsg"></div><div class="lk-note">This master holds every agent’s passport and the team dashboard. For manager use only — keep this file and its password with authorized managers.</div></div></div>
@@ -1933,9 +1934,11 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
   function setMeta(m){localStorage.setItem("wem_meta",JSON.stringify(m));}
   function roster(){var r=localStorage.getItem("wem_roster");if(!r)return[];return decO(r,APP_KEY)||[];}
   function setRosterLocal(list){localStorage.setItem("wem_roster",encO(list,APP_KEY));}
-  function setRoster(list){setRosterLocal(list);pushRoster();}
+  var _rosterTouched=0;
+  function setRoster(list){_rosterTouched=Date.now();setRosterLocal(list);pushRoster();}
   var _rtmr=null;
   function pushRoster(){if(!window.sbReady())return;clearTimeout(_rtmr);_rtmr=setTimeout(function(){window.sbUpsert("roster",{id:1,data:roster(),updated_at:new Date().toISOString()});},1500);}
+  function pushRosterNow(){_rosterTouched=Date.now();if(!window.sbReady())return;clearTimeout(_rtmr);window.sbUpsert("roster",{id:1,data:roster(),updated_at:new Date().toISOString()});}
   function pullRoster(cb){if(!window.sbReady()){if(cb)cb(null);return;}window.sbSelect("roster","id=eq.1&select=data&limit=1").then(function(rows){var list=(rows&&rows[0]&&Array.isArray(rows[0].data))?rows[0].data:null;if(cb)cb(list);});}
   function agentData(id){var r=localStorage.getItem("wem_agent_"+id);if(!r)return null;return decO(r,APP_KEY);}
   function setAgentData(id,data){localStorage.setItem("wem_agent_"+id,encO(data,APP_KEY));}
@@ -1960,7 +1963,9 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
 
   function addAgent(){var name=prompt("New agent's name:");if(name==null)return;name=name.trim();if(!name)return;var list=roster();var id="a"+Date.now();list.push({id:id,name:name,flag:""});setRoster(list);setAgentData(id,{v:{},name:name,level:"",sup:"",hire:""});refreshSelect();selectAgent(id);var n=document.getElementById("cvName");if(n)n.value=name;saveActive();renderDash();}
   function renameAgent(){if(ACTIVE==null){alert("Add or select an agent first.");return;}var list=roster();var it=list.filter(function(r){return r.id===ACTIVE;})[0];if(!it)return;var nn=prompt("Rename agent:",it.name);if(nn==null)return;nn=nn.trim();if(!nn)return;it.name=nn;setRoster(list);var n=document.getElementById("cvName");if(n)n.value=nn;saveActive();refreshSelect();document.getElementById("agentSelect").value=ACTIVE;renderDash();}
-  function deleteAgent(){if(ACTIVE==null){alert("Select an agent first.");return;}var list=roster();var it=list.filter(function(r){return r.id===ACTIVE;})[0];if(!it)return;if(!confirm("Delete "+it.name+"'s passport from this master? This cannot be undone."))return;delAgentData(ACTIVE);list=list.filter(function(r){return r.id!==ACTIVE;});setRoster(list);ACTIVE=null;refreshSelect();if(list.length){selectAgent(list[0].id);}else{clearFields();}renderDash();}
+  function deleteAgent(){if(ACTIVE==null){alert("Select an agent first.");return;}var list=roster();var it=list.filter(function(r){return r.id===ACTIVE;})[0];if(!it)return;if(!confirm("Delete "+it.name+"'s passport from this master? This cannot be undone."))return;var gid=it.id,gnm=it.name;delAgentData(gid);list=list.filter(function(r){return r.id!==gid;});setRosterLocal(list);pushRosterNow();
+    try{if(window.sbDelete){window.sbDelete("passports","agent=eq."+encodeURIComponent(gnm));window.sbDelete("scoreboard","agent_id=eq."+encodeURIComponent(gid));window.sbDelete("extras","agent_id=eq."+encodeURIComponent(gid));window.sbDelete("entries","agent=eq."+encodeURIComponent(gnm));}}catch(e){}
+    ACTIVE=null;refreshSelect();if(list.length){selectAgent(list[0].id);}else{clearFields();}renderDash();}
 
   function renderDash(){var wrap=document.getElementById("dashWrap");var list=roster();if(!list.length){wrap.innerHTML='<div class="dash-empty">No agents yet. Click the “+ Add agent” button above to create the first passport.</div>';return;}var html='<table class="dash-table"><tr><th>Agent</th><th>Current level</th><th>Hire date</th><th style="width:26%">Manager flag / focus</th><th></th></tr>';list.forEach(function(r){var d=agentData(r.id)||{};html+='<tr><td><b>'+esc(d.name||r.name)+'</b></td><td>'+esc(d.level||"—")+'</td><td>'+esc(d.hire||"—")+'</td><td><input data-flag="'+r.id+'" value="'+esc(r.flag||"")+'" placeholder="e.g. in 30-day review"></td><td><button class="dash-open" data-open="'+r.id+'">Open</button></td></tr>';});html+='</table>';wrap.innerHTML=html;wrap.querySelectorAll("[data-open]").forEach(function(b){b.addEventListener("click",function(){selectAgent(this.getAttribute("data-open"));document.getElementById("passportBody").scrollIntoView({behavior:"smooth"});});});wrap.querySelectorAll("[data-flag]").forEach(function(inp){inp.addEventListener("input",function(){var id=this.getAttribute("data-flag");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it.flag=this.value;setRoster(l);}});});}
 
@@ -1972,6 +1977,7 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
   function autoRefresh(){
     if(!ppWK())return;
     pullRoster(function(cloud){
+      if(Date.now()-_rosterTouched<6000)return;
       if(cloud&&cloud.length&&JSON.stringify(cloud)!==JSON.stringify(roster())){
         var keep=ACTIVE;setRosterLocal(cloud);refreshSelect();renderDash();
         var sel=document.getElementById("agentSelect");
