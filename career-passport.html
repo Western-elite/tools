@@ -2053,8 +2053,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       try{var lede=document.querySelector("#histPanel .coach-lede");if(lede)lede.textContent="Your record — supervisor notes, coaching, and reviews your manager has filed, newest first.";}catch(e){}
       try{if(window.__weShowPage)window.__weShowPage("overview",false);}catch(e){}
       try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}
-      try{if(d&&d.metrics&&window.__weRenderSnapshot){window.__weRenderSnapshot(d.metrics);}else{var mp=document.getElementById("metricPanel");if(mp)mp.style.display="none";}}catch(e){}
-      setTimeout(function(){try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}try{if(d&&d.metrics&&window.__weRenderSnapshot)window.__weRenderSnapshot(d.metrics);}catch(e){}try{if(window.__histRefresh)window.__histRefresh();}catch(e){}},300);
+      try{if(d&&d.metrics&&window.__weRenderScoreboard){window.__weRenderScoreboard(d.metrics);}else{var mp=document.getElementById("metricPanel");if(mp)mp.style.display="none";}}catch(e){}
+      setTimeout(function(){try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}try{if(d&&d.metrics&&window.__weRenderScoreboard)window.__weRenderScoreboard(d.metrics);}catch(e){}try{if(window.__histRefresh)window.__histRefresh();}catch(e){}},300);
       window.scrollTo({top:0});
     });
   }
@@ -2443,9 +2443,25 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var lg=LEVELGATES[lvNum]||{};var out={level:lvNum,metrics:{},placement:null};
     METRICS.forEach(function(m){var goal=(m.k==="call"||m.k==="order"||m.k==="acct")?(lg[m.k]!=null?lg[m.k]:null):d[m.goal];
       out.metrics[m.k]={last:rangeMetric(id,m.k,lm.start,lm.end).avg,thism:rangeMetric(id,m.k,tm.start,tm.end).avg,t5d:avgMetric(id,m.k,5).avg,goal:(goal===""||goal==null)?null:goal};});
-    var pl=placement(id,d);out.placement={level:pl.level,pay:pl.pay};return out;
+    var pl=placement(id,d);out.placement={level:pl.level,pay:pl.pay};
+    var dd=dayAll()[id]||{};var days=Object.keys(dd).sort().reverse().slice(0,30);
+    out.daily=days.map(function(ds){var e=dd[ds]||{};return {d:ds,att:e.att||"",call:dayVal(e,"call"),order:dayVal(e,"order"),acct:dayVal(e,"acct")};});
+    return out;
   }
   window.__weBuildSnapshot=__weBuildSnap;
+  window.__weRenderScoreboard=function(snap){
+    if(!snap)return false;window.__weRenderSnapshot(snap);
+    var mp=document.getElementById("metricPanel");if(!mp)return false;
+    if(!document.getElementById("sbHead")){var h=document.createElement("div");h.id="sbHead";h.style.cssText="font-weight:800;color:#13427a;font-size:15px;margin:6px 0 8px;";h.textContent="📊 My Scoreboard — your gates and where you stand";mp.parentNode.insertBefore(h,mp);}
+    var daily=(snap.daily||[]).filter(function(r){return r.call!=null||r.order!=null||r.acct!=null||r.att;});
+    var wrap=document.getElementById("agentDaily");if(!wrap){wrap=document.createElement("div");wrap.id="agentDaily";wrap.style.margin="0 0 16px";mp.parentNode.insertBefore(wrap,mp.nextSibling);}
+    function pct(v){return v==null?"—":(v.toFixed(1)+"%");}
+    function fmt(ds){var t=Date.parse(ds+"T00:00:00");if(isNaN(t))return ds;return new Date(t).toLocaleDateString(undefined,{month:"short",day:"numeric"});}
+    if(!daily.length){wrap.innerHTML='<div style="font-size:12.5px;color:#6a747e;margin:6px 0 14px">No daily entries yet.</div>';return true;}
+    var html='<div style="font-weight:700;color:#3d4750;margin:12px 0 4px;font-size:13px">Your daily numbers (last 30 days)</div><div style="overflow-x:auto"><table class="mp-tbl" style="min-width:440px"><tr><th>Date</th><th>Attendance</th><th>Value creator</th><th>Order acc.</th><th>Acct acc.</th></tr>';
+    daily.forEach(function(r){html+='<tr><td class="mp-lab">'+fmt(r.d)+'</td><td>'+(r.att||"—")+'</td><td class="mp-last">'+pct(r.call)+'</td><td class="mp-last">'+pct(r.order)+'</td><td class="mp-last">'+pct(r.acct)+'</td></tr>';});
+    html+='</table></div>';wrap.innerHTML=html;return true;
+  };
   window.__weRenderSnapshot=function(snap){
     buildPanel();var mp=document.getElementById("metricPanel");if(!mp||!snap)return false;
     var gh=document.getElementById("mpGatesHdr");if(gh)gh.innerHTML="Gates"+(snap.level?' <span style="font-weight:600;opacity:.8">&middot; Level '+snap.level+'</span>':"");
