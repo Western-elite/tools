@@ -2050,8 +2050,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       document.body.classList.add("agentview");document.body.classList.add("liveagent");
       window.__weAgentName=rows[0].agent||d.name||"";
       lockAgentFields();makeAgentBar(email);
+      try{var lede=document.querySelector("#histPanel .coach-lede");if(lede)lede.textContent="Your record — supervisor notes, coaching, and reviews your manager has filed, newest first.";}catch(e){}
+      try{if(window.__weShowPage)window.__weShowPage("overview",false);}catch(e){}
+      try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}
       try{if(d&&d.metrics&&window.__weRenderSnapshot){window.__weRenderSnapshot(d.metrics);}else{var mp=document.getElementById("metricPanel");if(mp)mp.style.display="none";}}catch(e){}
-      setTimeout(function(){try{if(d&&d.metrics&&window.__weRenderSnapshot)window.__weRenderSnapshot(d.metrics);}catch(e){}try{if(window.__histRefresh)window.__histRefresh();}catch(e){}},300);
+      setTimeout(function(){try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}try{if(d&&d.metrics&&window.__weRenderSnapshot)window.__weRenderSnapshot(d.metrics);}catch(e){}try{if(window.__histRefresh)window.__histRefresh();}catch(e){}},300);
       window.scrollTo({top:0});
     });
   }
@@ -2185,6 +2188,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   }
 
   function reveal(){var b=pb();if(!b)return;var h=document.getElementById("ppHint");if(h)h.style.display="none";if(b.style.display==="none")b.style.display="";loadAgentExtras();showPage("overview",false);refreshAllPct();b.scrollIntoView({behavior:"smooth",block:"start"});}
+  window.__weRefreshPct=refreshAllPct;window.__weShowPage=showPage;
 
   function recordActivity(t){if(document.body.classList.contains("agentpv"))return;if(!t||!t.closest)return;if(t.id==="ovAck"||t.id==="ovAckDate")return;if(!t.closest("#passportBody"))return;var sec=t.closest(".sec");if(!sec||!sec.id||sec.id==="overview")return;var a=aid();if(a)exSet(a,{lastPage:sec.id});}
 
@@ -2873,7 +2877,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var wrap=document.getElementById("histBody");if(!wrap)return;
     function keyOf(r){if(r.edate){var t=Date.parse(r.edate+"T00:00:00");if(!isNaN(t))return t;}return r.submitted||0;}
     var arr=(load()[curAgent()]||[]).slice().sort(function(a,b){return keyOf(b)-keyOf(a);});
-    if(!arr.length){wrap.innerHTML='<div class="qz-empty">Nothing on file yet. Submit from the Supervisor Log or Manager Log to file it here.</div>';return;}
+    if(!arr.length){wrap.innerHTML='<div class="qz-empty">'+(document.body.classList.contains("liveagent")?"No entries on file yet.":"Nothing on file yet. Submit from the Supervisor Log or Manager Log to file it here.")+'</div>';return;}
     var LBL={supervisor:["Supervisor Log","b-sup"],coaching:["Supervisor Log","b-sup"],manager:["Manager Log","b-mgr"],oneonone:["Manager Log","b-mgr"],escalation:["Escalation","b-esc"],response:["Employee response","b-emp"],comment:["Comment","b-emp"]};
     function fmtDate(s){var t=Date.parse(s+"T00:00:00");if(isNaN(t))return s;var d=new Date(t);return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
     wrap.innerHTML=arr.map(function(r){var fd=new Date(r.submitted);var lb=LBL[r.type]||["Log","b-sup"];
