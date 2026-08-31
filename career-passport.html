@@ -475,6 +475,9 @@
   .mp-tbl .mp-last,.mp-tbl .mp-this,.mp-tbl .mp-t5d{font-weight:800;font-size:15px;}
   /* Answered call & Availability show only on the manager/supervisor view, not the agent's */
   body.agentpv #metricPanel tr[data-m="answered"],body.agentpv #metricPanel tr[data-m="avail"],body.agentview #metricPanel tr[data-m="answered"],body.agentview #metricPanel tr[data-m="avail"]{display:none;}
+  /* Live agent login (real per-agent sign-in): read-only, manager tools hidden */
+  body.liveagent #metricPanel,body.liveagent #wowScorer,body.liveagent #kbManage,body.liveagent #quizManage,body.liveagent .kb-legacy-note,body.liveagent #dataTab,body.liveagent #dataBtn,body.liveagent #previewAgentBtn,body.liveagent #mgrBar,body.liveagent #dashboard,body.liveagent #ppHint,body.liveagent #apvBar,body.liveagent .side-submit,body.liveagent .log-entry{display:none!important;}
+  body.liveagent .wow-agent-note{display:block;}
   .mp-tbl .mp-goal{color:var(--ink);font-weight:800;}
   .mp-ok{color:#1f6b41;} .mp-bad{color:#C00000;}
   .mp-place{padding:10px 14px;background:var(--lightblue);font-size:13.5px;color:#3d4750;}
@@ -814,15 +817,26 @@ window.SUPABASE_URL = "https://zjihkljmgwjfyjzjqlse.supabase.co";   /* your proj
 window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... string) */
 (function(){
   function base(){return (window.SUPABASE_URL||"").replace(/\/+$/,"");}
-  function hdr(extra){var k=window.SUPABASE_KEY||"";var h={apikey:k,Authorization:"Bearer "+k,"Content-Type":"application/json"};if(extra)for(var x in extra)h[x]=extra[x];return h;}
+  function hdr(extra){var k=window.SUPABASE_KEY||"";var s=null;try{s=JSON.parse(localStorage.getItem("we_sess")||"null");}catch(e){}var bearer=(s&&s.access_token)?s.access_token:k;var h={apikey:k,Authorization:"Bearer "+bearer,"Content-Type":"application/json"};if(extra)for(var x in extra)h[x]=extra[x];return h;}
   window.sbReady=function(){return !!(window.SUPABASE_URL&&window.SUPABASE_KEY);};
   window.sbUpsert=function(t,row){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t,{method:"POST",headers:hdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(row)}).catch(function(){});};
   window.sbInsert=function(t,row){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t,{method:"POST",headers:hdr({Prefer:"return=minimal"}),body:JSON.stringify(row)}).catch(function(){});};
   window.sbSelect=function(t,q){if(!window.sbReady())return Promise.resolve([]);return fetch(base()+"/rest/v1/"+t+"?"+q,{headers:hdr()}).then(function(r){return r.ok?r.json():[];}).then(function(j){return Array.isArray(j)?j:[];}).catch(function(){return [];});};
   window.sbDelete=function(t,q){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t+"?"+q,{method:"DELETE",headers:hdr({Prefer:"return=minimal"})}).catch(function(){});};
+  /* ---- Supabase Auth (magic-link email login for agents) ---- */
+  function ahdr(tok){return {apikey:window.SUPABASE_KEY||"",Authorization:"Bearer "+(tok||window.SUPABASE_KEY||""),"Content-Type":"application/json"};}
+  window.sbAuthOtp=function(email,redirect){if(!window.sbReady())return Promise.resolve({error:"Login isn't configured yet."});return fetch(base()+"/auth/v1/otp",{method:"POST",headers:ahdr(),body:JSON.stringify({email:email,options:{email_redirect_to:redirect}})}).then(function(r){if(r.ok)return {ok:true};return r.json().then(function(j){return {error:(j&&(j.msg||j.error_description||j.error||j.message))||("Error "+r.status)};}).catch(function(){return {error:"Error "+r.status};});}).catch(function(){return {error:"Network error — check your connection."};});};
+  window.sbGetSession=function(){try{return JSON.parse(localStorage.getItem("we_sess")||"null");}catch(e){return null;}};
+  window.sbSetSession=function(s){try{if(s)localStorage.setItem("we_sess",JSON.stringify(s));else localStorage.removeItem("we_sess");}catch(e){}};
+  window.sbAuthUser=function(tok){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/auth/v1/user",{headers:ahdr(tok)}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});};
+  window.sbRefresh=function(rt){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:ahdr(),body:JSON.stringify({refresh_token:rt})}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});};
+  window.sbSignOut=function(){var s=window.sbGetSession();window.sbSetSession(null);try{if(s&&s.access_token)fetch(base()+"/auth/v1/logout",{method:"POST",headers:ahdr(s.access_token)}).catch(function(){});}catch(e){}};
 })();
 </script>
-<div id="lockScreen" style="display:none"><div class="lock-card"><div class="lk-lock">WESTERN <span>ELITE</span></div><h2 id="lockTitle">Manager Master</h2><p id="lockSub">Enter the manager password to continue.</p><input id="lockPw" type="password" placeholder="Manager password" autocomplete="off"><button id="lockBtn">Unlock</button><div class="lk-msg" id="lockMsg"></div><div class="lk-note">This master holds every agent’s passport and the team dashboard. For manager use only — keep this file and its password with authorized managers.</div></div></div>
+<div id="lockScreen" style="display:none"><div class="lock-card"><div class="lk-lock">WESTERN <span>ELITE</span></div><h2 id="lockTitle">Career Passport</h2><p id="lockSub">Sign in with your work email to view your passport.</p>
+<div id="agentLogin"><input id="loginEmail" type="email" placeholder="you@westernelite.com" autocomplete="username" autocapitalize="off" spellcheck="false"><button id="loginBtn">Email me a sign-in link</button><div class="lk-msg" id="loginMsg" style="color:#6a747e"></div></div>
+<div id="mgrLogin" style="display:none"><input id="lockPw" type="password" placeholder="Manager password" autocomplete="off"><button id="lockBtn">Unlock manager view</button><div class="lk-msg" id="lockMsg"></div></div>
+<div class="lk-note"><a href="#" id="toMgr" style="color:#2e74b5;text-decoration:none;font-weight:700">Manager sign-in &rarr;</a><span id="toAgent" style="display:none"><a href="#" style="color:#2e74b5;text-decoration:none;font-weight:700">&larr; Back to agent sign-in</a></span></div></div></div>
 <div class="mgr-bar" id="mgrBar" style="display:none"><span class="mb-brand">WE · MANAGER</span><select id="agentSelect" title="Select agent"></select><button class="mb-btn" id="addBtn">+ Add agent</button><button class="mb-btn" id="renameBtn">Rename</button><button class="mb-btn" id="delBtn">Delete</button><span class="mb-spacer"></span><span class="mb-save" id="saveStatus">Saved automatically</span><button class="mb-btn primary" id="exportBtn">Export agent’s view-only passport</button><button class="mb-btn" onclick="window.print()">Print</button><button class="mb-btn" id="chgPwBtn" style="display:none">Change password</button><button class="mb-btn" id="lockNowBtn">Log out</button></div>
 <div id="dashboard" style="display:none"><h2>Team Dashboard</h2><p class="dash-lede">Every agent at a glance. Level, supervisor, and hire date update automatically from each passport; add a flag or focus note per agent. Click Open to jump into a passport.</p><div id="dashWrap"></div></div>
 <div id="passportBody" style="display:none"><!-- ═══ PASSPORT COVER — scrolls away with the page, not sticky ═══ -->
@@ -1996,12 +2010,69 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
   var _lastEdit=0,_arTimer=null;
   function doAuth(){var pw=document.getElementById("lockPw").value;var msg=document.getElementById("lockMsg");if(!pw){msg.textContent="Enter the password.";return;}if(cyrb53(MGR_SALT+pw)!==MGR_VER){msg.textContent="Incorrect password.";return;}try{sessionStorage.setItem("we_mgr_ok","1");}catch(e){}showApp();}
   function changeMasterPw(){var meta=getMeta();if(!meta){alert("No password is set yet.");return;}var cur=prompt("Enter your CURRENT manager password:");if(cur==null)return;if(cyrb53(meta.salt+cur)!==meta.ver){alert("That current password is incorrect. Nothing was changed.");return;}var np=prompt("Enter a NEW manager password:");if(np==null)return;np=String(np);if(!np){alert("The new password cannot be blank. Nothing was changed.");return;}var np2=prompt("Re-enter the NEW password to confirm:");if(np2==null)return;if(np!==np2){alert("The new passwords did not match. Nothing was changed.");return;}var salt=cyrb53("mgr|"+Date.now(),3);setMeta({salt:salt,ver:cyrb53(salt+np)});alert("Manager password updated. Use the new password the next time you open this master.");}
-  function initLock(){document.getElementById("lockBtn").addEventListener("click",doAuth);document.getElementById("lockPw").addEventListener("keydown",function(e){if(e.key==="Enter")doAuth();});document.getElementById("lockPw").focus();}
+  var _lockWired=false;
+  function initLock(){
+    if(_lockWired)return;_lockWired=true;
+    var lb=document.getElementById("lockBtn");if(lb)lb.addEventListener("click",doAuth);
+    var pw=document.getElementById("lockPw");if(pw)pw.addEventListener("keydown",function(e){if(e.key==="Enter")doAuth();});
+    var lgBtn=document.getElementById("loginBtn");if(lgBtn)lgBtn.addEventListener("click",sendMagic);
+    var em=document.getElementById("loginEmail");if(em){em.addEventListener("keydown",function(e){if(e.key==="Enter")sendMagic();});try{em.focus();}catch(e){}}
+    var toMgr=document.getElementById("toMgr");var toAgentWrap=document.getElementById("toAgent");
+    if(toMgr)toMgr.addEventListener("click",function(e){e.preventDefault();document.getElementById("agentLogin").style.display="none";document.getElementById("mgrLogin").style.display="";toMgr.style.display="none";if(toAgentWrap)toAgentWrap.style.display="";document.getElementById("lockSub").textContent="Manager sign-in.";var p=document.getElementById("lockPw");if(p)try{p.focus();}catch(_e){}});
+    if(toAgentWrap){var back=toAgentWrap.querySelector("a");if(back)back.addEventListener("click",function(e){e.preventDefault();document.getElementById("mgrLogin").style.display="none";document.getElementById("agentLogin").style.display="";toAgentWrap.style.display="none";if(toMgr)toMgr.style.display="";document.getElementById("lockSub").textContent="Sign in with your work email to view your passport.";var q=document.getElementById("loginEmail");if(q)try{q.focus();}catch(_e){}});}
+  }
+  function agentLoginMsg(t,ok){var m=document.getElementById("loginMsg");if(m){m.textContent=t||"";m.style.color=(ok===true)?"#1f6b41":((ok===false)?"#C00000":"#6a747e");}}
+  function parseHashTokens(){var h=location.hash||"";if(h.indexOf("access_token=")<0)return null;var p={};h.replace(/^#/,"").split("&").forEach(function(kv){var i=kv.indexOf("=");if(i>0)p[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1));});return p.access_token?p:null;}
+  function cleanHash(){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){location.hash="";}}
+  function sendMagic(){var em=document.getElementById("loginEmail");var email=((em&&em.value)||"").trim().toLowerCase();if(!email||email.indexOf("@")<1){agentLoginMsg("Enter your work email.",false);return;}if(!window.sbReady()){agentLoginMsg("Login isn't configured yet.",false);return;}agentLoginMsg("Sending…");var redir=location.origin+location.pathname;window.sbAuthOtp(email,redir).then(function(r){if(r&&r.ok){agentLoginMsg("Check your email — a sign-in link was sent to "+email+".",true);}else{agentLoginMsg((r&&r.error)||"Could not send the link. Try again.",false);}});}
+  function showLogin(){var ls=document.getElementById("lockScreen");if(ls)ls.style.display="";if(!window.sbReady()){var a=document.getElementById("agentLogin"),m=document.getElementById("mgrLogin"),sub=document.getElementById("lockSub"),tm=document.getElementById("toMgr");if(a)a.style.display="none";if(m)m.style.display="";if(tm)tm.style.display="none";if(sub)sub.textContent="Enter the manager password to continue.";}initLock();}
+  function routeAuthedEmail(email){window.sbSelect("managers","select=email&email=eq."+encodeURIComponent(email)+"&limit=1").then(function(rows){if(rows&&rows.length){document.body.classList.remove("liveagent");document.body.classList.remove("agentview");try{sessionStorage.setItem("we_mgr_ok","1");}catch(e){}showApp();}else{enterAgentMode(email);}});}
+  function resumeAgentSession(sess){function proceed(tok){window.sbAuthUser(tok).then(function(u){if(u&&u.email){var s=window.sbGetSession()||{};s.email=u.email;window.sbSetSession(s);routeAuthedEmail(u.email);}else{window.sbSignOut();showLogin();}});}
+    if(sess.expires_at&&Date.now()>sess.expires_at-60000&&sess.refresh_token){window.sbRefresh(sess.refresh_token).then(function(r){if(r&&r.access_token){window.sbSetSession({access_token:r.access_token,refresh_token:r.refresh_token,expires_at:Date.now()+((r.expires_in||3600)*1000),email:sess.email});proceed(r.access_token);}else{window.sbSignOut();showLogin();}});}else{proceed(sess.access_token);}}
+  function lockAgentFields(){document.querySelectorAll("#passportBody input,#passportBody select,#passportBody textarea").forEach(function(el){el.disabled=true;});}
+  function makeAgentBar(email){if(document.getElementById("liveAgentBar"))return;var bar=document.createElement("div");bar.id="liveAgentBar";bar.style.cssText="position:sticky;top:0;z-index:6000;display:flex;align-items:center;gap:10px;background:#13427a;color:#fff;padding:8px 14px;font-size:13px;";bar.innerHTML='<b style="letter-spacing:.5px">WESTERN ELITE</b><span style="opacity:.85">Your passport &middot; '+esc(email)+'</span><span style="flex:1"></span><button id="agPrint" type="button" style="background:#fff;color:#13427a;border:none;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Print / PDF</button><button id="agOut" type="button" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Sign out</button>';document.body.insertBefore(bar,document.body.firstChild);document.getElementById("agPrint").addEventListener("click",function(){window.print();});document.getElementById("agOut").addEventListener("click",function(){window.sbSignOut();try{sessionStorage.removeItem("we_mgr_ok");}catch(e){}location.reload();});}
+  function enterAgentMode(email){
+    window.sbSelect("passports","select=agent,data&data->>email=eq."+encodeURIComponent(email)+"&limit=1").then(function(rows){
+      if(!rows||!rows.length){document.body.classList.remove("liveagent");showLogin();agentLoginMsg("No passport is set up for "+email+" yet. Please contact your manager.",false);window.sbSignOut();return;}
+      var d=rows[0].data||{v:{}};
+      var ls=document.getElementById("lockScreen");if(ls)ls.style.display="none";
+      var mb=document.getElementById("mgrBar");if(mb)mb.style.display="none";
+      var dash=document.getElementById("dashboard");if(dash)dash.style.display="none";
+      var hint=document.getElementById("ppHint");if(hint)hint.style.display="none";
+      var pb=document.getElementById("passportBody");if(pb)pb.style.display="";
+      try{apply(d);}catch(e){}
+      document.body.classList.add("agentview");document.body.classList.add("liveagent");
+      lockAgentFields();makeAgentBar(email);window.scrollTo({top:0});
+    });
+  }
 
   document.addEventListener("input",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")&&t.matches&&(t.matches(".field-line,.field-inline,.field-cell,.field-area")||t.id==="cvEmail")){saveActive();if(t.id==="cvName"||t.id==="cvSup"||t.id==="cvHire"||t.id==="cvEmail")renderDash();}});
   document.addEventListener("change",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")){if(t.matches(".chk-box")){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);saveActive();}else if(t.matches("select")){saveActive();if(t.id==="cvLevel")renderDash();}}});
 
-  window.addEventListener("load",function(){var authed=false;try{authed=sessionStorage.getItem("we_mgr_ok")==="1";}catch(e){}if(authed){showApp();}else{document.getElementById("lockScreen").style.display="";initLock();}document.getElementById("addBtn").addEventListener("click",addAgent);document.getElementById("renameBtn").addEventListener("click",renameAgent);document.getElementById("delBtn").addEventListener("click",deleteAgent);document.getElementById("exportBtn").addEventListener("click",exportAgent);document.getElementById("agentSelect").addEventListener("change",function(){if(this.value)selectAgent(this.value);});document.getElementById("chgPwBtn").addEventListener("click",changeMasterPw);document.getElementById("lockNowBtn").addEventListener("click",function(){try{sessionStorage.removeItem("we_mgr_ok");}catch(e){}location.reload();});});
+  window.addEventListener("load",function(){
+    var b;
+    b=document.getElementById("addBtn");if(b)b.addEventListener("click",addAgent);
+    b=document.getElementById("renameBtn");if(b)b.addEventListener("click",renameAgent);
+    b=document.getElementById("delBtn");if(b)b.addEventListener("click",deleteAgent);
+    b=document.getElementById("exportBtn");if(b)b.addEventListener("click",exportAgent);
+    b=document.getElementById("agentSelect");if(b)b.addEventListener("change",function(){if(this.value)selectAgent(this.value);});
+    b=document.getElementById("chgPwBtn");if(b)b.addEventListener("click",changeMasterPw);
+    b=document.getElementById("lockNowBtn");if(b)b.addEventListener("click",function(){try{sessionStorage.removeItem("we_mgr_ok");}catch(e){}if(window.sbSignOut)window.sbSignOut();location.reload();});
+    // ---- auth routing ----
+    var hashTok=parseHashTokens();
+    var mgrAuthed=false;try{mgrAuthed=sessionStorage.getItem("we_mgr_ok")==="1";}catch(e){}
+    if(hashTok&&window.sbReady()){
+      document.body.classList.add("liveagent");
+      window.sbSetSession({access_token:hashTok.access_token,refresh_token:hashTok.refresh_token,expires_at:Date.now()+((parseInt(hashTok.expires_in,10)||3600)*1000)});
+      cleanHash();
+      window.sbAuthUser(hashTok.access_token).then(function(u){if(u&&u.email){var s=window.sbGetSession()||{};s.email=u.email;window.sbSetSession(s);routeAuthedEmail(u.email);}else{window.sbSignOut();showLogin();}});
+      return;
+    }
+    if(mgrAuthed){showApp();return;}
+    var sess=window.sbReady()&&window.sbGetSession&&window.sbGetSession();
+    if(sess&&sess.access_token){document.body.classList.add("liveagent");resumeAgentSession(sess);return;}
+    showLogin();
+  });
 
   var AGENT_JS="(function(){\n  \"use strict\";\n  function cyrb53(str,seed){seed=seed||0;var h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(var i=0,ch;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507);h1^=Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507);h2^=Math.imul(h1^(h1>>>13),3266489909);return(4294967296*(2097151&h2)+(h1>>>0)).toString(16);}\n  function te(s){return new TextEncoder().encode(s);}\n  function tdd(b){return new TextDecoder().decode(b);}\n  function rc4(key,bytes){var S=new Uint8Array(256),k=te(key),i,j=0,t;for(i=0;i<256;i++)S[i]=i;for(i=0;i<256;i++){j=(j+S[i]+k[i%k.length])&255;t=S[i];S[i]=S[j];S[j]=t;}var out=new Uint8Array(bytes.length),a=0,b=0;for(var idx=0;idx<bytes.length;idx++){a=(a+1)&255;b=(b+S[a])&255;t=S[a];S[a]=S[b];S[b]=t;out[idx]=bytes[idx]^S[(S[a]+S[b])&255];}return out;}\n  function b64d(str){var s=atob(str),b=new Uint8Array(s.length);for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b;}\n  function decO(str,key){try{return JSON.parse(tdd(rc4(key,b64d(str))));}catch(e){return null;}}\n  function fields(){return Array.prototype.slice.call(document.querySelectorAll(\"#passportBody .field-line,#passportBody .field-inline,#passportBody .field-cell,#passportBody .field-area,#passportBody .chk-box\"));}\n  var P=window.__PP__||{};\n  function tryUnlock(){var pw=document.getElementById(\"lockPw\").value;var msg=document.getElementById(\"lockMsg\");if(!pw){msg.textContent=\"Enter your password.\";return;}if(cyrb53(P.salt+pw)!==P.ver){msg.textContent=\"Incorrect password.\";return;}var data=decO(P.data,pw);if(!data){msg.textContent=\"Could not open this passport.\";return;}populate(data);document.getElementById(\"lockScreen\").style.display=\"none\";document.getElementById(\"passportBody\").style.display=\"\";var ab=document.getElementById(\"agentBar\");if(ab)ab.style.display=\"\";}\n  function populate(data){var v=data.v||{};var els=fields();var SK=\"we_sign_\"+(P.agent||\"agent\");var saved={};try{saved=JSON.parse(localStorage.getItem(SK)||\"{}\");}catch(e){}els.forEach(function(el,i){var val=(saved[i]!==undefined?saved[i]:v[i]);if(el.type===\"checkbox\"){el.checked=!!val;var li=el.closest(\"li\");if(li)li.classList.toggle(\"checked-off\",el.checked);}else{if(val!==undefined)el.value=val;}});els.forEach(function(el){el.disabled=true;});els.forEach(function(el,i){if(el.classList&&el.classList.contains(\"emp-sign\")){el.disabled=false;el.addEventListener(el.type===\"checkbox\"?\"change\":\"input\",function(){saved[i]=(el.type===\"checkbox\"?el.checked:el.value);try{localStorage.setItem(SK,JSON.stringify(saved));}catch(e){}});}});document.body.classList.add(\"agentview\");}\n  window.addEventListener(\"load\",function(){document.getElementById(\"lockBtn\").addEventListener(\"click\",tryUnlock);document.getElementById(\"lockPw\").addEventListener(\"keydown\",function(e){if(e.key===\"Enter\")tryUnlock();});document.getElementById(\"lockPw\").focus();});\n})();\n";
   var AGENT_LOCK="<div id=\"lockScreen\"><div class=\"lock-card\"><div class=\"lk-lock\">WESTERN <span>ELITE</span></div><h2>Career Passport</h2><p>Enter your password to view your passport.</p><input id=\"lockPw\" type=\"password\" placeholder=\"Your password\" autocomplete=\"off\"><button id=\"lockBtn\">Open my passport</button><div class=\"lk-msg\" id=\"lockMsg\"></div><div class=\"lk-note\">This is your personal, view-only passport, maintained by your manager. If you can\u2019t open it, ask your manager for your password.</div></div></div>";
@@ -2137,7 +2208,7 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
       document.addEventListener("click",function(e){if(e.target&&e.target.matches&&e.target.matches(".dash-open"))setTimeout(applyEscDir,120);});
       applyEscDir();
     })();
-    var b=pb();if(b)b.style.display="none";
+    var b=pb();if(b&&!document.body.classList.contains("liveagent"))b.style.display="none";
     if(b&&!document.getElementById("ppHint")){var hint=document.createElement("div");hint.id="ppHint";hint.className="pp-hint";hint.textContent="Select an agent above (or click Open on the dashboard) to view and edit their passport.";b.parentNode.insertBefore(hint,b);}
     document.addEventListener("click",function(e){if(e.target&&e.target.matches&&e.target.matches(".dash-open"))setTimeout(reveal,0);});
     var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){if(this.value)setTimeout(reveal,0);});
