@@ -476,8 +476,9 @@
   /* Answered call & Availability show only on the manager/supervisor view, not the agent's */
   body.agentpv #metricPanel tr[data-m="answered"],body.agentpv #metricPanel tr[data-m="avail"],body.agentview #metricPanel tr[data-m="answered"],body.agentview #metricPanel tr[data-m="avail"]{display:none;}
   /* Live agent login (real per-agent sign-in): read-only, manager tools hidden */
-  body.liveagent #metricPanel,body.liveagent #wowScorer,body.liveagent #kbManage,body.liveagent #quizManage,body.liveagent .kb-legacy-note,body.liveagent #dataTab,body.liveagent #dataBtn,body.liveagent #previewAgentBtn,body.liveagent #mgrBar,body.liveagent #dashboard,body.liveagent #ppHint,body.liveagent #apvBar,body.liveagent .side-submit,body.liveagent .log-entry{display:none!important;}
+  body.liveagent #wowScorer,body.liveagent #kbManage,body.liveagent #quizManage,body.liveagent .kb-legacy-note,body.liveagent #dataTab,body.liveagent #dataBtn,body.liveagent #previewAgentBtn,body.liveagent #mgrBar,body.liveagent #dashboard,body.liveagent #ppHint,body.liveagent #apvBar,body.liveagent .side-submit,body.liveagent .log-entry,body.liveagent #coachTab,body.liveagent #escTab{display:none!important;}
   body.liveagent .wow-agent-note{display:block;}
+  body.liveagent .hist-respond,body.liveagent .hist-comment-box,body.liveagent .hist-resp-btn{display:none!important;}
   .mp-tbl .mp-goal{color:var(--ink);font-weight:800;}
   .mp-ok{color:#1f6b41;} .mp-bad{color:#C00000;}
   .mp-place{padding:10px 14px;background:var(--lightblue);font-size:13.5px;color:#3d4750;}
@@ -1965,11 +1966,13 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function ppWK(){return ((window.sbReady&&window.sbReady())?"1":"")||(window.WE_WEBHOOK||"").trim();}
   var _ppTmr=null;
   function pushPassport(){if(!window.sbReady()||ACTIVE==null)return;var id=ACTIVE;clearTimeout(_ppTmr);_ppTmr=setTimeout(function(){if(id!==ACTIVE)return;window.sbUpsert("passports",{agent:agName(id),data:(agentData(id)||collect()),updated_at:new Date().toISOString()});},2500);}
-  function pullPassport(id){if(!window.sbReady())return;var nm=agName(id);window.sbSelect("passports","agent=eq."+encodeURIComponent(nm)+"&select=data&limit=1").then(function(rows){if(id!==ACTIVE)return;if(!rows||!rows.length)return;var d=rows[0].data;if(!d||typeof d!=="object"||!d.v)return;setAgentData(id,d);apply(d);try{renderDash();}catch(e){}});}
+  function pullPassport(id){if(!window.sbReady())return;var nm=agName(id);window.sbSelect("passports","agent=eq."+encodeURIComponent(nm)+"&select=data&limit=1").then(function(rows){if(id!==ACTIVE)return;if(!rows||!rows.length)return;var d=rows[0].data;if(!d||typeof d!=="object"||!d.v)return;setAgentData(id,d);apply(d);try{renderDash();}catch(e){}try{if(window.__wePanelRefresh)window.__wePanelRefresh();}catch(e){}});}
 
   function fields(){return Array.prototype.slice.call(document.querySelectorAll("#passportBody .field-line,#passportBody .field-inline,#passportBody .field-cell,#passportBody .field-area,#passportBody .chk-box"));}
   function cv(id){var e=document.getElementById(id);return e?e.value:"";}
-  function collect(){var v={};fields().forEach(function(el,i){v[i]=(el.type==="checkbox")?el.checked:el.value;});return{v:v,name:cv("cvName"),level:cv("cvLevel"),sup:cv("cvSup"),hire:cv("cvHire"),email:cv("cvEmail").trim().toLowerCase()};}
+  function collect(){var v={};fields().forEach(function(el,i){v[i]=(el.type==="checkbox")?el.checked:el.value;});var o={v:v,name:cv("cvName"),level:cv("cvLevel"),sup:cv("cvSup"),hire:cv("cvHire"),email:cv("cvEmail").trim().toLowerCase()};try{if(window.__weBuildSnapshot&&ACTIVE!=null){var sn=window.__weBuildSnapshot(ACTIVE);if(sn)o.metrics=sn;}}catch(e){}return o;}
+  var _snapCache="";
+  window.__weStashSnapshot=function(id,snap){if(id==null||!snap)return;var key=id+"|"+JSON.stringify(snap);if(key===_snapCache)return;_snapCache=key;var dd=agentData(id);if(!dd)return;dd.metrics=snap;setAgentData(id,dd);if(id===ACTIVE)pushPassport();};
   function apply(data){var v=data&&data.v?data.v:{};fields().forEach(function(el,i){var val=v[i];if(el.type==="checkbox"){el.checked=!!val;var li=el.closest("li");if(li)li.classList.toggle("checked-off",el.checked);}else{el.value=(val===undefined?"":val);}});var em=document.getElementById("cvEmail");if(em)em.value=(data&&data.email)?data.email:"";}
   function clearFields(){fields().forEach(function(el){if(el.type==="checkbox"){el.checked=false;var li=el.closest("li");if(li)li.classList.remove("checked-off");}else{el.value="";}});}
 
@@ -2045,7 +2048,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       var pb=document.getElementById("passportBody");if(pb)pb.style.display="";
       try{apply(d);}catch(e){}
       document.body.classList.add("agentview");document.body.classList.add("liveagent");
-      lockAgentFields();makeAgentBar(email);window.scrollTo({top:0});
+      window.__weAgentName=rows[0].agent||d.name||"";
+      lockAgentFields();makeAgentBar(email);
+      try{if(d&&d.metrics&&window.__weRenderSnapshot){window.__weRenderSnapshot(d.metrics);}else{var mp=document.getElementById("metricPanel");if(mp)mp.style.display="none";}}catch(e){}
+      setTimeout(function(){try{if(d&&d.metrics&&window.__weRenderSnapshot)window.__weRenderSnapshot(d.metrics);}catch(e){}try{if(window.__histRefresh)window.__histRefresh();}catch(e){}},300);
+      window.scrollTo({top:0});
     });
   }
 
@@ -2404,6 +2411,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   }
   function levelGate(k){var lg=LEVELGATES[curLevelNum()];return (lg&&lg[k]!=null)?lg[k]:null;}
   function refreshPanel(){
+    if(document.body.classList.contains("liveagent"))return;
     buildPanel();var id=activeId();if(!id)return;var d=dials();
     var _lvl=curLevelNum();var _gh=document.getElementById("mpGatesHdr");if(_gh)_gh.innerHTML="Gates"+(_lvl?' <span style="font-weight:600;opacity:.8">&middot; Level '+_lvl+'</span>':"");
     var _lm=monthRange(-1),_tm=monthRange(0);
@@ -2420,7 +2428,32 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var r=placement(id,d);document.getElementById("mpLevel").textContent=levelLabel(r.level);
     document.getElementById("mpPay").textContent=(r.pay==null?"":("· "+money(r.pay)+"/hr"))+(r.n?("  ·  "+r.n+"-day avg"):"");
     document.getElementById("mpPlace").classList.toggle("bad",r.level===0);
+    try{if(window.__weStashSnapshot)window.__weStashSnapshot(id,__weBuildSnap(id));}catch(e){}
   }
+  // Build a self-contained metrics snapshot the AGENT can see (no scoreboard access needed)
+  function __weBuildSnap(id){
+    if(!id)return null;
+    var lm=monthRange(-1),tm=monthRange(0),d=dials();
+    var lvlTxt=(document.getElementById("cvLevel")||{}).value||"";
+    var lvNum=/senior/i.test(lvlTxt)?4:parseInt((lvlTxt.match(/Level\s*([1-4])/i)||[])[1]||"1",10);if(!(lvNum>=1&&lvNum<=4))lvNum=1;
+    var lg=LEVELGATES[lvNum]||{};var out={level:lvNum,metrics:{},placement:null};
+    METRICS.forEach(function(m){var goal=(m.k==="call"||m.k==="order"||m.k==="acct")?(lg[m.k]!=null?lg[m.k]:null):d[m.goal];
+      out.metrics[m.k]={last:rangeMetric(id,m.k,lm.start,lm.end).avg,thism:rangeMetric(id,m.k,tm.start,tm.end).avg,t5d:avgMetric(id,m.k,5).avg,goal:(goal===""||goal==null)?null:goal};});
+    var pl=placement(id,d);out.placement={level:pl.level,pay:pl.pay};return out;
+  }
+  window.__weBuildSnapshot=__weBuildSnap;
+  window.__weRenderSnapshot=function(snap){
+    buildPanel();var mp=document.getElementById("metricPanel");if(!mp||!snap)return false;
+    var gh=document.getElementById("mpGatesHdr");if(gh)gh.innerHTML="Gates"+(snap.level?' <span style="font-weight:600;opacity:.8">&middot; Level '+snap.level+'</span>':"");
+    METRICS.forEach(function(m){var mm=snap.metrics&&snap.metrics[m.k];var tr=mp.querySelector('tr[data-m="'+m.k+'"]');if(!tr||!mm)return;var goal=mm.goal;
+      var lC=tr.querySelector(".mp-last"),tC=tr.querySelector(".mp-this"),fC=tr.querySelector(".mp-t5d"),gC=tr.querySelector(".mp-goal");
+      if(lC){lC.textContent=fp(mm.last);lC.className="mp-last "+cls(mm.last,goal);}
+      if(tC){tC.textContent=fp(mm.thism);tC.className="mp-this "+cls(mm.thism,goal);}
+      if(fC){fC.textContent=fp(mm.t5d);fC.className="mp-t5d "+cls(mm.t5d,goal);}
+      if(gC)gC.textContent=(goal==null)?"—":(goal+"%");});
+    if(snap.placement){var lv=document.getElementById("mpLevel");if(lv)lv.textContent=levelLabel(snap.placement.level);var pay=document.getElementById("mpPay");if(pay)pay.textContent=(snap.placement.pay==null?"":("· "+money(snap.placement.pay)+"/hr"));var pl2=document.getElementById("mpPlace");if(pl2)pl2.classList.toggle("bad",snap.placement.level===0);}
+    mp.style.display="";return true;
+  };
 
   var TM_WIN=5;function buildTeam(){var dash=document.getElementById("dashboard");if(!dash||document.getElementById("teamMetrics"))return;var box=document.createElement("div");box.id="teamMetrics";box.innerHTML='<div class="tm-head"><b>Team scoreboard</b> <span id="tmWinLab">· 5-day trailing</span><button id="tmToggle" class="mb-btn2" type="button">Show past month</button></div><div id="tmWrap"></div>';var wrap=document.getElementById("dashWrap");dash.insertBefore(box,wrap);document.getElementById("tmToggle").addEventListener("click",function(){TM_WIN=(TM_WIN===5?30:5);this.textContent=(TM_WIN===5?"Show past month":"Show 5-day");document.getElementById("tmWinLab").textContent="· "+(TM_WIN===5?"5-day trailing":"past month (30-day)");renderTeam();});}function renderTeam(){var w=document.getElementById("tmWrap");if(!w)return;var d=dials();var list=agents();var cols=[{k:"call",lab:"Value creator",goal:"goalCall"},{k:"order",lab:"Order",goal:"goalOrder"},{k:"acct",lab:"Acct",goal:"goalAcct"},{k:"answered",lab:"Answered",goal:"goalAns"},{k:"avail",lab:"Availability",goal:"goalAvail"}];var sums={},cnts={};cols.forEach(function(c){sums[c.k]=0;cnts[c.k]=0;});var rows="";list.forEach(function(a){var r=placement(a.id,d);var tds=cols.map(function(c){var v=(c.wow?wowAvg(a.id,TM_WIN).avg:avgMetric(a.id,c.k,TM_WIN).avg);if(v!=null){sums[c.k]+=v;cnts[c.k]++;}var goal=d[c.goal];var cl=(v==null||goal===""||goal==null)?"":(v>=goal?"tm-ok":"tm-bad");return '<td class="'+cl+'">'+fp(v)+'</td>';}).join("");rows+='<tr><td class="tm-name">'+a.name+'</td>'+tds+'<td class="tm-lvl">'+levelLabel(r.level)+'</td></tr>';});var avgTds=cols.map(function(c){var v=cnts[c.k]?sums[c.k]/cnts[c.k]:null;var goal=d[c.goal];var cl=(v==null||goal===""||goal==null)?"":(v>=goal?"tm-ok":"tm-bad");return '<td class="'+cl+'">'+fp(v)+'</td>';}).join("");var head='<tr><th>Agent</th>'+cols.map(function(c){return '<th>'+c.lab+'</th>';}).join("")+'<th>Placement</th></tr>';w.innerHTML='<table class="tm-tbl">'+head+'<tr class="tm-team"><td class="tm-name">Team average</td>'+avgTds+'<td></td></tr>'+rows+'</table>';}window.addEventListener("load",function(){setTimeout(function(){
     var mb=document.getElementById("mgrBar");
@@ -2766,7 +2799,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function save(o){localStorage.setItem(HK,JSON.stringify(o));}
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function uid(){return "h"+Date.now()+"_"+Math.floor(Math.random()*1e4);}
-  function curAgent(){var s=document.getElementById("agentSelect");if(s&&s.value){var o=s.options&&s.options[s.selectedIndex];return (o&&o.text)||s.value;}if(window.__PP__&&window.__PP__.agent)return window.__PP__.agent;return "self";}
+  function curAgent(){if(document.body.classList.contains("liveagent")&&window.__weAgentName)return window.__weAgentName;var s=document.getElementById("agentSelect");if(s&&s.value){var o=s.options&&s.options[s.selectedIndex];return (o&&o.text)||s.value;}if(window.__PP__&&window.__PP__.agent)return window.__PP__.agent;return "self";}
   /* ---- live sync to Google Sheets via Make (only active when WE_WEBHOOK is set) ---- */
   function WEBHOOK(){return (window.WE_WEBHOOK||"").trim();}
   function api(action,data){
