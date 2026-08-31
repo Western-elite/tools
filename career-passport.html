@@ -1973,6 +1973,29 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function collect(){var v={};fields().forEach(function(el,i){v[i]=(el.type==="checkbox")?el.checked:el.value;});var o={v:v,name:cv("cvName"),level:cv("cvLevel"),sup:cv("cvSup"),hire:cv("cvHire"),email:cv("cvEmail").trim().toLowerCase()};try{if(window.__weBuildSnapshot&&ACTIVE!=null){var sn=window.__weBuildSnapshot(ACTIVE);if(sn)o.metrics=sn;}}catch(e){}return o;}
   var _snapCache="";
   window.__weStashSnapshot=function(id,snap){if(id==null||!snap)return;var key=id+"|"+JSON.stringify(snap);if(key===_snapCache)return;_snapCache=key;var dd=agentData(id);if(!dd)return;dd.metrics=snap;setAgentData(id,dd);if(id===ACTIVE)pushPassport();};
+  // Publish EVERY agent's scoreboard snapshot into their passport (so all agents see current numbers)
+  function publishAllSnapshots(cb){
+    if(!window.sbReady()||!window.__weBuildSnapshot){if(cb)cb(0);return;}
+    var list=roster();var pending=list.length,updated=0;if(!pending){if(cb)cb(0);return;}
+    list.forEach(function(r){
+      var nm=agName(r.id);
+      window.sbSelect("passports","agent=eq."+encodeURIComponent(nm)+"&select=data&limit=1").then(function(rows){
+        try{
+          if(rows&&rows.length){var dd=rows[0].data;
+            if(dd&&typeof dd==="object"){
+              var snap=window.__weBuildSnapshot(r.id,dd.level||"");
+              if(snap&&!(dd.metrics&&JSON.stringify(dd.metrics)===JSON.stringify(snap))){
+                dd.metrics=snap;setAgentData(r.id,dd);
+                window.sbUpsert("passports",{agent:nm,data:dd,updated_at:new Date().toISOString()});updated++;
+              }
+            }
+          }
+        }catch(e){}
+        if(--pending<=0&&cb)cb(updated);
+      });
+    });
+  }
+  window.__wePublishAll=publishAllSnapshots;
   function apply(data){var v=data&&data.v?data.v:{};fields().forEach(function(el,i){var val=v[i];if(el.type==="checkbox"){el.checked=!!val;var li=el.closest("li");if(li)li.classList.toggle("checked-off",el.checked);}else{el.value=(val===undefined?"":val);}});var em=document.getElementById("cvEmail");if(em)em.value=(data&&data.email)?data.email:"";}
   function clearFields(){fields().forEach(function(el){if(el.type==="checkbox"){el.checked=false;var li=el.closest("li");if(li)li.classList.remove("checked-off");}else{el.value="";}});}
 
@@ -2396,7 +2419,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     w.innerHTML=h;
     w.querySelectorAll(".dl-in").forEach(function(i){i.addEventListener("input",function(){var d=dials();var k=this.getAttribute("data-dk"),di=this.getAttribute("data-di");var val=this.value===""?"":parseFloat(this.value);if(di===""){d[k]=val;}else{d[k][parseInt(di,10)]=val;}saveDials(d);renderGrid();renderTeam();refreshPanel();});});
   }
-  function showData(){buildDataTab();renderDaily();renderGrid();renderDials();document.getElementById("dashboard").style.display="none";var pb=document.getElementById("passportBody");if(pb)pb.style.display="none";var hn=document.getElementById("ppHint");if(hn)hn.style.display="none";document.getElementById("dataTab").style.display="";window.scrollTo({top:0});backfillScoreboard();pullScoreboard(function(){if(document.getElementById("dataTab").style.display==="none")return;renderDaily();renderGrid();renderDials();try{renderTeam();}catch(e){}});}
+  function showData(){buildDataTab();renderDaily();renderGrid();renderDials();document.getElementById("dashboard").style.display="none";var pb=document.getElementById("passportBody");if(pb)pb.style.display="none";var hn=document.getElementById("ppHint");if(hn)hn.style.display="none";document.getElementById("dataTab").style.display="";window.scrollTo({top:0});backfillScoreboard();pullScoreboard(function(){if(document.getElementById("dataTab").style.display==="none")return;renderDaily();renderGrid();renderDials();try{renderTeam();}catch(e){}try{if(window.__wePublishAll)window.__wePublishAll();}catch(e){}});}
   function showDash(){document.getElementById("dataTab").style.display="none";document.getElementById("dashboard").style.display="";var hn=document.getElementById("ppHint");if(hn)hn.style.display="";buildTeam();renderTeam();window.scrollTo({top:0});}
 
   function buildPanel(){
@@ -2435,10 +2458,10 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     try{if(window.__weStashSnapshot)window.__weStashSnapshot(id,__weBuildSnap(id));}catch(e){}
   }
   // Build a self-contained metrics snapshot the AGENT can see (no scoreboard access needed)
-  function __weBuildSnap(id){
+  function __weBuildSnap(id,levelTxt){
     if(!id)return null;
     var lm=monthRange(-1),tm=monthRange(0),d=dials();
-    var lvlTxt=(document.getElementById("cvLevel")||{}).value||"";
+    var lvlTxt=(levelTxt!=null&&levelTxt!=="")?levelTxt:((document.getElementById("cvLevel")||{}).value||"");
     var lvNum=/senior/i.test(lvlTxt)?4:parseInt((lvlTxt.match(/Level\s*([1-4])/i)||[])[1]||"1",10);if(!(lvNum>=1&&lvNum<=4))lvNum=1;
     var lg=LEVELGATES[lvNum]||{};var out={level:lvNum,metrics:{},placement:null};
     METRICS.forEach(function(m){var goal=(m.k==="call"||m.k==="order"||m.k==="acct")?(lg[m.k]!=null?lg[m.k]:null):d[m.goal];
@@ -2478,6 +2501,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   var TM_WIN=5;function buildTeam(){var dash=document.getElementById("dashboard");if(!dash||document.getElementById("teamMetrics"))return;var box=document.createElement("div");box.id="teamMetrics";box.innerHTML='<div class="tm-head"><b>Team scoreboard</b> <span id="tmWinLab">· 5-day trailing</span><button id="tmToggle" class="mb-btn2" type="button">Show past month</button></div><div id="tmWrap"></div>';var wrap=document.getElementById("dashWrap");dash.insertBefore(box,wrap);document.getElementById("tmToggle").addEventListener("click",function(){TM_WIN=(TM_WIN===5?30:5);this.textContent=(TM_WIN===5?"Show past month":"Show 5-day");document.getElementById("tmWinLab").textContent="· "+(TM_WIN===5?"5-day trailing":"past month (30-day)");renderTeam();});}function renderTeam(){var w=document.getElementById("tmWrap");if(!w)return;var d=dials();var list=agents();var cols=[{k:"call",lab:"Value creator",goal:"goalCall"},{k:"order",lab:"Order",goal:"goalOrder"},{k:"acct",lab:"Acct",goal:"goalAcct"},{k:"answered",lab:"Answered",goal:"goalAns"},{k:"avail",lab:"Availability",goal:"goalAvail"}];var sums={},cnts={};cols.forEach(function(c){sums[c.k]=0;cnts[c.k]=0;});var rows="";list.forEach(function(a){var r=placement(a.id,d);var tds=cols.map(function(c){var v=(c.wow?wowAvg(a.id,TM_WIN).avg:avgMetric(a.id,c.k,TM_WIN).avg);if(v!=null){sums[c.k]+=v;cnts[c.k]++;}var goal=d[c.goal];var cl=(v==null||goal===""||goal==null)?"":(v>=goal?"tm-ok":"tm-bad");return '<td class="'+cl+'">'+fp(v)+'</td>';}).join("");rows+='<tr><td class="tm-name">'+a.name+'</td>'+tds+'<td class="tm-lvl">'+levelLabel(r.level)+'</td></tr>';});var avgTds=cols.map(function(c){var v=cnts[c.k]?sums[c.k]/cnts[c.k]:null;var goal=d[c.goal];var cl=(v==null||goal===""||goal==null)?"":(v>=goal?"tm-ok":"tm-bad");return '<td class="'+cl+'">'+fp(v)+'</td>';}).join("");var head='<tr><th>Agent</th>'+cols.map(function(c){return '<th>'+c.lab+'</th>';}).join("")+'<th>Placement</th></tr>';w.innerHTML='<table class="tm-tbl">'+head+'<tr class="tm-team"><td class="tm-name">Team average</td>'+avgTds+'<td></td></tr>'+rows+'</table>';}window.addEventListener("load",function(){setTimeout(function(){
     var mb=document.getElementById("mgrBar");
     if(mb&&!document.getElementById("dataBtn")){var btn=document.createElement("button");btn.id="dataBtn";btn.className="mb-btn";btn.type="button";btn.textContent="Data tab";var ref=mb.querySelector(".mb-spacer");if(ref)mb.insertBefore(btn,ref);else mb.appendChild(btn);btn.addEventListener("click",showData);}
+    if(mb&&!document.getElementById("pubSbBtn")){var pb2=document.createElement("button");pb2.id="pubSbBtn";pb2.className="mb-btn2";pb2.type="button";pb2.textContent="Update agent scoreboards";pb2.title="Publish every agent's current scoreboard so they see it when they log in";var ref2=mb.querySelector(".mb-spacer");if(ref2)mb.insertBefore(pb2,ref2);else mb.appendChild(pb2);pb2.addEventListener("click",function(){pb2.textContent="Updating…";pb2.disabled=true;pullScoreboard(function(){function done(n){pb2.textContent="Update agent scoreboards";pb2.disabled=false;alert("Agent scoreboards published"+(typeof n==="number"?" ("+n+" updated)":"")+".");}if(window.__wePublishAll){window.__wePublishAll(done);}else{done();}});});}
     document.addEventListener("click",function(e){if(e.target&&e.target.matches&&e.target.matches(".dash-open"))setTimeout(refreshPanel,60);});
     var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){setTimeout(refreshPanel,60);});
     document.addEventListener("change",function(e){if(e.target&&e.target.id==="cvLevel")setTimeout(refreshPanel,60);});
