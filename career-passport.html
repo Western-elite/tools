@@ -814,7 +814,7 @@
      ════════════════════════════════════════════════════════════════ -->
 <script>
 window.SUPABASE_URL = "https://zjihkljmgwjfyjzjqlse.supabase.co";   /* your project URL (already filled in) */
-window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... string) */
+window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqaWhrbGptZ3dqZnlqempxbHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4Mzk5NzIsImV4cCI6MjEwMzQxNTk3Mn0.JFbNuoHRRMPxK4Ers3GbZFUEKkepRr337PR_QrvH148";   /* PASTE your anon public key here (the long eyJ... string) */
 (function(){
   function base(){return (window.SUPABASE_URL||"").replace(/\/+$/,"");}
   function hdr(extra){var k=window.SUPABASE_KEY||"";var s=null;try{s=JSON.parse(localStorage.getItem("we_sess")||"null");}catch(e){}var bearer=(s&&s.access_token)?s.access_token:k;var h={apikey:k,Authorization:"Bearer "+bearer,"Content-Type":"application/json"};if(extra)for(var x in extra)h[x]=extra[x];return h;}
