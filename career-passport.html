@@ -443,6 +443,7 @@
   .dt-agsel{font-family:inherit;font-size:14px;padding:6px 8px;border:1px solid #cdd6df;border-radius:6px;}
   .ml-del{background:#fbeaea;color:#C00000;border:1px solid #e6b8b8;border-radius:6px;padding:3px 8px;font-weight:700;cursor:pointer;}
   #txtLog .dt-grid input[type=time],#emlLog .dt-grid input[type=time]{font-family:inherit;font-size:13px;padding:3px 5px;border:1px solid #cdd6df;border-radius:5px;}
+  #txtLog .ml-c,#emlLog .ml-c{font-family:inherit;font-size:13px;padding:3px 6px;border:1px solid #cdd6df;border-radius:5px;min-width:120px;}
   .dt-grid{width:100%;border-collapse:collapse;font-size:13px;}
   .dt-wide{min-width:1180px;font-size:12px;}
   .dt-grid th{background:var(--blue);color:#fff;text-align:left;padding:8px 8px;font-size:11px;}
@@ -2417,15 +2418,16 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
   function escOpt(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function populateMsgAgents(kind){var selId=kind==="text"?"txtAgent":"emlAgent";var sel=document.getElementById(selId);if(!sel)return;var cur=sel.value;var list=agents();sel.innerHTML=list.map(function(a){return '<option value="'+a.id+'">'+escOpt(a.name)+'</option>';}).join("");if(cur&&list.some(function(a){return a.id===cur;}))sel.value=cur;}
   function msgCfg(kind){return kind==="text"?{ag:"txtAgent",dt:"txtDate",log:"txtLog",sum:"txtSummary",field:"texts",limit:5,lab:"5 min"}:{ag:"emlAgent",dt:"emlDate",log:"emlLog",sum:"emlSummary",field:"emails",limit:15,lab:"15 min"};}
-  function addMsg(kind){var c=msgCfg(kind);var ag=document.getElementById(c.ag),dtl=document.getElementById(c.dt);var id=ag?ag.value:"",date=dtl?dtl.value:todayISO();if(!id)return;var a=((getDay(id,date)[c.field])||[]).slice();a.push({r:"",p:"",g:false,m:false,s:false});var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);}
+  function addMsg(kind){var c=msgCfg(kind);var ag=document.getElementById(c.ag),dtl=document.getElementById(c.dt);var id=ag?ag.value:"",date=dtl?dtl.value:todayISO();if(!id)return;var a=((getDay(id,date)[c.field])||[]).slice();a.push({c:"",r:"",p:"",g:false,m:false,s:false});var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);}
   function renderMsgLog(kind){
     var c=msgCfg(kind);var ag=document.getElementById(c.ag),dtl=document.getElementById(c.dt);if(!ag||!dtl)return;
     var id=ag.value,date=dtl.value||todayISO();var w=document.getElementById(c.log),sum=document.getElementById(c.sum);if(!w)return;
     if(!id){w.innerHTML='<div class="qz-empty">No agents yet.</div>';if(sum)sum.textContent="";return;}
     var arr=((getDay(id,date)[c.field])||[]).slice();
-    var h='<table class="dt-grid"><tr><th>#</th><th>Received</th><th>Replied</th><th>On time<br>('+c.lab+')</th><th>Greeting</th><th>Message</th><th>Grammar</th><th>Pts</th><th></th></tr>';
+    var h='<table class="dt-grid"><tr><th>#</th><th>Customer</th><th>Received</th><th>Replied</th><th>On time<br>('+c.lab+')</th><th>Greeting</th><th>Message</th><th>Grammar</th><th>Pts</th><th></th></tr>';
     arr.forEach(function(t,i){var on=msgOnTime(t,c.limit);var pts=msgPoints(t,c.limit);
       h+='<tr data-i="'+i+'"><td>'+(i+1)+'</td>'+
+        '<td><input type="text" class="ml-c" value="'+escOpt(t.c||"")+'" placeholder="Customer name"></td>'+
         '<td><input type="time" class="ml-r" value="'+(t.r||"")+'"></td>'+
         '<td><input type="time" class="ml-p" value="'+(t.p||"")+'"></td>'+
         '<td class="'+((t.r&&t.p)?(on?"mp-ok":"mp-bad"):"")+'" style="font-weight:800">'+((t.r&&t.p)?(on?"✓":"✗"):"—")+'</td>'+
@@ -2438,8 +2440,9 @@ window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... 
     h+='</table>';w.innerHTML=h;
     var pct=msgDayPct(arr,c.limit);
     if(sum)sum.innerHTML=arr.length?('<b>'+arr.length+'</b> message'+(arr.length>1?"s":"")+' &middot; day score <b>'+(pct==null?"—":pct.toFixed(1)+"%")+'</b>'):"No messages logged for this day yet — click “+ Add” to start.";
-    function save(tr){var i=+tr.getAttribute("data-i");var a=((getDay(id,date)[c.field])||[]).slice();a[i]={r:tr.querySelector(".ml-r").value,p:tr.querySelector(".ml-p").value,g:tr.querySelector(".ml-g").checked,m:tr.querySelector(".ml-m").checked,s:tr.querySelector(".ml-s").checked};var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);if(id===activeId())refreshPanel();try{renderTeam();}catch(e){}}
-    w.querySelectorAll("tr[data-i]").forEach(function(tr){tr.querySelectorAll("input").forEach(function(inp){inp.addEventListener("change",function(){save(tr);});});});
+    function save(tr){var i=+tr.getAttribute("data-i");var a=((getDay(id,date)[c.field])||[]).slice();a[i]={c:tr.querySelector(".ml-c").value,r:tr.querySelector(".ml-r").value,p:tr.querySelector(".ml-p").value,g:tr.querySelector(".ml-g").checked,m:tr.querySelector(".ml-m").checked,s:tr.querySelector(".ml-s").checked};var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);if(id===activeId())refreshPanel();try{renderTeam();}catch(e){}}
+    function saveQuiet(tr){var i=+tr.getAttribute("data-i");var a=((getDay(id,date)[c.field])||[]).slice();a[i]={c:tr.querySelector(".ml-c").value,r:tr.querySelector(".ml-r").value,p:tr.querySelector(".ml-p").value,g:tr.querySelector(".ml-g").checked,m:tr.querySelector(".ml-m").checked,s:tr.querySelector(".ml-s").checked};var patch={};patch[c.field]=a;setDay(id,date,patch);}
+    w.querySelectorAll("tr[data-i]").forEach(function(tr){tr.querySelectorAll("input").forEach(function(inp){if(inp.classList.contains("ml-c")){inp.addEventListener("change",function(){saveQuiet(tr);});}else{inp.addEventListener("change",function(){save(tr);});}});});
     w.querySelectorAll(".ml-del").forEach(function(b){b.addEventListener("click",function(){var i=+this.getAttribute("data-i");var a=((getDay(id,date)[c.field])||[]).slice();a.splice(i,1);var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);if(id===activeId())refreshPanel();try{renderTeam();}catch(e){}});});
   }
   function updateRowPct(tr,d){DAYPCT.forEach(function(m){var c=tr.querySelector('.dp-'+m.k);if(c){var v=dayVal(d,m.k);c.textContent=v==null?"—":v.toFixed(1);c.className='dp dp-'+m.k+(v==null?"":"");}});}
