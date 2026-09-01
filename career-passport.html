@@ -437,6 +437,12 @@
   .dt-daterow input[type=date]{font-family:inherit;font-size:13px;border:1px solid #cdd6df;border-radius:6px;padding:5px 8px;}
   .dt-daynote{color:var(--muted);font-size:12px;}
   .dt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+  .dt-subtabs{display:flex;gap:6px;margin:0 0 14px;border-bottom:2px solid var(--line);}
+  .dt-tab{background:#eef2f6;color:#3d4750;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;}
+  .dt-tab-on{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .dt-agsel{font-family:inherit;font-size:14px;padding:6px 8px;border:1px solid #cdd6df;border-radius:6px;}
+  .ml-del{background:#fbeaea;color:#C00000;border:1px solid #e6b8b8;border-radius:6px;padding:3px 8px;font-weight:700;cursor:pointer;}
+  #txtLog .dt-grid input[type=time],#emlLog .dt-grid input[type=time]{font-family:inherit;font-size:13px;padding:3px 5px;border:1px solid #cdd6df;border-radius:5px;}
   .dt-grid{width:100%;border-collapse:collapse;font-size:13px;}
   .dt-wide{min-width:1180px;font-size:12px;}
   .dt-grid th{background:var(--blue);color:#fff;text-align:left;padding:8px 8px;font-size:11px;}
@@ -815,7 +821,7 @@
      ════════════════════════════════════════════════════════════════ -->
 <script>
 window.SUPABASE_URL = "https://zjihkljmgwjfyjzjqlse.supabase.co";   /* your project URL (already filled in) */
-window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqaWhrbGptZ3dqZnlqempxbHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4Mzk5NzIsImV4cCI6MjEwMzQxNTk3Mn0.JFbNuoHRRMPxK4Ers3GbZFUEKkepRr337PR_QrvH148";   /* PASTE your anon public key here (the long eyJ... string) */
+window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... string) */
 (function(){
   function base(){return (window.SUPABASE_URL||"").replace(/\/+$/,"");}
   function hdr(extra){var k=window.SUPABASE_KEY||"";var s=null;try{s=JSON.parse(localStorage.getItem("we_sess")||"null");}catch(e){}var bearer=(s&&s.access_token)?s.access_token:k;var h={apikey:k,Authorization:"Bearer "+bearer,"Content-Type":"application/json"};if(extra)for(var x in extra)h[x]=extra[x];return h;}
@@ -1181,7 +1187,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     <table class="spec" style="margin-bottom:14px;">
       <tr><td class="l">Pay</td><td class="r">$22.50/hour</td></tr>
       <tr><td class="l">Primary objective</td><td class="r">Master complex work and become a high-level resource.</td></tr>
-      <tr><td class="l">Key responsibilities</td><td class="r">Handle complex accounts, escalations, pricing, sales, equipment, storage, driver calls, and follow-up work.</td></tr>
+      <tr><td class="l">Key responsibilities</td><td class="r">Handle complex accounts, escalations, pricing, sales, equipment, storage, driver calls, follow-up work, and help cover email and text-message support.</td></tr>
     </table>
 <div class="callout good"><b>Level 3 agents become eligible to earn endorsements.</b> See section 7 for the full endorsement list.</div>
 
@@ -1214,7 +1220,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <li><label><input type="checkbox" class="chk-box"> <b>Sales calls</b> &mdash; identify the customer's need, offer the product or add-on that fits, close it, and ask for referrals.</label> <a class="def-link" data-def="kb_def_sales" title="Read the full definition">&#9432; Definition</a></li>
     </ul>
 
-    
+    <div class="callout good"><b>Email &amp; text support.</b> Level 3 agents must be able to help cover email and text-message customers &mdash; replying within the time goal (<b>5 minutes</b> for texts, <b>15 minutes</b> for emails) with a proper greeting, a proper message, and correct grammar/spelling. Text and email quality are scored separately and appear on the agent's scoreboard.</div>
+
     <div class="subh">Progress</div>
     <ul class="chk">
       <li><label><input type="checkbox" class="chk-box"> Advanced Skills Demonstrated</label></li>
@@ -1998,7 +2005,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     try{if(window.sbDelete){window.sbDelete("passports","agent=eq."+encodeURIComponent(gnm));window.sbDelete("scoreboard","agent_id=eq."+encodeURIComponent(gid));window.sbDelete("extras","agent_id=eq."+encodeURIComponent(gid));window.sbDelete("entries","agent=eq."+encodeURIComponent(gnm));}}catch(e){}
     ACTIVE=null;refreshSelect();if(list.length){selectAgent(list[0].id);}else{clearFields();}renderDash();try{if(window.__weTeamRefresh)window.__weTeamRefresh();if(window.__wePanelRefresh)window.__wePanelRefresh();}catch(e){}}
 
-  function renderDash(){var wrap=document.getElementById("dashWrap");var list=roster();if(!list.length){wrap.innerHTML='<div class="dash-empty">No agents yet. Click the “+ Add agent” button above to create the first passport.</div>';return;}var html='<table class="dash-table"><tr><th>Agent</th><th>Current level</th><th>Hire date</th><th style="width:26%">Manager flag / focus</th><th></th></tr>';list.forEach(function(r){var d=agentData(r.id)||{};html+='<tr><td><b>'+esc(d.name||r.name)+'</b></td><td>'+esc(d.level||"—")+'</td><td>'+esc(d.hire||"—")+'</td><td><input data-flag="'+r.id+'" value="'+esc(r.flag||"")+'" placeholder="e.g. in 30-day review"></td><td><button class="dash-open" data-open="'+r.id+'">Open</button></td></tr>';});html+='</table>';wrap.innerHTML=html;wrap.querySelectorAll("[data-open]").forEach(function(b){b.addEventListener("click",function(){selectAgent(this.getAttribute("data-open"));document.getElementById("passportBody").scrollIntoView({behavior:"smooth"});});});wrap.querySelectorAll("[data-flag]").forEach(function(inp){inp.addEventListener("input",function(){var id=this.getAttribute("data-flag");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it.flag=this.value;setRoster(l);}});});}
+  function levelNumOf(txt){txt=txt||"";if(/senior/i.test(txt))return 4;var m=txt.match(/Level\s*([1-4])/i);return m?parseInt(m[1],10):0;}
+  window.__weTEenabled=function(id){var l=roster();var it=null;for(var i=0;i<l.length;i++){if(l[i].id===id){it=l[i];break;}}var dd=agentData(id)||{};return !!((it&&it.te)||levelNumOf(dd.level)>=3);};
+  function renderDash(){var wrap=document.getElementById("dashWrap");var list=roster();if(!list.length){wrap.innerHTML='<div class="dash-empty">No agents yet. Click the “+ Add agent” button above to create the first passport.</div>';return;}var html='<table class="dash-table"><tr><th>Agent</th><th>Current level</th><th>Hire date</th><th>Track text/email</th><th style="width:22%">Manager flag / focus</th><th></th></tr>';list.forEach(function(r){var d=agentData(r.id)||{};var lvl=levelNumOf(d.level);html+='<tr><td><b>'+esc(d.name||r.name)+'</b></td><td>'+esc(d.level||"—")+'</td><td>'+esc(d.hire||"—")+'</td><td><label style="font-size:12px;display:inline-flex;align-items:center;gap:5px"><input type="checkbox" data-te="'+r.id+'"'+(r.te?" checked":"")+(lvl>=3?" disabled checked":"")+'> '+(lvl>=3?'<span style="color:#1f6b41;font-weight:700">on (Level 3)</span>':'track')+'</label></td><td><input data-flag="'+r.id+'" value="'+esc(r.flag||"")+'" placeholder="e.g. in 30-day review"></td><td><button class="dash-open" data-open="'+r.id+'">Open</button></td></tr>';});html+='</table>';wrap.innerHTML=html;wrap.querySelectorAll("[data-open]").forEach(function(b){b.addEventListener("click",function(){selectAgent(this.getAttribute("data-open"));document.getElementById("passportBody").scrollIntoView({behavior:"smooth"});});});wrap.querySelectorAll("[data-flag]").forEach(function(inp){inp.addEventListener("input",function(){var id=this.getAttribute("data-flag");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it.flag=this.value;setRoster(l);}});});wrap.querySelectorAll("[data-te]").forEach(function(cb){cb.addEventListener("change",function(){var id=this.getAttribute("data-te");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it.te=this.checked;setRoster(l);}try{if(window.__weTeamRefresh)window.__weTeamRefresh();if(window.__wePanelRefresh)window.__wePanelRefresh();}catch(e){}});});}
 
   function exportAgent(){if(ACTIVE==null){alert("Select an agent first.");return;}saveActive();var list=roster();var it=list.filter(function(r){return r.id===ACTIVE;})[0];if(!it)return;var data=agentData(ACTIVE)||{v:{}};var pw=prompt("Set a password for "+it.name+"'s view-only passport.\nShare it with "+it.name+" only — they'll use it to open their file.");if(pw==null)return;pw=String(pw);if(!pw){alert("A password is required.");return;}var salt=cyrb53(it.name+"|"+Date.now(),9);var ver=cyrb53(salt+pw);var blob=encO(data,pw);var css=document.querySelector("style").textContent;var body=document.getElementById("passportBody").innerHTML;var head='<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Western Elite — '+esc(it.name)+' — Career Passport</title><style>'+css+'</style></head><body>';var pp='<scr'+'ipt>window.__PP__={data:'+JSON.stringify(blob)+',ver:'+JSON.stringify(ver)+',salt:'+JSON.stringify(salt)+',agent:'+JSON.stringify(it.name)+'};<\/scr'+'ipt>';var full=head+AGENT_LOCK+'<div id="passportBody" style="display:none">'+AGENT_BAR+body+'</div>'+pp+'<scr'+'ipt>'+AGENT_JS+'<\/scr'+'ipt></body></html>';var fname=(it.name||"agent").replace(/[^a-z0-9]+/gi,"_").replace(/^_|_$/g,"")+"_Career_Passport.html";var bl=new Blob([full],{type:"text/html"});var url=URL.createObjectURL(bl);var a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1500);var s=document.getElementById("saveStatus");if(s)s.textContent="Exported "+fname;}
 
@@ -2259,7 +2268,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 (function(){
   var DEF={ordB:[99.0,99.3,99.5,99.7],calB:[85,90,93,96],pay:[18.00,20.00,22.50,25.50],win:30,
-           gOrder:99.0,gAcct:98.0,gCall:85,goalCall:90,goalOrder:99,goalAcct:98,goalAns:"",goalAvail:"",goalWow:90};
+           gOrder:99.0,gAcct:98.0,gCall:85,goalCall:90,goalOrder:99,goalAcct:98,goalAns:"",goalAvail:"",goalWow:90,goalText:"",goalEmail:""};
   function dials(){try{var d=JSON.parse(localStorage.getItem("we_dials2"));if(d&&d.ordB)return Object.assign(JSON.parse(JSON.stringify(DEF)),d);}catch(e){}return JSON.parse(JSON.stringify(DEF));}
   function saveDials(d){localStorage.setItem("we_dials2",JSON.stringify(d));pushDials();}
   function exAll(){try{return JSON.parse(localStorage.getItem("we_extras")||"{}");}catch(e){return{};}}
@@ -2321,8 +2330,15 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     if(key==="avail"){var op=n(d.onphone),av=n(d.avail);if(op==null||op<=0||av==null)return null;return av/op*100;}
     if(key==="order"){var o=n(d.orders);if(o==null||o<=0)return null;var errs=0;ORDCAT_KEYS.forEach(function(k){errs+=(n(d[k])||0);});return (o-errs)/o*100;}
     if(key==="acct"){var c=n(d.cod);if(c==null||c<=0)return null;return (c-(n(d.acctErr)||0))/c*100;}
+    if(key==="text"){return msgDayPct(d.texts,5);}
+    if(key==="email"){return msgDayPct(d.emails,15);}
     return null;
   }
+  // ---- text / email per-message scoring (4 points each: on-time, greeting, message, grammar) ----
+  function tmin(hhmm){if(!hhmm||typeof hhmm!=="string")return null;var m=hhmm.match(/^(\d{1,2}):(\d{2})/);if(!m)return null;return parseInt(m[1],10)*60+parseInt(m[2],10);}
+  function msgOnTime(t,limit){var r=tmin(t.r),p=tmin(t.p);return (r!=null&&p!=null&&p>=r&&(p-r)<=limit);}
+  function msgPoints(t,limit){var pts=0;if(msgOnTime(t,limit))pts++;if(t.g)pts++;if(t.m)pts++;if(t.s)pts++;return pts;}
+  function msgDayPct(arr,limit){if(!arr||!arr.length)return null;var pts=0;arr.forEach(function(t){pts+=msgPoints(t,limit);});return pts/(arr.length*4)*100;}
   function avgMetric(id,key,days){var o=dayAll(),dd=o[id]||{};var t=new Date();t.setHours(0,0,0,0);var cut=new Date(t);cut.setDate(t.getDate()-(days-1));
     var s=0,cnt=0;Object.keys(dd).forEach(function(ds){var dt=new Date(ds+"T00:00:00");if(dt>=cut&&dt<=t){var v=dayVal(dd[ds],key);if(v!=null){s+=v;cnt++;}}});return {avg:cnt?s/cnt:null,n:cnt};}
   function monthRange(offset){var t=new Date();t.setHours(0,0,0,0);var start=new Date(t.getFullYear(),t.getMonth()+offset,1);var end=new Date(t.getFullYear(),t.getMonth()+offset+1,0);end.setHours(23,59,59,999);return {start:start,end:end};}
@@ -2330,7 +2346,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   var RAW=[{k:"zoom",lab:"Zoom",g:"call"},{k:"vc",lab:"V.Creator",g:"call"},{k:"onphone",lab:"On-phone hrs",g:"call"},{k:"avail",lab:"Avail hrs",g:"call"},{k:"inbound",lab:"Inbound",g:"call"},{k:"outbound",lab:"Outbound",g:"call"},{k:"missed",lab:"Missed",g:"call"},{k:"orders",lab:"Orders",g:"ord"},{k:"cod",lab:"COD orders",g:"ord"},{k:"acctErr",lab:"Acct errors",g:"ord"},{k:"trip",lab:"Trip charge",g:"oe"},{k:"code",lab:"Incorrect code",g:"oe"},{k:"missord",lab:"Missed order",g:"oe"},{k:"addr",lab:"Address",g:"oe"},{k:"dtw",lab:"Date/Time win",g:"oe"},{k:"oentry",lab:"Order entry",g:"oe"},{k:"mrf",lab:"MRF",g:"oe"},{k:"pdriver",lab:"Prev driver",g:"oe"}];var ORDCAT_KEYS=["trip","code","missord","addr","dtw","oentry","mrf","pdriver"];
   var DAYPCT=[{k:"call",lab:"V.Cr"},{k:"answered",lab:"Ans"},{k:"avail",lab:"Avail"},{k:"order",lab:"Order"},{k:"acct",lab:"Acct"}];
-  var METRICS=[{k:"call",lab:"Value creator",goal:"goalCall"},{k:"order",lab:"Order accuracy",goal:"goalOrder"},{k:"acct",lab:"Accounting accuracy",goal:"goalAcct"},{k:"answered",lab:"Answered call",goal:"goalAns"},{k:"avail",lab:"Availability",goal:"goalAvail",coached:true}];
+  var METRICS=[{k:"call",lab:"Value creator",goal:"goalCall"},{k:"order",lab:"Order accuracy",goal:"goalOrder"},{k:"acct",lab:"Accounting accuracy",goal:"goalAcct"},{k:"answered",lab:"Answered call",goal:"goalAns"},{k:"avail",lab:"Availability",goal:"goalAvail",coached:true},{k:"text",lab:"Text quality",goal:"goalText",te:true},{k:"email",lab:"Email quality",goal:"goalEmail",te:true}];
   var ATT=["Present","Approved Off","Saturday","Absent","Training"];
 
   function wowAllData(){try{return JSON.parse(localStorage.getItem("we_wow")||"{}");}catch(e){return{};}}function wowAvg(id,days){var o=wowAllData(),arr=o[id]||[];var t=new Date();t.setHours(0,0,0,0);var cut=new Date(t);cut.setDate(t.getDate()-(days-1));var s=0,n=0;arr.forEach(function(r){var dt=new Date((r.date||"")+"T00:00:00");if(!isNaN(dt.getTime())&&dt>=cut&&dt<=t){s+=r.pct;n++;}});return {avg:n?s/n:null,n:n};}
@@ -2353,16 +2369,77 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var dt=document.createElement("div");dt.id="dataTab";dt.style.display="none";
     dt.innerHTML=''+
       '<div class="dt-head"><h2>Data tab <span>· manager only · daily scoreboard</span></h2><button id="dtBack" class="mb-btn2" type="button">‹ Back to dashboard</button></div>'+
-      '<div class="dt-note">One place for everything. Pick a date and enter each agent’s <b>raw counts</b> for that day — the percentages auto-calculate exactly like the scoreboard. Passports show the past-month avg, 5-day trailing avg, and goal for each metric.</div>'+
-      '<div class="dt-daterow"><label>Date&nbsp;</label><input type="date" id="dtDate"> <button class="mb-btn2" id="dtToday" type="button">Today</button> <span class="dt-daynote" id="dtDayNote"></span></div>'+
-      '<div class="dt-scroll"><div id="dtDailyWrap"></div></div>'+
-      '<div class="dt-sub" style="margin-top:22px">Placement <span>(trailing average → level)</span></div>'+
-      '<div id="dtGridWrap"></div>'+
-      '<details class="dt-dials" style="margin-top:18px"><summary>Dials &mdash; goals, placement bands, pay &amp; window</summary><div id="dtDials"></div></details>';
+      '<div class="dt-subtabs"><button class="dt-tab dt-tab-on" data-sub="calls" type="button">Calls</button><button class="dt-tab" data-sub="text" type="button">Text</button><button class="dt-tab" data-sub="email" type="button">Emails</button></div>'+
+      '<div id="dtPaneCalls" class="dt-pane">'+
+        '<div class="dt-note">Pick a date and enter each agent’s <b>raw counts</b> for that day — the percentages auto-calculate exactly like the scoreboard.</div>'+
+        '<div class="dt-daterow"><label>Date&nbsp;</label><input type="date" id="dtDate"> <button class="mb-btn2" id="dtToday" type="button">Today</button> <span class="dt-daynote" id="dtDayNote"></span></div>'+
+        '<div class="dt-scroll"><div id="dtDailyWrap"></div></div>'+
+        '<div class="dt-sub" style="margin-top:22px">Placement <span>(trailing average → level)</span></div>'+
+        '<div id="dtGridWrap"></div>'+
+        '<details class="dt-dials" style="margin-top:18px"><summary>Dials &mdash; goals, placement bands, pay &amp; window</summary><div id="dtDials"></div></details>'+
+      '</div>'+
+      '<div id="dtPaneText" class="dt-pane" style="display:none">'+
+        '<div class="dt-note">Log each <b>text</b> for the day. Each message scores up to <b>4 points</b>: replied within <b>5 minutes</b>, proper greeting, proper message, correct grammar/spelling. The day % = points earned ÷ (4 × messages).</div>'+
+        '<div class="dt-daterow"><label>Agent&nbsp;</label><select id="txtAgent" class="dt-agsel"></select> &nbsp; <label>Date&nbsp;</label><input type="date" id="txtDate"> <button class="mb-btn2" id="txtToday" type="button">Today</button></div>'+
+        '<div class="dt-scroll"><div id="txtLog"></div></div>'+
+        '<button class="mb-btn2" id="txtAdd" type="button" style="margin-top:10px">+ Add text</button>'+
+        '<div id="txtSummary" class="dt-daynote" style="margin-top:10px"></div>'+
+      '</div>'+
+      '<div id="dtPaneEmail" class="dt-pane" style="display:none">'+
+        '<div class="dt-note">Log each <b>email</b> for the day. Each message scores up to <b>4 points</b>: replied within <b>15 minutes</b>, proper greeting, proper message, correct grammar/spelling. The day % = points earned ÷ (4 × messages).</div>'+
+        '<div class="dt-daterow"><label>Agent&nbsp;</label><select id="emlAgent" class="dt-agsel"></select> &nbsp; <label>Date&nbsp;</label><input type="date" id="emlDate"> <button class="mb-btn2" id="emlToday" type="button">Today</button></div>'+
+        '<div class="dt-scroll"><div id="emlLog"></div></div>'+
+        '<button class="mb-btn2" id="emlAdd" type="button" style="margin-top:10px">+ Add email</button>'+
+        '<div id="emlSummary" class="dt-daynote" style="margin-top:10px"></div>'+
+      '</div>';
     var dash=document.getElementById("dashboard");dash.parentNode.insertBefore(dt,dash.nextSibling);
     document.getElementById("dtBack").addEventListener("click",showDash);
     var di=document.getElementById("dtDate");di.value=todayISO();di.addEventListener("change",renderDaily);
     document.getElementById("dtToday").addEventListener("click",function(){di.value=todayISO();renderDaily();});
+    dt.querySelectorAll(".dt-tab").forEach(function(b){b.addEventListener("click",function(){showDataSub(this.getAttribute("data-sub"));});});
+    document.getElementById("txtDate").value=todayISO();document.getElementById("emlDate").value=todayISO();
+    document.getElementById("txtToday").addEventListener("click",function(){document.getElementById("txtDate").value=todayISO();renderMsgLog("text");});
+    document.getElementById("emlToday").addEventListener("click",function(){document.getElementById("emlDate").value=todayISO();renderMsgLog("email");});
+    document.getElementById("txtDate").addEventListener("change",function(){renderMsgLog("text");});
+    document.getElementById("emlDate").addEventListener("change",function(){renderMsgLog("email");});
+    document.getElementById("txtAgent").addEventListener("change",function(){renderMsgLog("text");});
+    document.getElementById("emlAgent").addEventListener("change",function(){renderMsgLog("email");});
+    document.getElementById("txtAdd").addEventListener("click",function(){addMsg("text");});
+    document.getElementById("emlAdd").addEventListener("click",function(){addMsg("email");});
+  }
+  function showDataSub(which){
+    ["calls","text","email"].forEach(function(k){var p=document.getElementById("dtPane"+k.charAt(0).toUpperCase()+k.slice(1));if(p)p.style.display=(k===which)?"":"none";});
+    var dt=document.getElementById("dataTab");if(dt)dt.querySelectorAll(".dt-tab").forEach(function(b){b.classList.toggle("dt-tab-on",b.getAttribute("data-sub")===which);});
+    if(which==="calls"){renderDaily();renderGrid();renderDials();}
+    else{populateMsgAgents(which);renderMsgLog(which);}
+  }
+  function escOpt(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function populateMsgAgents(kind){var selId=kind==="text"?"txtAgent":"emlAgent";var sel=document.getElementById(selId);if(!sel)return;var cur=sel.value;var list=agents();sel.innerHTML=list.map(function(a){return '<option value="'+a.id+'">'+escOpt(a.name)+'</option>';}).join("");if(cur&&list.some(function(a){return a.id===cur;}))sel.value=cur;}
+  function msgCfg(kind){return kind==="text"?{ag:"txtAgent",dt:"txtDate",log:"txtLog",sum:"txtSummary",field:"texts",limit:5,lab:"5 min"}:{ag:"emlAgent",dt:"emlDate",log:"emlLog",sum:"emlSummary",field:"emails",limit:15,lab:"15 min"};}
+  function addMsg(kind){var c=msgCfg(kind);var ag=document.getElementById(c.ag),dtl=document.getElementById(c.dt);var id=ag?ag.value:"",date=dtl?dtl.value:todayISO();if(!id)return;var a=((getDay(id,date)[c.field])||[]).slice();a.push({r:"",p:"",g:false,m:false,s:false});var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);}
+  function renderMsgLog(kind){
+    var c=msgCfg(kind);var ag=document.getElementById(c.ag),dtl=document.getElementById(c.dt);if(!ag||!dtl)return;
+    var id=ag.value,date=dtl.value||todayISO();var w=document.getElementById(c.log),sum=document.getElementById(c.sum);if(!w)return;
+    if(!id){w.innerHTML='<div class="qz-empty">No agents yet.</div>';if(sum)sum.textContent="";return;}
+    var arr=((getDay(id,date)[c.field])||[]).slice();
+    var h='<table class="dt-grid"><tr><th>#</th><th>Received</th><th>Replied</th><th>On time<br>('+c.lab+')</th><th>Greeting</th><th>Message</th><th>Grammar</th><th>Pts</th><th></th></tr>';
+    arr.forEach(function(t,i){var on=msgOnTime(t,c.limit);var pts=msgPoints(t,c.limit);
+      h+='<tr data-i="'+i+'"><td>'+(i+1)+'</td>'+
+        '<td><input type="time" class="ml-r" value="'+(t.r||"")+'"></td>'+
+        '<td><input type="time" class="ml-p" value="'+(t.p||"")+'"></td>'+
+        '<td class="'+((t.r&&t.p)?(on?"mp-ok":"mp-bad"):"")+'" style="font-weight:800">'+((t.r&&t.p)?(on?"✓":"✗"):"—")+'</td>'+
+        '<td><input type="checkbox" class="ml-g"'+(t.g?" checked":"")+'></td>'+
+        '<td><input type="checkbox" class="ml-m"'+(t.m?" checked":"")+'></td>'+
+        '<td><input type="checkbox" class="ml-s"'+(t.s?" checked":"")+'></td>'+
+        '<td><b>'+pts+'</b>/4</td>'+
+        '<td><button class="ml-del" data-i="'+i+'" type="button" title="Remove">✕</button></td></tr>';
+    });
+    h+='</table>';w.innerHTML=h;
+    var pct=msgDayPct(arr,c.limit);
+    if(sum)sum.innerHTML=arr.length?('<b>'+arr.length+'</b> message'+(arr.length>1?"s":"")+' &middot; day score <b>'+(pct==null?"—":pct.toFixed(1)+"%")+'</b>'):"No messages logged for this day yet — click “+ Add” to start.";
+    function save(tr){var i=+tr.getAttribute("data-i");var a=((getDay(id,date)[c.field])||[]).slice();a[i]={r:tr.querySelector(".ml-r").value,p:tr.querySelector(".ml-p").value,g:tr.querySelector(".ml-g").checked,m:tr.querySelector(".ml-m").checked,s:tr.querySelector(".ml-s").checked};var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);if(id===activeId())refreshPanel();try{renderTeam();}catch(e){}}
+    w.querySelectorAll("tr[data-i]").forEach(function(tr){tr.querySelectorAll("input").forEach(function(inp){inp.addEventListener("change",function(){save(tr);});});});
+    w.querySelectorAll(".ml-del").forEach(function(b){b.addEventListener("click",function(){var i=+this.getAttribute("data-i");var a=((getDay(id,date)[c.field])||[]).slice();a.splice(i,1);var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);if(id===activeId())refreshPanel();try{renderTeam();}catch(e){}});});
   }
   function updateRowPct(tr,d){DAYPCT.forEach(function(m){var c=tr.querySelector('.dp-'+m.k);if(c){var v=dayVal(d,m.k);c.textContent=v==null?"—":v.toFixed(1);c.className='dp dp-'+m.k+(v==null?"":"");}});}
   function renderDaily(){
@@ -2398,6 +2475,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     function inp(k,idx,val){return '<td><input class="dl-in" data-dk="'+k+'" data-di="'+(idx==null?"":idx)+'" value="'+(val==null?"":val)+'"></td>';}
     var h='<div class="dl-cap">Passport goals (shown to agents)</div><table class="dl-tbl"><tr><th>Value creator</th><th>Order accuracy</th><th>Accounting</th><th>Answered</th><th>Availability</th></tr>';
     h+='<tr>'+inp("goalCall",null,d.goalCall)+inp("goalOrder",null,d.goalOrder)+inp("goalAcct",null,d.goalAcct)+inp("goalAns",null,d.goalAns)+inp("goalAvail",null,d.goalAvail)+'</tr></table>';
+    h+='<div class="dl-cap" style="margin-top:12px">Text &amp; Email goals (only shown for text/email agents)</div><table class="dl-tbl"><tr><th>Text quality</th><th>Email quality</th></tr><tr>'+inp("goalText",null,d.goalText)+inp("goalEmail",null,d.goalEmail)+'</tr></table>';
     h+='<div class="dl-cap" style="margin-top:12px">Placement bands (lowest of the three = level)</div><table class="dl-tbl"><tr><th></th><th>L1</th><th>L2</th><th>L3</th><th>L4</th></tr>';
     h+='<tr><td class="dl">Order accuracy band</td>'+inp("ordB",0,d.ordB[0])+inp("ordB",1,d.ordB[1])+inp("ordB",2,d.ordB[2])+inp("ordB",3,d.ordB[3])+'</tr>';
     h+='<tr><td class="dl">Call score band</td>'+inp("calB",0,d.calB[0])+inp("calB",1,d.calB[1])+inp("calB",2,d.calB[2])+inp("calB",3,d.calB[3])+'</tr>';
@@ -2443,6 +2521,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var r=placement(id,d);document.getElementById("mpLevel").textContent=levelLabel(r.level);
     document.getElementById("mpPay").textContent=(r.pay==null?"":("· "+money(r.pay)+"/hr"))+(r.n?("  ·  "+r.n+"-day avg"):"");
     document.getElementById("mpPlace").classList.toggle("bad",r.level===0);
+    var teOn=window.__weTEenabled?window.__weTEenabled(id):false;
+    ["text","email"].forEach(function(k){var tr=document.querySelector('#metricPanel tr[data-m="'+k+'"]');if(tr)tr.style.display=teOn?"":"none";});
     try{if(window.__weStashSnapshot)window.__weStashSnapshot(id,__weBuildSnap(id));}catch(e){}
   }
   // Build a self-contained metrics snapshot the AGENT can see (no scoreboard access needed)
@@ -2455,6 +2535,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     METRICS.forEach(function(m){var goal=(m.k==="call"||m.k==="order"||m.k==="acct")?(lg[m.k]!=null?lg[m.k]:null):d[m.goal];
       out.metrics[m.k]={last:rangeMetric(id,m.k,lm.start,lm.end).avg,thism:rangeMetric(id,m.k,tm.start,tm.end).avg,t5d:avgMetric(id,m.k,5).avg,goal:(goal===""||goal==null)?null:goal};});
     var pl=placement(id,d);out.placement={level:pl.level,pay:pl.pay};
+    out.te=window.__weTEenabled?window.__weTEenabled(id):false;
     return out;
   }
   window.__weBuildSnapshot=__weBuildSnap;
@@ -2475,6 +2556,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       if(fC){fC.textContent=fp(mm.t5d);fC.className="mp-t5d "+cls(mm.t5d,goal);}
       if(gC)gC.textContent=(goal==null)?"—":(goal+"%");});
     if(snap.placement){var lv=document.getElementById("mpLevel");if(lv)lv.textContent=levelLabel(snap.placement.level);var pay=document.getElementById("mpPay");if(pay)pay.textContent=(snap.placement.pay==null?"":("· "+money(snap.placement.pay)+"/hr"));var pl2=document.getElementById("mpPlace");if(pl2)pl2.classList.toggle("bad",snap.placement.level===0);}
+    ["text","email"].forEach(function(k){var tr=mp.querySelector('tr[data-m="'+k+'"]');if(tr)tr.style.display=(snap.te)?"":"none";});
     mp.style.display="";return true;
   };
 
