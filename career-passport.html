@@ -437,6 +437,8 @@
   .dt-daterow input[type=date]{font-family:inherit;font-size:13px;border:1px solid #cdd6df;border-radius:6px;padding:5px 8px;}
   .dt-daynote{color:var(--muted);font-size:12px;}
   .dt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+  body.trainerview .dt-tab[data-sub="calls"],body.trainerview #dtPaneCalls,body.trainerview #dtBack,body.trainerview #mgrBar,body.trainerview #dashboard,body.trainerview #passportBody,body.trainerview #ppHint,body.trainerview #teamMetrics{display:none!important;}
+  body.trainerview .dt-head h2 span{color:#8aa6c9;}
   .dt-subtabs{display:flex;gap:6px;margin:0 0 14px;border-bottom:2px solid var(--line);}
   .dt-tab{background:#eef2f6;color:#3d4750;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;}
   .dt-tab-on{background:var(--blue);color:#fff;border-color:var(--blue);}
@@ -822,7 +824,7 @@
      ════════════════════════════════════════════════════════════════ -->
 <script>
 window.SUPABASE_URL = "https://zjihkljmgwjfyjzjqlse.supabase.co";   /* your project URL (already filled in) */
-window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqaWhrbGptZ3dqZnlqempxbHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4Mzk5NzIsImV4cCI6MjEwMzQxNTk3Mn0.JFbNuoHRRMPxK4Ers3GbZFUEKkepRr337PR_QrvH148";   /* PASTE your anon public key here (the long eyJ... string) */
+window.SUPABASE_KEY = "";   /* PASTE your anon public key here (the long eyJ... string) */
 (function(){
   function base(){return (window.SUPABASE_URL||"").replace(/\/+$/,"");}
   function hdr(extra){var k=window.SUPABASE_KEY||"";var s=null;try{s=JSON.parse(localStorage.getItem("we_sess")||"null");}catch(e){}var bearer=(s&&s.access_token)?s.access_token:k;var h={apikey:k,Authorization:"Bearer "+bearer,"Content-Type":"application/json"};if(extra)for(var x in extra)h[x]=extra[x];return h;}
@@ -845,8 +847,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 </script>
 <div id="lockScreen" style="display:none"><div class="lock-card"><div class="lk-lock">WESTERN <span>ELITE</span></div><h2 id="lockTitle">Career Passport</h2><p id="lockSub">Sign in with your company email and password.</p>
 <div id="agentLogin"><input id="loginEmail" type="email" placeholder="you@westernelite.com" autocomplete="username" autocapitalize="off" spellcheck="false"><input id="loginPass" type="password" placeholder="Your password" autocomplete="current-password"><button id="loginBtn">Sign in</button><div class="lk-msg" id="loginMsg" style="color:#6a747e"></div></div>
-<div id="mgrLogin" style="display:none"><input id="lockPw" type="password" placeholder="Manager password" autocomplete="off"><button id="lockBtn">Unlock manager view</button><div class="lk-msg" id="lockMsg"></div></div>
-<div class="lk-note"><a href="#" id="toMgr" style="color:#2e74b5;text-decoration:none;font-weight:700">Manager sign-in &rarr;</a><span id="toAgent" style="display:none"><a href="#" style="color:#2e74b5;text-decoration:none;font-weight:700">&larr; Back to agent sign-in</a></span></div></div></div>
+<div id="mgrLogin" style="display:none"><input id="lockPw" type="password" placeholder="Manager or trainer password" autocomplete="off"><button id="lockBtn">Unlock</button><div class="lk-msg" id="lockMsg"></div></div>
+<div class="lk-note"><a href="#" id="toMgr" style="color:#2e74b5;text-decoration:none;font-weight:700">Manager / Trainer sign-in &rarr;</a><span id="toAgent" style="display:none"><a href="#" style="color:#2e74b5;text-decoration:none;font-weight:700">&larr; Back to agent sign-in</a></span></div></div></div>
 <div class="mgr-bar" id="mgrBar" style="display:none"><span class="mb-brand">WE · MANAGER</span><select id="agentSelect" title="Select agent"></select><button class="mb-btn" id="addBtn">+ Add agent</button><button class="mb-btn" id="renameBtn">Rename</button><button class="mb-btn" id="delBtn">Delete</button><span class="mb-spacer"></span><span class="mb-save" id="saveStatus">Saved automatically</span><button class="mb-btn primary" id="exportBtn">Export agent’s view-only passport</button><button class="mb-btn" onclick="window.print()">Print</button><button class="mb-btn" id="chgPwBtn" style="display:none">Change password</button><button class="mb-btn" id="lockNowBtn">Log out</button></div>
 <div id="dashboard" style="display:none"><h2>Team Dashboard</h2><p class="dash-lede">Every agent at a glance. Level, supervisor, and hire date update automatically from each passport; add a flag or focus note per agent. Click Open to jump into a passport.</p><div id="dashWrap"></div></div>
 <div id="passportBody" style="display:none"><!-- ═══ PASSPORT COVER — scrolls away with the page, not sticky ═══ -->
@@ -2015,6 +2017,17 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   function seedAgents(){var names=["Alex","Amanda","Erika","Faviola","Johana","Leslie","Lily","Meylann","Perla","Sandy","Trae","Yasmin"];var list=roster();var have={};list.forEach(function(r){have[(r.name||"").toLowerCase()]=true;});var nameIdx=fields().indexOf(document.getElementById("cvName"));var added=false;names.forEach(function(nm,i){if(have[nm.toLowerCase()])return;var id="a"+Date.now()+"_"+i;var v={};if(nameIdx>=0)v[nameIdx]=nm;list.push({id:id,name:nm,flag:""});setAgentData(id,{v:v,name:nm,level:"",sup:"",hire:""});added=true;});if(added)setRoster(list);}
   function showApp(){document.getElementById("lockScreen").style.display="none";document.getElementById("mgrBar").style.display="";document.getElementById("dashboard").style.display="";document.getElementById("passportBody").style.display="";bootRoster();startAutoRefresh();}
+  function makeTrainerBar(){if(document.getElementById("trainerBar"))return;var bar=document.createElement("div");bar.id="trainerBar";bar.style.cssText="position:sticky;top:0;z-index:6000;display:flex;align-items:center;gap:10px;background:#13427a;color:#fff;padding:8px 14px;font-size:13px;";bar.innerHTML='<b style="letter-spacing:.5px">WESTERN ELITE</b><span style="opacity:.85">Trainer &mdash; Text &amp; Email entry</span><span style="flex:1"></span><button id="trOut" type="button" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Sign out</button>';document.body.insertBefore(bar,document.body.firstChild);document.getElementById("trOut").addEventListener("click",function(){try{sessionStorage.removeItem("we_trainer_ok");}catch(e){}location.reload();});}
+  function showTrainer(){
+    var ls=document.getElementById("lockScreen");if(ls)ls.style.display="none";
+    document.body.classList.add("trainerview");
+    var mb=document.getElementById("mgrBar");if(mb)mb.style.display="none";
+    var dash=document.getElementById("dashboard");if(dash)dash.style.display="none";
+    var pb=document.getElementById("passportBody");if(pb)pb.style.display="none";
+    makeTrainerBar();
+    pullRoster(function(cloud){if(cloud&&cloud.length)setRosterLocal(cloud);try{refreshSelect();}catch(e){}try{if(window.__weTrainerData)window.__weTrainerData();}catch(e){}});
+    window.scrollTo({top:0});
+  }
   function bootRoster(){pullRoster(function(cloud){if(cloud&&cloud.length){setRosterLocal(cloud);}else{seedAgents();pushRoster();}refreshSelect();renderDash();var list=roster();if(list.length)selectAgent(list[0].id);});}
   function autoRefresh(){
     if(!ppWK())return;
@@ -2034,8 +2047,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   }
   function startAutoRefresh(){if(_arTimer)return;_arTimer=setInterval(autoRefresh,60000);}
   var MGR_SALT="WE-mgr-v1",MGR_VER="7d645f54a00aa";
+  var TRAIN_SALT="WE-trn-v1",TRAIN_VER="3f569d00a958e";
   var _lastEdit=0,_arTimer=null;
-  function doAuth(){var pw=document.getElementById("lockPw").value;var msg=document.getElementById("lockMsg");if(!pw){msg.textContent="Enter the password.";return;}if(cyrb53(MGR_SALT+pw)!==MGR_VER){msg.textContent="Incorrect password.";return;}try{sessionStorage.setItem("we_mgr_ok","1");}catch(e){}showApp();}
+  function doAuth(){var pw=document.getElementById("lockPw").value;var msg=document.getElementById("lockMsg");if(!pw){msg.textContent="Enter the password.";return;}if(cyrb53(MGR_SALT+pw)===MGR_VER){try{sessionStorage.setItem("we_mgr_ok","1");}catch(e){}showApp();return;}if(cyrb53(TRAIN_SALT+pw)===TRAIN_VER){try{sessionStorage.setItem("we_trainer_ok","1");}catch(e){}showTrainer();return;}msg.textContent="Incorrect password.";}
   function changeMasterPw(){var meta=getMeta();if(!meta){alert("No password is set yet.");return;}var cur=prompt("Enter your CURRENT manager password:");if(cur==null)return;if(cyrb53(meta.salt+cur)!==meta.ver){alert("That current password is incorrect. Nothing was changed.");return;}var np=prompt("Enter a NEW manager password:");if(np==null)return;np=String(np);if(!np){alert("The new password cannot be blank. Nothing was changed.");return;}var np2=prompt("Re-enter the NEW password to confirm:");if(np2==null)return;if(np!==np2){alert("The new passwords did not match. Nothing was changed.");return;}var salt=cyrb53("mgr|"+Date.now(),3);setMeta({salt:salt,ver:cyrb53(salt+np)});alert("Manager password updated. Use the new password the next time you open this master.");}
   var _lockWired=false;
   function initLock(){
@@ -2046,14 +2060,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var em=document.getElementById("loginEmail");if(em){em.addEventListener("keydown",function(e){if(e.key==="Enter")doPasswordLogin();});try{em.focus();}catch(e){}}
     var pwi=document.getElementById("loginPass");if(pwi)pwi.addEventListener("keydown",function(e){if(e.key==="Enter")doPasswordLogin();});
     var toMgr=document.getElementById("toMgr");var toAgentWrap=document.getElementById("toAgent");
-    if(toMgr)toMgr.addEventListener("click",function(e){e.preventDefault();document.getElementById("agentLogin").style.display="none";document.getElementById("mgrLogin").style.display="";toMgr.style.display="none";if(toAgentWrap)toAgentWrap.style.display="";document.getElementById("lockSub").textContent="Manager sign-in.";var p=document.getElementById("lockPw");if(p)try{p.focus();}catch(_e){}});
+    if(toMgr)toMgr.addEventListener("click",function(e){e.preventDefault();document.getElementById("agentLogin").style.display="none";document.getElementById("mgrLogin").style.display="";toMgr.style.display="none";if(toAgentWrap)toAgentWrap.style.display="";document.getElementById("lockSub").textContent="Manager or trainer sign-in.";var p=document.getElementById("lockPw");if(p)try{p.focus();}catch(_e){}});
     if(toAgentWrap){var back=toAgentWrap.querySelector("a");if(back)back.addEventListener("click",function(e){e.preventDefault();document.getElementById("mgrLogin").style.display="none";document.getElementById("agentLogin").style.display="";toAgentWrap.style.display="none";if(toMgr)toMgr.style.display="";document.getElementById("lockSub").textContent="Sign in with your work email to view your passport.";var q=document.getElementById("loginEmail");if(q)try{q.focus();}catch(_e){}});}
   }
   function agentLoginMsg(t,ok){var m=document.getElementById("loginMsg");if(m){m.textContent=t||"";m.style.color=(ok===true)?"#1f6b41":((ok===false)?"#C00000":"#6a747e");}}
   function parseHashTokens(){var h=location.hash||"";if(h.indexOf("access_token=")<0)return null;var p={};h.replace(/^#/,"").split("&").forEach(function(kv){var i=kv.indexOf("=");if(i>0)p[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1));});return p.access_token?p:null;}
   function cleanHash(){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){location.hash="";}}
   function doPasswordLogin(){var em=document.getElementById("loginEmail"),pw=document.getElementById("loginPass");var email=((em&&em.value)||"").trim().toLowerCase();var pass=(pw&&pw.value)||"";if(!email||email.indexOf("@")<1){agentLoginMsg("Enter your company email.",false);return;}if(!pass){agentLoginMsg("Enter your password.",false);return;}if(!window.sbReady()){agentLoginMsg("Login isn't configured yet.",false);return;}agentLoginMsg("Signing in…");window.sbPasswordSignIn(email,pass).then(function(r){if(r&&r.ok&&r.session){var s=r.session;var e2=(s.user&&s.user.email)||email;document.body.classList.add("liveagent");window.sbSetSession({access_token:s.access_token,refresh_token:s.refresh_token,expires_at:Date.now()+((s.expires_in||3600)*1000),email:e2});routeAuthedEmail(e2);}else{agentLoginMsg((r&&r.error)||"Wrong email or password.",false);}});}
-  function showLogin(){var ls=document.getElementById("lockScreen");if(ls)ls.style.display="";if(!window.sbReady()){var a=document.getElementById("agentLogin"),m=document.getElementById("mgrLogin"),sub=document.getElementById("lockSub"),tm=document.getElementById("toMgr");if(a)a.style.display="none";if(m)m.style.display="";if(tm)tm.style.display="none";if(sub)sub.textContent="Enter the manager password to continue.";}initLock();}
+  function showLogin(){var ls=document.getElementById("lockScreen");if(ls)ls.style.display="";if(!window.sbReady()){var a=document.getElementById("agentLogin"),m=document.getElementById("mgrLogin"),sub=document.getElementById("lockSub"),tm=document.getElementById("toMgr");if(a)a.style.display="none";if(m)m.style.display="";if(tm)tm.style.display="none";if(sub)sub.textContent="Enter the manager or trainer password to continue.";}initLock();}
   function routeAuthedEmail(email){window.sbSelect("managers","select=email&email=eq."+encodeURIComponent(email)+"&limit=1").then(function(rows){if(rows&&rows.length){document.body.classList.remove("liveagent");document.body.classList.remove("agentview");try{sessionStorage.setItem("we_mgr_ok","1");}catch(e){}showApp();}else{enterAgentMode(email);}});}
   function resumeAgentSession(sess){function proceed(tok){window.sbAuthUser(tok).then(function(u){if(u&&u.email){var s=window.sbGetSession()||{};s.email=u.email;window.sbSetSession(s);routeAuthedEmail(u.email);}else{window.sbSignOut();showLogin();}});}
     if(sess.expires_at&&Date.now()>sess.expires_at-60000&&sess.refresh_token){window.sbRefresh(sess.refresh_token).then(function(r){if(r&&r.access_token){window.sbSetSession({access_token:r.access_token,refresh_token:r.refresh_token,expires_at:Date.now()+((r.expires_in||3600)*1000),email:sess.email});proceed(r.access_token);}else{window.sbSignOut();showLogin();}});}else{proceed(sess.access_token);}}
@@ -2104,6 +2118,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       return;
     }
     if(mgrAuthed){showApp();return;}
+    var trainerAuthed=false;try{trainerAuthed=sessionStorage.getItem("we_trainer_ok")==="1";}catch(e){}
+    if(trainerAuthed){showTrainer();return;}
     var sess=window.sbReady()&&window.sbGetSession&&window.sbGetSession();
     if(sess&&sess.access_token){document.body.classList.add("liveagent");resumeAgentSession(sess);return;}
     showLogin();
@@ -2409,6 +2425,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     document.getElementById("txtAdd").addEventListener("click",function(){addMsg("text");});
     document.getElementById("emlAdd").addEventListener("click",function(){addMsg("email");});
   }
+  window.__weTrainerData=function(){
+    buildDataTab();
+    var dt=document.getElementById("dataTab");if(dt)dt.style.display="";
+    var hd=dt&&dt.querySelector(".dt-head h2");if(hd)hd.innerHTML='Text &amp; Email <span>&middot; trainer entry</span>';
+    backfillScoreboard();
+    pullScoreboard(function(){try{populateMsgAgents("text");populateMsgAgents("email");renderMsgLog("text");renderMsgLog("email");}catch(e){}});
+    showDataSub("text");
+  };
   function showDataSub(which){
     ["calls","text","email"].forEach(function(k){var p=document.getElementById("dtPane"+k.charAt(0).toUpperCase()+k.slice(1));if(p)p.style.display=(k===which)?"":"none";});
     var dt=document.getElementById("dataTab");if(dt)dt.querySelectorAll(".dt-tab").forEach(function(b){b.classList.toggle("dt-tab-on",b.getAttribute("data-sub")===which);});
