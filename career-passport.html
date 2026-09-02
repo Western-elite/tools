@@ -487,7 +487,7 @@
   /* Live agent login (real per-agent sign-in): read-only, manager tools hidden */
   body.liveagent #wowScorer,body.liveagent #kbManage,body.liveagent #quizManage,body.liveagent .kb-legacy-note,body.liveagent #dataTab,body.liveagent #dataBtn,body.liveagent #previewAgentBtn,body.liveagent #mgrBar,body.liveagent #dashboard,body.liveagent #ppHint,body.liveagent #apvBar,body.liveagent .side-submit,body.liveagent .log-entry,body.liveagent #coachTab,body.liveagent #escTab{display:none!important;}
   body.liveagent .wow-agent-note{display:block;}
-  body.liveagent .hist-respond,body.liveagent .hist-comment-box,body.liveagent .hist-resp-btn{display:none!important;}
+  /* agents CAN comment & respond from their login */
   .mp-tbl .mp-goal{color:var(--ink);font-weight:800;}
   .mp-ok{color:#1f6b41;} .mp-bad{color:#C00000;}
   .mp-place{padding:10px 14px;background:var(--lightblue);font-size:13.5px;color:#3d4750;}
@@ -1978,7 +1978,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function ppWK(){return ((window.sbReady&&window.sbReady())?"1":"")||(window.WE_WEBHOOK||"").trim();}
   var _ppTmr=null;
   function pushPassport(){if(!window.sbReady()||ACTIVE==null)return;var id=ACTIVE;clearTimeout(_ppTmr);_ppTmr=setTimeout(function(){if(id!==ACTIVE)return;window.sbUpsert("passports",{agent:agName(id),data:(agentData(id)||collect()),updated_at:new Date().toISOString()});},2500);}
-  function pullPassport(id){if(!window.sbReady())return;var nm=agName(id);window.sbSelect("passports","agent=eq."+encodeURIComponent(nm)+"&select=data&limit=1").then(function(rows){if(id!==ACTIVE)return;if(!rows||!rows.length)return;var d=rows[0].data;if(!d||typeof d!=="object"||!d.v)return;setAgentData(id,d);apply(d);try{renderDash();}catch(e){}try{if(window.__wePanelRefresh)window.__wePanelRefresh();}catch(e){}});}
+  function pullPassport(id){if(!window.sbReady())return;var nm=agName(id);window.sbSelect("passports","agent=eq."+encodeURIComponent(nm)+"&select=data&limit=1").then(function(rows){if(id!==ACTIVE)return;if(!rows||!rows.length)return;var d=rows[0].data;if(!d||typeof d!=="object"||!d.v)return;setAgentData(id,d);apply(d);loadAcks(agName(id),function(m){if(ACTIVE===id)applyAcks(m);});try{renderDash();}catch(e){}try{if(window.__wePanelRefresh)window.__wePanelRefresh();}catch(e){}});}
 
   function fields(){return Array.prototype.slice.call(document.querySelectorAll("#passportBody .field-line,#passportBody .field-inline,#passportBody .field-cell,#passportBody .field-area,#passportBody .chk-box"));}
   function cv(id){var e=document.getElementById(id);return e?e.value:"";}
@@ -2013,7 +2013,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   var ACTIVE=null;
   function saveActive(){if(ACTIVE==null)return;setAgentData(ACTIVE,collect());_lastEdit=Date.now();var s=document.getElementById("saveStatus");if(s)s.textContent="Saved "+new Date().toLocaleTimeString();pushPassport();}
-  function selectAgent(id){saveActive();ACTIVE=id;clearFields();var d=agentData(id);if(d)apply(d);var sel=document.getElementById("agentSelect");if(sel)sel.value=id;pullPassport(id);if(window.__wePanelRefresh)setTimeout(window.__wePanelRefresh,80);}
+  function selectAgent(id){saveActive();ACTIVE=id;clearFields();var d=agentData(id);if(d)apply(d);var sel=document.getElementById("agentSelect");if(sel)sel.value=id;loadAcks(agName(id),function(m){if(ACTIVE===id)applyAcks(m);});pullPassport(id);if(window.__wePanelRefresh)setTimeout(window.__wePanelRefresh,80);}
   function refreshSelect(){var sel=document.getElementById("agentSelect");var list=roster();sel.innerHTML="";if(!list.length){var o=document.createElement("option");o.textContent="— no agents yet —";o.value="";sel.appendChild(o);return;}list.forEach(function(r){var o=document.createElement("option");o.value=r.id;o.textContent=r.name;sel.appendChild(o);});}
 
   function addAgent(){var name=prompt("New agent's name:");if(name==null)return;name=name.trim();if(!name)return;var list=roster();var id="a"+Date.now();list.push({id:id,name:name,flag:""});setRoster(list);setAgentData(id,{v:{},name:name,level:"",sup:"",hire:""});refreshSelect();selectAgent(id);var n=document.getElementById("cvName");if(n)n.value=name;saveActive();renderDash();try{if(window.__weTeamRefresh)window.__weTeamRefresh();}catch(e){}}
@@ -2084,7 +2084,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function routeAuthedEmail(email){window.sbSelect("managers","select=email&email=eq."+encodeURIComponent(email)+"&limit=1").then(function(rows){if(rows&&rows.length){document.body.classList.remove("liveagent");document.body.classList.remove("agentview");try{sessionStorage.setItem("we_mgr_ok","1");}catch(e){}showApp();}else{enterAgentMode(email);}});}
   function resumeAgentSession(sess){function proceed(tok){window.sbAuthUser(tok).then(function(u){if(u&&u.email){var s=window.sbGetSession()||{};s.email=u.email;window.sbSetSession(s);routeAuthedEmail(u.email);}else{window.sbSignOut();showLogin();}});}
     if(sess.expires_at&&Date.now()>sess.expires_at-60000&&sess.refresh_token){window.sbRefresh(sess.refresh_token).then(function(r){if(r&&r.access_token){window.sbSetSession({access_token:r.access_token,refresh_token:r.refresh_token,expires_at:Date.now()+((r.expires_in||3600)*1000),email:sess.email});proceed(r.access_token);}else{window.sbSignOut();showLogin();}});}else{proceed(sess.access_token);}}
-  function lockAgentFields(){document.querySelectorAll("#passportBody input,#passportBody select,#passportBody textarea").forEach(function(el){el.disabled=true;});}
+  function lockAgentFields(){try{if(window.__weMarkEmpSign)window.__weMarkEmpSign();}catch(e){}document.querySelectorAll("#passportBody input,#passportBody select,#passportBody textarea").forEach(function(el){el.disabled=true;});document.querySelectorAll("#passportBody .emp-sign").forEach(function(el){el.disabled=false;});}
+  /* ---- employee acknowledgments (emp-sign fields) persisted per agent ---- */
+  function empSignEls(){return Array.prototype.slice.call(document.querySelectorAll("#passportBody .emp-sign"));}
+  function collectAcks(){var o={},f=fields();empSignEls().forEach(function(el){var i=f.indexOf(el);if(i<0)return;o[i]=(el.type==="checkbox")?el.checked:el.value;});return o;}
+  function applyAcks(map){if(!map)return;var f=fields();empSignEls().forEach(function(el){var i=f.indexOf(el);if(i<0)return;var v=map[i];if(v===undefined)return;if(el.type==="checkbox"){el.checked=!!v;var li=el.closest("li");if(li)li.classList.toggle("checked-off",el.checked);}else{el.value=v;}});}
+  var _ackTmr=null;
+  function saveAgentAcks(){if(!window.sbReady()||!window.__weAgentName)return;clearTimeout(_ackTmr);_ackTmr=setTimeout(function(){window.sbUpsert("acks",{agent:window.__weAgentName,data:collectAcks(),updated_at:new Date().toISOString()});},1200);}
+  function loadAcks(agentName,cb){if(!window.sbReady()||!agentName){if(cb)cb(null);return;}window.sbSelect("acks","agent=eq."+encodeURIComponent(agentName)+"&select=data&limit=1").then(function(rows){cb(rows&&rows[0]?rows[0].data:null);});}
   function makeAgentBar(email){if(document.getElementById("liveAgentBar"))return;var bar=document.createElement("div");bar.id="liveAgentBar";bar.style.cssText="position:sticky;top:0;z-index:6000;display:flex;align-items:center;gap:10px;background:#13427a;color:#fff;padding:8px 14px;font-size:13px;";bar.innerHTML='<b style="letter-spacing:.5px">WESTERN ELITE</b><span style="opacity:.85">Your passport &middot; '+esc(email)+'</span><span style="flex:1"></span><button id="agPrint" type="button" style="background:#fff;color:#13427a;border:none;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Print / PDF</button><button id="agOut" type="button" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Sign out</button>';document.body.insertBefore(bar,document.body.firstChild);document.getElementById("agPrint").addEventListener("click",function(){window.print();});document.getElementById("agOut").addEventListener("click",function(){window.sbSignOut();try{sessionStorage.removeItem("we_mgr_ok");}catch(e){}location.reload();});}
   function enterAgentMode(email){
     window.sbSelect("passports","select=agent,data&data->>email=eq."+encodeURIComponent(email)+"&limit=1").then(function(rows){
@@ -2099,7 +2106,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       document.body.classList.add("agentview");document.body.classList.add("liveagent");
       window.__weAgentName=rows[0].agent||d.name||"";
       lockAgentFields();makeAgentBar(email);
-      try{var lede=document.querySelector("#histPanel .coach-lede");if(lede)lede.textContent="Your record — supervisor notes, coaching, and reviews your manager has filed, newest first.";}catch(e){}
+      loadAcks(window.__weAgentName,function(m){applyAcks(m);try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}});
+      try{var lede=document.querySelector("#histPanel .coach-lede");if(lede)lede.textContent="Your record — supervisor notes, coaching, and reviews from your manager. You can add a comment any time, or respond to any entry.";}catch(e){}
       try{if(window.__weShowPage)window.__weShowPage("overview",false);}catch(e){}
       try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}
       try{if(d&&d.metrics&&window.__weRenderScoreboard){window.__weRenderScoreboard(d.metrics);}else{var mp=document.getElementById("metricPanel");if(mp)mp.style.display="none";}}catch(e){}
@@ -2109,6 +2117,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   }
 
   document.addEventListener("input",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")&&t.matches&&(t.matches(".field-line,.field-inline,.field-cell,.field-area")||t.id==="cvEmail")){saveActive();if(t.id==="cvName"||t.id==="cvSup"||t.id==="cvHire"||t.id==="cvEmail")renderDash();}});
+  document.addEventListener("input",function(e){var t=e.target;if(document.body.classList.contains("liveagent")&&t.classList&&t.classList.contains("emp-sign"))saveAgentAcks();});
+  document.addEventListener("change",function(e){var t=e.target;if(document.body.classList.contains("liveagent")&&t.classList&&t.classList.contains("emp-sign")){saveAgentAcks();if(t.type==="checkbox"){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(_e){}}}});
   document.addEventListener("change",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")){if(t.matches(".chk-box")){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);saveActive();}else if(t.matches("select")){saveActive();if(t.id==="cvLevel")renderDash();}}});
 
   window.addEventListener("load",function(){
@@ -2171,6 +2181,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       box.querySelectorAll(".chk-box, .field-inline, input[type=date]").forEach(function(el){el.classList.add("emp-sign");});
     });
   }
+  window.__weMarkEmpSign=markEmpSign;
   function exAll(){try{return JSON.parse(localStorage.getItem("we_extras")||"{}");}catch(e){return{};}}
   function exGet(id){var o=exAll();return o[id]||{};}
   function exSet(id,patch){if(!id)return;var o=exAll();o[id]=Object.assign({},o[id]||{},patch);localStorage.setItem("we_extras",JSON.stringify(o));}
