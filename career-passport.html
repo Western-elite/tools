@@ -459,6 +459,10 @@
   .dt-name{white-space:nowrap;}
   .dd-in{width:60px;font-family:inherit;font-size:12px;border:1px solid #cdd6df;border-radius:5px;padding:4px 5px;}
   .dd-att{font-family:inherit;font-size:12px;border:1px solid #cdd6df;border-radius:5px;padding:4px 4px;min-width:104px;}
+  .dd-cell{white-space:nowrap;}
+  .dd-cell .dd-in{margin-bottom:3px;}
+  .dd-ns{display:block;font-family:inherit;font-size:11px;border:1px solid #cdd6df;border-radius:5px;padding:2px 3px;width:74px;color:#555;}
+  .dd-in[readonly]{background:#eef1f4;color:#9aa4ad;}
   .dp{font-weight:800;color:#1f6b41;text-align:center;background:#ecf6f0;white-space:nowrap;}
   .ms-in{font-family:inherit;font-size:13px;border:1px solid #cdd6df;border-radius:5px;padding:5px 6px;text-align:center;}
   .dt-avg{font-weight:700;color:#3d4750;white-space:nowrap;}
@@ -2389,6 +2393,20 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   var RAW=[{k:"zoom",lab:"Zoom",g:"call"},{k:"vc",lab:"V.Creator",g:"call"},{k:"onphone",lab:"On-phone hrs",g:"call"},{k:"avail",lab:"Avail hrs",g:"call"},{k:"inbound",lab:"Inbound",g:"call"},{k:"outbound",lab:"Outbound",g:"call"},{k:"missed",lab:"Missed",g:"call"},{k:"orders",lab:"Orders",g:"ord"},{k:"cod",lab:"COD orders",g:"ord"},{k:"acctErr",lab:"Acct errors",g:"ord"},{k:"trip",lab:"Trip charge",g:"oe"},{k:"code",lab:"Incorrect code",g:"oe"},{k:"missord",lab:"Missed order",g:"oe"},{k:"addr",lab:"Address",g:"oe"},{k:"dtw",lab:"Date/Time win",g:"oe"},{k:"oentry",lab:"Order entry",g:"oe"},{k:"mrf",lab:"MRF",g:"oe"},{k:"pdriver",lab:"Prev driver",g:"oe"}];var ORDCAT_KEYS=["trip","code","missord","addr","dtw","oentry","mrf","pdriver"];
   var DAYPCT=[{k:"call",lab:"V.Cr"},{k:"answered",lab:"Ans"},{k:"avail",lab:"Avail"},{k:"order",lab:"Order"},{k:"acct",lab:"Acct"}];
+  // Column order for the daily entry grid — each auto-% sits right after the data it summarizes
+  var DGRID=[
+    {grp:"Calls",cls:"g-call",cols:[
+      {raw:"zoom"},{raw:"vc"},{pct:"call"},
+      {raw:"onphone"},{raw:"avail"},{pct:"answered"},{pct:"avail"},
+      {raw:"inbound"},{raw:"outbound"},{raw:"missed"}
+    ]},
+    {grp:"Orders",cls:"g-ord",cols:[
+      {raw:"orders"},{pct:"order"},{raw:"cod"},{raw:"acctErr"},{pct:"acct"}
+    ]},
+    {grp:"Order errors (by type)",cls:"g-oe",cols:[
+      {raw:"trip"},{raw:"code"},{raw:"missord"},{raw:"addr"},{raw:"dtw"},{raw:"oentry"},{raw:"mrf"},{raw:"pdriver"}
+    ]}
+  ];
   var METRICS=[{k:"call",lab:"Value creator",goal:"goalCall"},{k:"order",lab:"Order accuracy",goal:"goalOrder"},{k:"acct",lab:"Accounting accuracy",goal:"goalAcct"},{k:"answered",lab:"Answered call",goal:"goalAns"},{k:"avail",lab:"Availability",goal:"goalAvail",coached:true},{k:"text",lab:"Text quality",goal:"goalText",te:true},{k:"email",lab:"Email quality",goal:"goalEmail",te:true}];
   var ATT=["Present","Approved Off","Saturday","Absent","Training"];
 
@@ -2439,6 +2457,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     document.getElementById("dtBack").addEventListener("click",showDash);
     var di=document.getElementById("dtDate");di.value=todayISO();di.addEventListener("change",renderDaily);
     document.getElementById("dtToday").addEventListener("click",function(){di.value=todayISO();renderDaily();});
+    wireDailyKeys();
     dt.querySelectorAll(".dt-tab").forEach(function(b){b.addEventListener("click",function(){showDataSub(this.getAttribute("data-sub"));});});
     document.getElementById("txtDate").value=todayISO();document.getElementById("emlDate").value=todayISO();
     document.getElementById("txtToday").addEventListener("click",function(){document.getElementById("txtDate").value=todayISO();renderMsgLog("text");});
@@ -2495,19 +2514,77 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     w.querySelectorAll(".ml-del").forEach(function(b){b.addEventListener("click",function(){var i=+this.getAttribute("data-i");var a=((getDay(id,date)[c.field])||[]).slice();a.splice(i,1);var patch={};patch[c.field]=a;setDay(id,date,patch);renderMsgLog(kind);if(id===activeId())refreshPanel();try{renderTeam();}catch(e){}});});
   }
   function updateRowPct(tr,d){DAYPCT.forEach(function(m){var c=tr.querySelector('.dp-'+m.k);if(c){var v=dayVal(d,m.k);c.textContent=v==null?"—":v.toFixed(1);c.className='dp dp-'+m.k+(v==null?"":"");}});}
+  // ---- arrow-key navigation across the daily entry cells (spreadsheet style) ----
+  function wireDailyKeys(){
+    var wrap=document.getElementById("dtDailyWrap");
+    if(!wrap||wrap.__keyWired)return;
+    wrap.__keyWired=true;
+    function rowIns(r){return r?Array.prototype.slice.call(r.querySelectorAll(".dd-in")):[];}
+    function nextRow(r){r=r&&r.nextElementSibling;while(r&&!r.querySelector(".dd-in"))r=r.nextElementSibling;return r;}
+    function prevRow(r){r=r&&r.previousElementSibling;while(r&&!r.querySelector(".dd-in"))r=r.previousElementSibling;return r;}
+    function go(el){if(!el)return;el.focus();try{el.select();}catch(e){}}
+    wrap.addEventListener("keydown",function(ev){
+      var el=ev.target;
+      if(!el||!el.classList||!el.classList.contains("dd-in"))return;
+      var k=ev.key;
+      if(k!=="ArrowUp"&&k!=="ArrowDown"&&k!=="ArrowLeft"&&k!=="ArrowRight"&&k!=="Enter")return;
+      var row=el.closest("tr");if(!row)return;
+      var cells=rowIns(row);var col=cells.indexOf(el);if(col<0)return;
+      // let Left/Right move the caret inside the cell until it reaches the edge
+      if(k==="ArrowLeft"&&!(el.selectionStart===0&&el.selectionEnd===0))return;
+      if(k==="ArrowRight"&&!(el.selectionStart===el.value.length&&el.selectionEnd===el.value.length))return;
+      var target=null;
+      if(k==="ArrowRight"){
+        if(col<cells.length-1)target=cells[col+1];
+        else{var nr=nextRow(row);target=rowIns(nr)[0];}
+      }else if(k==="ArrowLeft"){
+        if(col>0)target=cells[col-1];
+        else{var pr=prevRow(row);var pc=rowIns(pr);target=pc[pc.length-1];}
+      }else if(k==="ArrowDown"||k==="Enter"){
+        var dn=rowIns(nextRow(row));target=dn[col]||dn[dn.length-1];
+      }else if(k==="ArrowUp"){
+        var up=rowIns(prevRow(row));target=up[col]||up[up.length-1];
+      }
+      if(target){ev.preventDefault();go(target);}
+    });
+  }
   function renderDaily(){
     var date=document.getElementById("dtDate").value||todayISO();var w=document.getElementById("dtDailyWrap");var list=agents();
-    var gc={call:0,ord:0,oe:0};RAW.forEach(function(c){gc[c.g]++;});var h='<table class="dt-grid dt-wide"><tr class="grp"><th></th><th></th><th colspan="'+gc.call+'" class="g-call">Calls</th><th colspan="'+gc.ord+'" class="g-ord">Orders</th><th colspan="'+gc.oe+'" class="g-oe">Order errors (by type)</th><th colspan="'+DAYPCT.length+'" class="g-pct">Auto %</th></tr>';
-    h+='<tr><th>Agent</th><th>Attendance</th>'+RAW.map(function(c){return '<th>'+c.lab+'</th>';}).join("")+DAYPCT.map(function(m){return '<th class="pct-h">'+m.lab+'</th>';}).join("")+'</tr>';
+    function rawLab(k){for(var i=0;i<RAW.length;i++)if(RAW[i].k===k)return RAW[i].lab;return k;}
+    function pctLab(k){for(var i=0;i<DAYPCT.length;i++)if(DAYPCT[i].k===k)return DAYPCT[i].lab;return k;}
+    var h='<table class="dt-grid dt-wide"><tr class="grp"><th></th><th></th>'+
+      DGRID.map(function(g){return '<th colspan="'+g.cols.length+'" class="'+g.cls+'">'+g.grp+'</th>';}).join("")+'</tr>';
+    h+='<tr><th>Agent</th><th>Attendance</th>'+
+      DGRID.map(function(g){return g.cols.map(function(col){
+        return col.raw?('<th>'+rawLab(col.raw)+'</th>'):('<th class="pct-h">'+pctLab(col.pct)+'</th>');
+      }).join("");}).join("")+'</tr>';
     list.forEach(function(a){var e=getDay(a.id,date);
       var att='<td><select class="dd-att" data-id="'+a.id+'"><option value=""></option>'+ATT.map(function(o){return '<option'+(e.att===o?" selected":"")+'>'+o+'</option>';}).join("")+'</select></td>';
-      var inputs=RAW.map(function(c){return '<td><input class="dd-in" data-id="'+a.id+'" data-k="'+c.k+'" value="'+(e[c.k]==null?"":e[c.k])+'" inputmode="decimal"></td>';}).join("");
-      var pcts=DAYPCT.map(function(m){var v=dayVal(e,m.k);return '<td class="dp dp-'+m.k+'">'+(v==null?"—":v.toFixed(1))+'</td>';}).join("");
-      h+='<tr data-id="'+a.id+'"><td class="dt-name"><b>'+a.name+'</b></td>'+att+inputs+pcts+'</tr>';
+      var cells=DGRID.map(function(g){return g.cols.map(function(col){
+        if(col.raw){
+          var k=col.raw,val=(e[k]==null?"":e[k]);
+          if(k==="zoom"||k==="vc"){
+            var ns=(val==="NS");
+            return '<td class="dd-cell"><input class="dd-in" data-id="'+a.id+'" data-k="'+k+'" value="'+(ns?"":val)+'" inputmode="decimal"'+(ns?" readonly":"")+'>'+
+              '<select class="dd-ns" data-id="'+a.id+'" data-k="'+k+'"><option value=""'+(ns?"":" selected")+'>Score</option><option value="NS"'+(ns?" selected":"")+'>No score</option></select></td>';
+          }
+          return '<td><input class="dd-in" data-id="'+a.id+'" data-k="'+k+'" value="'+val+'" inputmode="decimal"></td>';
+        }
+        var v=dayVal(e,col.pct);
+        return '<td class="dp dp-'+col.pct+'">'+(v==null?"—":v.toFixed(1))+'</td>';
+      }).join("");}).join("");
+      h+='<tr data-id="'+a.id+'"><td class="dt-name"><b>'+a.name+'</b></td>'+att+cells+'</tr>';
     });
     h+='</table>';w.innerHTML=h;
     document.getElementById("dtDayNote").textContent=(date===todayISO()?"(today)":"");
     w.querySelectorAll(".dd-in").forEach(function(i){i.addEventListener("input",function(){var id=this.getAttribute("data-id"),k=this.getAttribute("data-k");var p={};p[k]=this.value;setDay(id,date,p);var tr=this.closest("tr");updateRowPct(tr,getDay(id,date));renderGrid();renderTeam();if(id===activeId())refreshPanel();});});
+    w.querySelectorAll(".dd-ns").forEach(function(s){s.addEventListener("change",function(){
+      var id=this.getAttribute("data-id"),k=this.getAttribute("data-k");
+      var cell=this.closest("td"),inp=cell?cell.querySelector(".dd-in"):null;var p={};
+      if(this.value==="NS"){p[k]="NS";setDay(id,date,p);if(inp){inp.value="";inp.readOnly=true;}}
+      else{p[k]="";setDay(id,date,p);if(inp){inp.readOnly=false;inp.value="";try{inp.focus();}catch(e){}}}
+      var tr=this.closest("tr");updateRowPct(tr,getDay(id,date));renderGrid();renderTeam();if(id===activeId())refreshPanel();
+    });});
     w.querySelectorAll(".dd-att").forEach(function(s){s.addEventListener("change",function(){setDay(this.getAttribute("data-id"),date,{att:this.value});});});
   }
   function renderGrid(){
