@@ -193,6 +193,13 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   padding:9px 12px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--ink-3);
 }
+.zone-msg{
+  padding:10px 12px;border-top:1px solid var(--line-soft);
+  font-size:12.5px;line-height:1.5;color:var(--ink-2);
+}
+.zone-msg.err{background:var(--flag-soft);color:var(--flag)}
+.zone-msg.ok{background:var(--earned-soft);color:var(--earned)}
+.zone-msg b{font-weight:700}
 
 /* ---------- conditionals ---------- */
 .cond-row{display:flex;flex-wrap:wrap;gap:7px;padding:12px 16px;border-top:1px solid var(--line-soft)}
@@ -358,6 +365,10 @@ dialog::backdrop{background:rgba(15,20,24,.55)}
   font-size:12.5px;color:var(--ink-2);line-height:1.5;
 }
 .caveat b{color:var(--wow);font-family:Archivo,sans-serif;font-size:11px;letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:2px}
+code{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em;
+  background:var(--surface-2);padding:1px 5px;border-radius:3px;color:var(--ink-2);
+}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -421,12 +432,15 @@ dialog::backdrop{background:rgba(15,20,24,.55)}
           <label class="sr" for="fTranscript">Call transcript</label>
           <textarea id="fTranscript" spellcheck="false" placeholder="[00:00:02] AGENT: Thank you for calling Western Elite, this is ...&#10;[00:00:08] CUSTOMER: Hi, I need to get a container out to a job site."></textarea>
           <div class="zone-foot">
+            <button class="btn" id="btnFile">Open transcript file</button>
+            <input id="fFile" type="file" accept=".txt,.vtt,.srt,.md,.text,.log,text/plain,text/vtt" hidden>
             <button class="btn ghost" id="btnExStrong">Example: strong call</button>
             <button class="btn ghost" id="btnExWeak">Example: weak call</button>
             <button class="btn ghost" id="btnSwap" title="Flip which speaker is the agent">Swap speakers</button>
             <button class="btn ghost" id="btnClear">Clear</button>
             <span id="zoneStat" style="margin-left:auto"></span>
           </div>
+          <div class="zone-msg" id="zoneMsg" hidden></div>
         </div>
         <div class="cond-row" id="condRow"></div>
       </section>
@@ -738,7 +752,11 @@ function knownLabel(l){
 
 function parseTranscript(raw){
   const lines=String(raw).split(/\r?\n/).filter(l=>l.trim());
-  const reLine=/^\s*(?:[\[\(]?\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*[\]\)]?)?\s*([^:\n]{1,42}?)\s*:\s*(.*)$/;
+  /* The label must START WITH A LETTER. Without that, a timestamped line
+     carrying no speaker ("[00:00:05] and that's a flat rate") parses with
+     "[00" as the label and the rest of the timestamp as its text. */
+  const reLine=/^\s*(?:[\[\(]?\s*(\d{1,3}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*[\]\)]?)?\s*([A-Za-z][^:\n]{0,41}?)\s*:\s*(.*)$/;
+  const reTsOnly=/^\s*[\[\(]?\s*\d{1,3}:\d{2}(?::\d{2})?(?:\.\d+)?\s*[\]\)]?\s*/;
 
   /* pass 1 — count candidate labels so a mid-sentence colon doesn't
      invent a speaker. A label counts if it recurs, or is a known role. */
@@ -762,9 +780,15 @@ function parseTranscript(raw){
       turns.push({ts:tsToSec(m[1]),label:m[2].trim(),labelKey:k,text:m[3].trim()});
       last=turns[turns.length-1];
     } else if(last){
-      last.text=(last.text+" "+ln.trim()).trim();
+      /* Continuation of the previous turn. Caption files split a sentence
+         across cues, each with its own timestamp, so drop a leading one
+         rather than leaving "[00:00:15]" sitting inside the sentence. */
+      last.text=(last.text+" "+ln.trim().replace(reTsOnly,"")).trim();
     } else {
-      turns.push({ts:null,label:"",labelKey:"",text:ln.trim()});
+      const bare=ln.trim();
+      const m2=bare.match(reTsOnly);
+      turns.push({ts:m2?tsToSec(m2[0].replace(/[\[\]\(\)\s]/g,"")):null,
+                  label:"",labelKey:"",text:bare.replace(reTsOnly,"")});
       last=turns[turns.length-1];
     }
   }
@@ -1350,6 +1374,20 @@ function score(){
   }
   S.roles=assignRoles(S.turns,S.swapped);
   S.ctx=buildContext(S.turns,el("fLang").value);
+
+  /* Refuse to score what isn't recognisably a two-party call. Without an
+     agent side and a customer side every question fails and every flag
+     fires, which looks like a damning 0-of-7 but is really the tool
+     saying "I can't read this". Say that instead. */
+  if(!S.ctx.agent.length||!S.ctx.cust.length){
+    S.unscorable = S.roles.labelCount===0
+      ? "no speaker labels"
+      : (S.ctx.agent.length ? "no customer turns" : "no agent turns");
+    S.scored=false; S.metrics=null; S.results={}; S.flags=[];
+    render();
+    return;
+  }
+  S.unscorable=null;
   S.metrics=computeMetrics(S.ctx);
 
   const cfg={
@@ -1449,6 +1487,13 @@ function hilite(text,phrase){
 }
 
 function renderTally(){
+  /* With nothing loaded, show dashes. "0 / 11" reads as a score of zero. */
+  if(!S.scored){
+    el("tally").innerHTML=["Score","Awaiting you","N/A","Red flags"].map(k=>
+      `<div class="tally-cell"><span class="k">${k}</span><span class="v" style="color:var(--ink-3)">&ndash;</span></div>`).join("");
+    el("verdictSlot").innerHTML="";
+    return;
+  }
   const t=totals();
   el("tally").innerHTML=`
     <div class="tally-cell"><span class="k">Score</span>
@@ -1460,7 +1505,6 @@ function renderTally(){
     <div class="tally-cell${t.flagCount?" is-flag":""}"><span class="k">Red flags</span>
       <span class="v">${t.flagCount}</span></div>`;
   const v=el("verdictSlot");
-  if(!S.scored){v.innerHTML="";return}
   if(t.pending) v.innerHTML=`<span class="verdict pend">${t.pending} to rate</span>`;
   else if(t.wow) v.innerHTML=`<span class="verdict wow">WOW call</span>`;
   else v.innerHTML=`<span class="verdict no">Not a WOW call</span>`;
@@ -1509,6 +1553,23 @@ function evidenceHTML(r,q){
 
 function renderScorecard(){
   const host=el("scorecard");
+  if(S.unscorable){
+    const why=S.unscorable==="no speaker labels"
+      ? "Every line needs to say who is talking — <code>AGENT:</code> and <code>CUSTOMER:</code>, or "+
+        "<code>Speaker 1:</code> and <code>Speaker 2:</code>. This text has no labels at all, so there is "+
+        "no way to tell which words belong to your agent."
+      : "This transcript has only one side of the conversation ("+esc(S.unscorable)+"). Scoring an agent "+
+        "needs both sides — several questions are about what the agent did in response to the customer.";
+    host.innerHTML=`<section class="panel" style="margin-top:22px">
+      <div class="clean" style="text-align:left;padding:18px 18px 20px">
+        <strong style="text-align:left">This can’t be scored</strong>
+        <p style="margin:0 0 10px;color:var(--ink-2);font-size:13.5px;line-height:1.55">${why}</p>
+        <p style="margin:0;color:var(--ink-3);font-size:13px;line-height:1.55">Deliberately no score rather
+        than a bad one: without speaker roles every question would read as failed and every red flag would
+        fire, which looks like a terrible call instead of an unreadable file.</p>
+      </div></section>`;
+    return;
+  }
   if(!S.scored){
     host.innerHTML=`<section class="panel" style="margin-top:22px"><div class="clean">
       <strong>Nothing scored yet</strong>Load the example call or paste a transcript, then press Score call.</div></section>`;
@@ -1718,7 +1779,8 @@ function loadExample(which){
   el("fAgent").value = which==="weak" ? "Example \u2014 weak call" : "Example \u2014 strong call";
   if(!el("fDate").value) el("fDate").value=new Date().toISOString().slice(0,10);
   el("fLang").value="auto";
-  S.swapped=false; S.overrides={}; S.trigOverrides={};
+  S.swapped=false; S.overrides={}; S.trigOverrides={}; S.unscorable=null;
+  showMsg("","");
   score();
 }
 el("btnExStrong").onclick=()=>loadExample("strong");
@@ -1726,6 +1788,7 @@ el("btnExWeak").onclick=()=>loadExample("weak");
 el("btnClear").onclick=()=>{
   el("fTranscript").value="";
   S.turns=[];S.ctx=null;S.scored=false;S.results={};S.flags=[];S.overrides={};S.trigOverrides={};
+  S.unscorable=null; showMsg("","");
   render();
 };
 el("btnSwap").onclick=()=>{S.swapped=!S.swapped; if(S.scored) score(); };
@@ -1735,17 +1798,185 @@ el("fTranscript").addEventListener("input",()=>{
 });
 el("fLang").onchange=()=>{if(S.scored) score()};
 
-/* drag & drop a transcript file */
+/* =====================================================================
+   11b. Loading a transcript file
+
+   Transcription services export WebVTT or SRT far more often than plain
+   text, so both are converted to the tool's own line format rather than
+   rejected. Recordings are refused outright with an explanation — a
+   browser cannot run speech-to-text on a file, and reading an mp3 as text
+   would fill the box with binary noise and score it.
+   ===================================================================== */
+const TEXT_EXT=/\.(txt|vtt|srt|md|text|log|csv|tsv)$/i;
+const AV_EXT=/\.(mp3|wav|m4a|mp4|mov|aac|ogg|oga|flac|wma|webm|avi|mkv|opus|amr|aiff?|3gp|wmv)$/i;
+
+function showMsg(kind,html){
+  const m=el("zoneMsg");
+  m.className="zone-msg"+(kind?" "+kind:"");
+  m.innerHTML=html||"";
+  m.hidden=!html;
+}
+
+function padTs(t){
+  t=String(t).replace(",",".").replace(/\.\d+$/,"");
+  const p=t.split(":");
+  if(p.length===2) return "00:"+p[0].padStart(2,"0")+":"+p[1].padStart(2,"0");
+  if(p.length===3) return p.map(x=>x.padStart(2,"0")).join(":");
+  return "00:00:"+p[0].padStart(2,"0");
+}
+
+/* The cue arrow is written \x2d\x2d\x3e so the literal "-->" never appears
+   in this inline script. */
+const CUE_RE=/(\d{1,3}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?)\s*\x2d\x2d\x3e/;
+
+/* Convert a caption file to "[hh:mm:ss] SPEAKER: text" lines. A cue that
+   continues the same speaker is emitted without a label so the existing
+   parser folds it into the previous turn — captions split sentences and
+   each fragment is not a new turn. */
+function normalizeTranscript(raw){
+  const text=String(raw).replace(/^﻿/,"").replace(/\r\n?/g,"\n");
+  const isVtt=/^\s*WEBVTT/i.test(text);
+  const hasCue=/\d{1,3}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?\s*-->\s*\d{1,3}:\d{2}/.test(text);
+  if(!isVtt&&!hasCue) return {text:text,format:"plain",labelled:null};
+
+  const out=[]; let lastSpeaker=null, sawSpeaker=false;
+  for(const block of text.split(/\n{2,}/)){
+    const lines=block.split("\n").map(l=>l.trim()).filter(Boolean);
+    const ci=lines.findIndex(l=>CUE_RE.test(l));
+    if(ci<0) continue;                       /* WEBVTT header, NOTE, STYLE */
+    const m=lines[ci].match(CUE_RE);
+    const ts=padTs(m[1]||m[2]);
+    let body=lines.slice(ci+1).join(" ").trim();
+    if(!body) continue;
+
+    let speaker=null;
+    const v=body.match(/^<v\s+([^>]+)>\s*/i);          /* <v Agent>text</v> */
+    if(v){speaker=v[1].trim();body=body.slice(v[0].length)}
+    body=body.replace(/<\/?[^>]+>/g,"").trim();
+    if(!speaker){                                       /* "AGENT: text"    */
+      const s=body.match(/^([^:]{1,42}?)\s*:\s*(.+)$/);
+      if(s&&/^[A-Za-z0-9 ._#'\-]+$/.test(s[1])&&!/^\d+$/.test(s[1].trim())){
+        speaker=s[1].trim(); body=s[2].trim();
+      }
+    }
+    if(!body) continue;
+    if(speaker) sawSpeaker=true;
+    if(speaker&&speaker!==lastSpeaker){out.push("["+ts+"] "+speaker+": "+body);lastSpeaker=speaker}
+    else out.push("["+ts+"] "+body);
+  }
+  return {text:out.join("\n"),format:isVtt?"vtt":"srt",labelled:sawSpeaker};
+}
+
+/* A renamed recording passes any extension or MIME check, so the file's
+   first bytes decide. Nothing binary is ever allowed as far as scoring. */
+const AUDIO_MAGIC=[
+  {sig:[0x49,0x44,0x33],            name:"an MP3"},
+  {sig:[0x52,0x49,0x46,0x46],       name:"a WAV or AVI"},
+  {sig:[0x4f,0x67,0x67,0x53],       name:"an OGG"},
+  {sig:[0x66,0x4c,0x61,0x43],       name:"a FLAC"},
+  {sig:[0x1a,0x45,0xdf,0xa3],       name:"a WebM or MKV"},
+  {sig:[0x46,0x4f,0x52,0x4d],       name:"an AIFF"},
+  {sig:[0x25,0x50,0x44,0x46],       name:"a PDF"},
+  {sig:[0x50,0x4b,0x03,0x04],       name:"a zip, .docx or .xlsx"},
+  {sig:[0xd0,0xcf,0x11,0xe0],       name:"an old Office file"}
+];
+function sniffBinary(buf){
+  const b=new Uint8Array(buf);
+  for(const m of AUDIO_MAGIC) if(m.sig.every((v,i)=>b[i]===v)) return m.name;
+  if(b[4]===0x66&&b[5]===0x74&&b[6]===0x79&&b[7]===0x70) return "an MP4 or M4A";
+  if(b[0]===0xff&&(b[1]&0xe0)===0xe0) return "an MP3";
+  let bad=0;
+  const n=Math.min(b.length,8192);
+  for(let i=0;i<n;i++){
+    const c=b[i];
+    if(c===0) return "a binary file";
+    if(c<9||(c>13&&c<32)||c===127) bad++;
+  }
+  if(n>16&&bad/n>0.03) return "a binary file";
+  return null;
+}
+
+function rejectRecording(name,what){
+  /* Wipe whatever was loaded before. Leaving the previous call's score on
+     screen next to a refusal is how someone concludes the mp3 got scored. */
+  el("fTranscript").value="";
+  S.turns=[];S.ctx=null;S.metrics=null;S.scored=false;
+  S.results={};S.flags=[];S.overrides={};S.trigOverrides={};S.unscorable=null;
+  render();
+  showMsg("err","<b>"+esc(name)+"</b> is "+what+", not a transcript. This tool reads text only — a "+
+    "browser can’t run speech-to-text on a file, and scoring a recording as if it were words would "+
+    "hand you a number that means nothing. Get the call transcribed first, with speaker labels turned "+
+    "on, then open the .txt, .vtt or .srt that comes back.");
+}
+
+function handleFile(f){
+  if(!f) return;
+  showMsg("","");
+  if(AV_EXT.test(f.name)||/^(audio|video)\//.test(f.type||"")){
+    rejectRecording(f.name,"a recording");
+    return;
+  }
+  if(!TEXT_EXT.test(f.name)&&!/^text\//.test(f.type||"")){
+    showMsg("err","Can’t read <b>"+esc(f.name)+"</b>. Transcripts come in as .txt, .vtt or .srt — "+
+      "or paste the text straight into the box.");
+    return;
+  }
+  if(f.size>10*1024*1024){
+    showMsg("err","That file is "+Math.round(f.size/1048576)+" MB, which is far too large for a call "+
+      "transcript. Check you picked the right file.");
+    return;
+  }
+  const rb=new FileReader();
+  rb.onerror=()=>showMsg("err","Couldn’t read that file.");
+  rb.onload=()=>{
+    const kind=sniffBinary(rb.result);
+    if(kind){rejectRecording(f.name,kind);return}
+    readTranscriptFile(f);
+  };
+  rb.readAsArrayBuffer(f.slice(0,8192));
+}
+
+function readTranscriptFile(f){
+  const rd=new FileReader();
+  rd.onerror=()=>showMsg("err","Couldn’t read that file.");
+  rd.onload=()=>{
+    const r=normalizeTranscript(rd.result);
+    if(!r.text.trim()){
+      showMsg("err","<b>"+esc(f.name)+"</b> came through empty, or held no readable cues.");
+      return;
+    }
+    el("fTranscript").value=r.text;
+    S.swapped=false; S.overrides={}; S.trigOverrides={};
+    score();
+    const n=S.turns.length;
+    if(r.labelled===false){
+      showMsg("err","Loaded "+r.format.toUpperCase()+", but it carries <b>no speaker labels</b>. Without them "+
+        "the tool can’t tell the agent from the customer, so nothing scores. Re-export the transcript with "+
+        "speaker identification (diarization) turned on.");
+    } else if(S.unscorable){
+      showMsg("err","Read "+n+" turn"+(n===1?"":"s")+" from <b>"+esc(f.name)+"</b>, but it can’t be "+
+        "scored — see the reason below.");
+    } else if(r.format!=="plain"){
+      showMsg("ok","Converted "+r.format.toUpperCase()+" into "+n+" turns. Check the speaker column in the "+
+        "transcript panel is the right way round — <b>Swap speakers</b> flips it.");
+    } else if(!S.ctx||S.roles.how!=="labels"){
+      showMsg("ok","Loaded "+n+" turns. Speaker roles were guessed, so check the transcript panel and use "+
+        "<b>Swap speakers</b> if the agent and customer are reversed.");
+    } else {
+      showMsg("ok","Loaded "+n+" turns from <b>"+esc(f.name)+"</b>.");
+    }
+  };
+  rd.readAsText(f);
+}
+
+el("btnFile").onclick=()=>el("fFile").click();
+el("fFile").onchange=ev=>{handleFile(ev.target.files&&ev.target.files[0]);ev.target.value=""};
+
+/* drag & drop onto the transcript box */
 const dz=el("dz");
 ["dragenter","dragover"].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add("hot")}));
 ["dragleave","drop"].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove("hot")}));
-dz.addEventListener("drop",ev=>{
-  const f=ev.dataTransfer.files&&ev.dataTransfer.files[0];
-  if(!f) return;
-  const rd=new FileReader();
-  rd.onload=()=>{el("fTranscript").value=rd.result;score()};
-  rd.readAsText(f);
-});
+dz.addEventListener("drop",ev=>handleFile(ev.dataTransfer.files&&ev.dataTransfer.files[0]));
 
 /* settings dialog */
 const dlg=el("dlgSettings");
