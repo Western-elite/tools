@@ -369,6 +369,67 @@ code{
   font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em;
   background:var(--surface-2);padding:1px 5px;border-radius:3px;color:var(--ink-2);
 }
+
+/* ---------- recording player: fixed bar, never overlaps content ---------- */
+body.has-audio{padding-bottom:120px}
+.player{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  background:var(--surface);border-top:1px solid var(--line);
+  box-shadow:0 -4px 20px rgba(27,34,39,.10);
+}
+:root[data-theme="dark"] .player{box-shadow:0 -4px 20px rgba(0,0,0,.4)}
+.player-inner{max-width:1500px;margin:0 auto;padding:9px 22px 11px;display:flex;flex-direction:column;gap:7px}
+.player-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pbtn{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--accent);
+  background:var(--accent);color:#fff;display:grid;place-items:center;flex:0 0 auto;
+  font-size:13px;line-height:1;padding:0;
+}
+:root[data-theme="dark"] .pbtn,:root:not([data-theme="light"]) .pbtn{color:#08272c}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .pbtn{color:#fff}}
+.pbtn.sm{width:28px;height:28px;background:var(--surface-2);border-color:var(--line);color:var(--ink-2);font-size:11px}
+.pbtn.sm:hover{border-color:var(--ink-3);color:var(--ink)}
+.ptime{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;flex:0 0 auto;
+}
+.pmeta{font-size:12px;color:var(--ink-3);display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.pmeta .chan{
+  font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:2.5px 7px;border-radius:3px;background:var(--surface-2);color:var(--ink-3);
+}
+.pmeta .chan.dual{background:var(--earned-soft);color:var(--earned)}
+.pname{
+  font-size:12.5px;color:var(--ink-2);margin-left:auto;max-width:32ch;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.speeds{display:flex;gap:3px}
+.speeds button{
+  border:1px solid var(--line);background:var(--ground);color:var(--ink-3);
+  font-size:11.5px;font-weight:600;padding:3px 7px;border-radius:4px;
+  font-variant-numeric:tabular-nums;
+}
+.speeds button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.wave{
+  position:relative;height:52px;background:var(--ground);border:1px solid var(--line-soft);
+  border-radius:4px;overflow:hidden;cursor:pointer;
+}
+.wave canvas{display:block;width:100%;height:100%}
+.wave .head{
+  position:absolute;top:0;bottom:0;width:2px;background:var(--accent);
+  pointer-events:none;box-shadow:0 0 0 1px var(--surface);
+}
+.wave .lbl{
+  position:absolute;left:7px;top:50%;transform:translateY(-50%);
+  font-size:12px;color:var(--ink-3);pointer-events:none;
+}
+.hearbtn{
+  border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);
+  padding:3.5px 10px;border-radius:100px;font-size:12px;font-weight:600;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.hearbtn:hover{filter:brightness(.97)}
+.turn.playing{background:var(--accent-soft);border-radius:4px;box-shadow:inset 2px 0 0 var(--accent)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -434,6 +495,8 @@ code{
           <div class="zone-foot">
             <button class="btn" id="btnFile">Open transcript file</button>
             <input id="fFile" type="file" accept=".txt,.vtt,.srt,.md,.text,.log,text/plain,text/vtt" hidden>
+            <button class="btn" id="btnAudio">Open recording</button>
+            <input id="fAudio" type="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.mp4,.aac,.ogg,.flac" hidden>
             <button class="btn ghost" id="btnExStrong">Example: strong call</button>
             <button class="btn ghost" id="btnExWeak">Example: weak call</button>
             <button class="btn ghost" id="btnSwap" title="Flip which speaker is the agent">Swap speakers</button>
@@ -475,6 +538,30 @@ code{
         <div id="histBody"></div>
       </section>
     </aside>
+  </div>
+</div>
+
+<div class="player" id="player" hidden>
+  <div class="player-inner">
+    <div class="wave" id="wave" title="Click anywhere to jump there">
+      <canvas id="waveCv"></canvas>
+      <div class="head" id="waveHead" style="left:0"></div>
+      <span class="lbl" id="waveLbl">Reading the recording…</span>
+    </div>
+    <div class="player-row">
+      <button class="pbtn sm" id="pBack" title="Back 5 seconds">&#8630;5</button>
+      <button class="pbtn" id="pPlay" title="Play / pause (space)">&#9654;</button>
+      <span class="ptime"><span id="pNow">0:00</span> / <span id="pDur">0:00</span></span>
+      <div class="speeds" id="pSpeeds">
+        <button data-rate="0.75">0.75&times;</button>
+        <button data-rate="1" class="on">1&times;</button>
+        <button data-rate="1.25">1.25&times;</button>
+        <button data-rate="1.5">1.5&times;</button>
+      </div>
+      <span class="pmeta" id="pMeta"></span>
+      <span class="pname" id="pName"></span>
+      <button class="btn ghost" id="pClose" style="padding:4px 9px;font-size:12.5px">Close</button>
+    </div>
   </div>
 </div>
 
@@ -1390,6 +1477,32 @@ function score(){
   S.unscorable=null;
   S.metrics=computeMetrics(S.ctx);
 
+  /* When the recording is loaded, dead air and duration stop being
+     estimates from timestamp gaps and become measurements from the audio
+     itself — and they work even on a transcript with no timestamps. */
+  S.mismatch=null;
+  if(A.peaks&&A.dur>0){
+    /* Sanity-check that the recording and the transcript are the same call.
+       A recording that ends before the transcript's last line begins cannot
+       be. Getting this wrong would recompute every measurement against the
+       wrong audio without saying so. */
+    const withTs=S.turns.filter(t=>t.ts!=null);
+    const tEnd=withTs.length?withTs[withTs.length-1].ts:0;
+    if(tEnd>20){
+      if(A.dur<tEnd-5) S.mismatch={kind:"short",audio:A.dur,tEnd:tEnd};
+      else if(A.dur>tEnd*2+120) S.mismatch={kind:"long",audio:A.dur,tEnd:tEnd};
+    }
+    S.metrics.duration=A.dur;
+    S.metrics.audioSilence=true;
+    S.metrics.deadAir=A.silence.filter(s=>s.secs>=10)
+      .sort((a,b)=>b.secs-a.secs)
+      .map(s=>{
+        let t=null;
+        for(const tn of S.turns){if(tn.ts!=null&&tn.ts>=s.at){t=tn;break}}
+        return {turn:t,gap:Math.round(s.secs),at:s.at};
+      });
+  }
+
   const cfg={
     benefits:S.cfg.benefits.length?S.cfg.benefits:P.benefitsDefault,
     competitors:S.cfg.competitors,
@@ -1593,6 +1706,7 @@ function renderScorecard(){
   host.innerHTML=html;
 
   host.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>gotoTurn(+b.dataset.goto));
+  host.querySelectorAll("[data-hear]").forEach(b=>b.onclick=()=>seekTo(+b.dataset.hear,true));
   host.querySelectorAll("[data-ov]").forEach(b=>b.onclick=()=>{
     const [id,val]=b.dataset.ov.split("|");
     if(val==="auto") delete S.overrides[id]; else S.overrides[id]=val;
@@ -1632,10 +1746,27 @@ function qCardHTML(q){
     ? `<div class="why">Not applicable — ${esc((TRIGGERS.find(t=>t.id===q.cond)||{}).name||"trigger")} wasn't found in this call. Click the chip above to score it anyway.</div>`
     : `${subs}${r&&r.why?`<div class="why">${r.why}</div>`:""}${evidenceHTML(r,q)}`;
 
+  /* With the recording loaded, every question gets a way to hear the moment
+     it turns on — which is the only way to answer the tone questions. */
+  let hear="";
+  if(audioReady()&&!naByCond){
+    let at=null,label="Hear it";
+    const ev=(r&&r.evidence||[]).filter(h=>h&&h.turn&&h.turn.ts!=null);
+    if(q.id==="q12"){at=0;label="Play the call"}
+    else if(q.id==="q2"||q.id==="q1"){at=0;label="Hear the greeting"}
+    else if(ev.length){at=ev[0].turn.ts}
+    else if(q.id==="q10"){
+      const last=(S.ctx.closeTurns||[]).filter(t=>t.ts!=null)[0];
+      if(last){at=last.ts;label="Hear the close"}
+    }
+    if(at!=null) hear=`<button class="hearbtn" data-hear="${at}">&#9654; ${label}</button>`;
+  }
+
   const opts=[["yes","Yes"],["no","No"],["na","N/A"]];
   const actions=`<div class="q-actions">`+
     opts.map(([v,l])=>`<button class="toggle${S.overrides[q.id]===v?" act-"+v:""}" data-ov="${q.id}|${v}">${l}</button>`).join("")+
     (overridden?`<button class="toggle act-auto" data-ov="${q.id}|auto">Back to detected</button>`:"")+
+    hear+
     `</div>`;
 
   return `<article class="q${naByCond?" na":""}">
@@ -1693,10 +1824,13 @@ function renderMetrics(){
     <span class="v">${m.talkShare==null?"&mdash;":m.talkShare+"<small>%</small>"}</span>
     ${m.talkShare!=null?`<div class="bar"><i class="a" style="width:${m.talkShare}%"></i><i class="c" style="width:${100-m.talkShare}%"></i></div>`:""}
     <span class="n">${m.agentWords} vs ${m.custWords} words</span></div>`);
+  const haveGaps=m.audioSilence||S.ctx.hasTs;
   cells.push(`<div class="metric ${m.deadAir.length?"warn":""}">
     <span class="k">Dead air</span>
-    <span class="v">${S.ctx.hasTs?m.deadAir.length:"&mdash;"}</span>
-    <span class="n">${S.ctx.hasTs?(m.deadAir.length?"Longest "+m.deadAir[0].gap+"s":"None over 10s"):"Needs timestamps"}</span></div>`);
+    <span class="v">${haveGaps?m.deadAir.length:"&mdash;"}</span>
+    <span class="n">${haveGaps
+      ? (m.deadAir.length?"Longest "+m.deadAir[0].gap+"s":"None over 10s")+(m.audioSilence?" &middot; measured":"")
+      : "Needs timestamps or the recording"}</span></div>`);
   cells.push(`<div class="metric ${m.interruptions?"warn":""}">
     <span class="k">Interruptions</span>
     <span class="v">${S.ctx.hasTs?m.interruptions:"&mdash;"}</span>
@@ -1712,7 +1846,15 @@ function renderMetrics(){
   host.innerHTML=cells.join("");
 
   const c=el("mechCaveat");
-  if(!S.ctx.hasTs){
+  if(S.mismatch){
+    c.hidden=false;
+    c.innerHTML="<b>Recording and transcript may not match</b>The recording runs "+fmtTime(S.mismatch.audio)+
+      " but the transcript's last line starts at "+fmtTime(S.mismatch.tEnd)+
+      (S.mismatch.kind==="short"
+        ? ". A recording can't end before its own transcript does — check you opened the right pair."
+        : ". That's a long way past the end of the transcript — check you opened the right pair.")+
+      " Pace, dead air and call length are being taken from the audio.";
+  } else if(!S.ctx.hasTs){
     c.hidden=false;
     c.innerHTML="<b>No timestamps in this transcript</b>Pace, dead air and interruptions can't be measured without them. Everything else still scores.";
   } else if(S.roles.how!=="labels"){
@@ -1738,20 +1880,32 @@ function renderTranscript(){
   }
   S.flags.forEach(f=>(f.hits||[]).forEach(h=>h&&h.turn&&S.flaggedTurns.add(h.turn.i)));
 
+  const clickable=audioReady();
   host.innerHTML=S.turns.map(t=>{
     const cls=t.role==="agent"?"agent":t.role==="cust"?"cust":"";
     const extra=S.flaggedTurns.has(t.i)?" flagged":(S.litTurns.has(t.i)?" lit":"");
-    return `<div class="turn ${cls}${extra}" id="turn-${t.i}">
+    return `<div class="turn ${cls}${extra}" id="turn-${t.i}"${
+      clickable&&t.ts!=null?` data-play="${t.ts}" style="cursor:pointer" title="Play from here"`:""}>
       <span class="ts">${t.ts!=null?secToTs(t.ts):""}</span>
       <span class="sp">${t.role==="agent"?"Agent":t.role==="cust"?"Customer":esc(t.label||"?")}</span>
       <span class="tx">${esc(t.text)}</span></div>`;
   }).join("");
-  el("tstat").textContent=(S.ctx?S.ctx.lang==="es"?"Spanish":"English":"")+" · "+S.turns.length+" turns";
+  A.litTurn=null;
+  if(clickable){
+    host.querySelectorAll("[data-play]").forEach(n=>n.onclick=()=>seekTo(+n.dataset.play,true));
+    tickPlayer();
+  }
+  el("tstat").textContent=(S.ctx?S.ctx.lang==="es"?"Spanish":"English":"")+" · "+S.turns.length+" turns"+
+    (clickable?" · click to play":"");
 }
 
 function gotoTurn(i){
   const n=el("turn-"+i);
   if(!n) return;
+  /* If the recording is loaded, jump the audio there too — the point of
+     clicking a line is usually to hear how it was said. */
+  const t=S.turns[i];
+  if(t&&t.ts!=null&&audioReady()) seekTo(t.ts,false);
   n.scrollIntoView({behavior:"smooth",block:"center"});
   n.style.transition="outline-color .9s";
   n.style.outline="2px solid var(--accent)";
@@ -1869,51 +2023,308 @@ function normalizeTranscript(raw){
 
 /* A renamed recording passes any extension or MIME check, so the file's
    first bytes decide. Nothing binary is ever allowed as far as scoring. */
-const AUDIO_MAGIC=[
-  {sig:[0x49,0x44,0x33],            name:"an MP3"},
-  {sig:[0x52,0x49,0x46,0x46],       name:"a WAV or AVI"},
-  {sig:[0x4f,0x67,0x67,0x53],       name:"an OGG"},
-  {sig:[0x66,0x4c,0x61,0x43],       name:"a FLAC"},
-  {sig:[0x1a,0x45,0xdf,0xa3],       name:"a WebM or MKV"},
-  {sig:[0x46,0x4f,0x52,0x4d],       name:"an AIFF"},
-  {sig:[0x25,0x50,0x44,0x46],       name:"a PDF"},
-  {sig:[0x50,0x4b,0x03,0x04],       name:"a zip, .docx or .xlsx"},
-  {sig:[0xd0,0xcf,0x11,0xe0],       name:"an old Office file"}
+const FILE_MAGIC=[
+  {sig:[0x49,0x44,0x33],      name:"an MP3",                 audio:true},
+  {sig:[0x52,0x49,0x46,0x46], name:"a WAV",                  audio:true},
+  {sig:[0x4f,0x67,0x67,0x53], name:"an OGG",                 audio:true},
+  {sig:[0x66,0x4c,0x61,0x43], name:"a FLAC",                 audio:true},
+  {sig:[0x1a,0x45,0xdf,0xa3], name:"a WebM or MKV",          audio:true},
+  {sig:[0x46,0x4f,0x52,0x4d], name:"an AIFF",                audio:true},
+  {sig:[0x25,0x50,0x44,0x46], name:"a PDF"},
+  {sig:[0x50,0x4b,0x03,0x04], name:"a zip, .docx or .xlsx"},
+  {sig:[0xd0,0xcf,0x11,0xe0], name:"an old Office file"}
 ];
 function sniffBinary(buf){
   const b=new Uint8Array(buf);
-  for(const m of AUDIO_MAGIC) if(m.sig.every((v,i)=>b[i]===v)) return m.name;
-  if(b[4]===0x66&&b[5]===0x74&&b[6]===0x79&&b[7]===0x70) return "an MP4 or M4A";
-  if(b[0]===0xff&&(b[1]&0xe0)===0xe0) return "an MP3";
+  for(const m of FILE_MAGIC) if(m.sig.every((v,i)=>b[i]===v)) return m;
+  if(b[4]===0x66&&b[5]===0x74&&b[6]===0x79&&b[7]===0x70) return {name:"an MP4 or M4A",audio:true};
+  if(b[0]===0xff&&(b[1]&0xe0)===0xe0) return {name:"an MP3",audio:true};
   let bad=0;
   const n=Math.min(b.length,8192);
   for(let i=0;i<n;i++){
     const c=b[i];
-    if(c===0) return "a binary file";
+    if(c===0) return {name:"a binary file"};
     if(c<9||(c>13&&c<32)||c===127) bad++;
   }
-  if(n>16&&bad/n>0.03) return "a binary file";
+  if(n>16&&bad/n>0.03) return {name:"a binary file"};
   return null;
 }
 
-function rejectRecording(name,what){
+function rejectFile(name,what){
   /* Wipe whatever was loaded before. Leaving the previous call's score on
-     screen next to a refusal is how someone concludes the mp3 got scored. */
+     screen next to a refusal is how someone concludes this file got scored. */
   el("fTranscript").value="";
   S.turns=[];S.ctx=null;S.metrics=null;S.scored=false;
   S.results={};S.flags=[];S.overrides={};S.trigOverrides={};S.unscorable=null;
   render();
-  showMsg("err","<b>"+esc(name)+"</b> is "+what+", not a transcript. This tool reads text only — a "+
-    "browser can’t run speech-to-text on a file, and scoring a recording as if it were words would "+
-    "hand you a number that means nothing. Get the call transcribed first, with speaker labels turned "+
-    "on, then open the .txt, .vtt or .srt that comes back.");
+  showMsg("err","<b>"+esc(name)+"</b> is "+what+", which this tool can’t read. It needs the call "+
+    "transcript as plain text, .vtt or .srt — or paste the text straight into the box. Use "+
+    "<b>Open recording</b> for the audio.");
 }
+
+/* =====================================================================
+   11c. The recording
+
+   The mp3 stays on the machine — an <audio> element pointed at a local
+   blob URL, never uploaded anywhere. It is here to be LISTENED to: half
+   the scorecard asks about tone, pace and whether you can hear a smile,
+   and no transcript answers those. Clicking any transcript line or any
+   quoted piece of evidence jumps the audio to that moment.
+
+   Decoding it also settles a question guesswork couldn't: whether these
+   recordings are one mixed track or two separate voices.
+   ===================================================================== */
+const A={
+  el:null, url:null, name:"", peaks:null, silence:[], dur:0,
+  channels:0, dual:false, raf:0, litTurn:null
+};
+
+function fmtTime(s){
+  if(!isFinite(s)||s<0) s=0;
+  const m=Math.floor(s/60), ss=Math.floor(s%60);
+  return m+":"+String(ss).padStart(2,"0");
+}
+
+function loadRecording(f){
+  if(A.url){try{URL.revokeObjectURL(A.url)}catch(e){}}
+  A.url=URL.createObjectURL(f);
+  A.name=f.name; A.peaks=null; A.silence=[]; A.dual=false; A.channels=0;
+
+  if(!A.el){
+    A.el=new Audio();
+    A.el.preload="auto";
+    A.el.addEventListener("timeupdate",tickPlayer);
+    A.el.addEventListener("play",()=>{el("pPlay").innerHTML="&#10073;&#10073;";loopPlayer()});
+    A.el.addEventListener("pause",()=>{el("pPlay").innerHTML="&#9654;";cancelAnimationFrame(A.raf)});
+    A.el.addEventListener("ended",()=>{el("pPlay").innerHTML="&#9654;"});
+    A.el.addEventListener("loadedmetadata",()=>{
+      A.dur=A.el.duration||0; el("pDur").textContent=fmtTime(A.dur); tickPlayer();
+    });
+    A.el.addEventListener("error",()=>{
+      el("waveLbl").textContent="This browser couldn’t play that audio format.";
+      el("waveLbl").hidden=false;
+    });
+  }
+  A.el.src=A.url;
+  A.el.playbackRate=parseFloat((document.querySelector("#pSpeeds .on")||{}).dataset?.rate||"1");
+
+  el("player").hidden=false;
+  document.body.classList.add("has-audio");
+  el("pName").textContent=f.name;
+  el("pMeta").innerHTML="";
+  el("waveLbl").hidden=false;
+  el("waveLbl").textContent="Reading the recording…";
+  drawWave();
+  decodeForWave(f);
+}
+
+/* Decode to draw the waveform, find real silence, and count channels. */
+function decodeForWave(f){
+  const rd=new FileReader();
+  rd.onerror=()=>{el("waveLbl").textContent="Couldn’t read that file."};
+  rd.onload=async()=>{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx){el("waveLbl").textContent="No waveform in this browser — playback still works.";return}
+    const ctx=new Ctx();
+    let buf;
+    try{ buf=await ctx.decodeAudioData(rd.result) }
+    catch(e){
+      el("waveLbl").textContent="Couldn’t decode that audio for the waveform — playback may still work.";
+      try{ctx.close()}catch(_){}
+      return;
+    }
+    A.channels=buf.numberOfChannels;
+    A.dur=buf.duration;
+    el("pDur").textContent=fmtTime(A.dur);
+
+    /* Two channels only mean two voices if the channels actually differ.
+       Plenty of files are mono duplicated across both. */
+    if(A.channels>=2){
+      const L=buf.getChannelData(0), R=buf.getChannelData(1);
+      const step=Math.max(1,Math.floor(L.length/40000));
+      let diff=0,energy=0,n=0;
+      for(let i=0;i<L.length;i+=step){
+        diff+=Math.abs(L[i]-R[i]); energy+=Math.abs(L[i])+Math.abs(R[i]); n++;
+      }
+      A.dual = n>0 && energy>0 && (diff/energy)>0.25;
+    }
+
+    /* peaks + silence, across EVERY channel. On a dual-channel recording
+       channel 0 is one speaker only, so measuring it alone would report
+       the other person's turns as dead air. */
+    const BUCKETS=1400;
+    const chans=[];
+    for(let c=0;c<buf.numberOfChannels;c++) chans.push(buf.getChannelData(c));
+    const len=chans[0].length;
+    const per=Math.max(1,Math.floor(len/BUCKETS));
+    const peaks=new Float32Array(BUCKETS);
+    for(let b=0;b<BUCKETS;b++){
+      const s=b*per, e=Math.min(len,s+per);
+      let best=0;
+      for(const ch of chans){
+        let sum=0,c=0;
+        for(let i=s;i<e;i+=2){sum+=ch[i]*ch[i];c++}
+        const rms=c?Math.sqrt(sum/c):0;
+        if(rms>best) best=rms;
+      }
+      peaks[b]=best;
+    }
+    let mx=0; for(const p of peaks) if(p>mx) mx=p;
+    if(mx>0) for(let b=0;b<BUCKETS;b++) peaks[b]/=mx;
+    A.peaks=peaks;
+
+    const bucketSec=A.dur/BUCKETS;
+    const THRESH=0.055;
+    A.silence=[];
+    let runStart=-1;
+    for(let b=0;b<=BUCKETS;b++){
+      const quiet=b<BUCKETS&&peaks[b]<THRESH;
+      if(quiet&&runStart<0) runStart=b;
+      else if(!quiet&&runStart>=0){
+        const secs=(b-runStart)*bucketSec;
+        if(secs>=3) A.silence.push({at:runStart*bucketSec,secs:secs});
+        runStart=-1;
+      }
+    }
+    try{ctx.close()}catch(_){}
+
+    el("waveLbl").hidden=true;
+    const long=A.silence.filter(s=>s.secs>=10);
+    el("pMeta").innerHTML=
+      `<span class="chan${A.dual?" dual":""}">${A.channels>=2?(A.dual?"Dual-channel":"Stereo, one voice"):"Mono"}</span>`+
+      `<span>${long.length?long.length+" gap"+(long.length===1?"":"s")+" over 10s":"no long gaps"}</span>`;
+    drawWave();
+    /* Re-score, not just re-render: pace, dead air and length are computed
+       in score(), so a render alone would ignore the audio just decoded. */
+    if(S.scored) score();
+  };
+  rd.readAsArrayBuffer(f);
+}
+
+function drawWave(){
+  const cv=el("waveCv"), box=el("wave");
+  if(!cv||!box) return;
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=box.clientWidth||600, h=box.clientHeight||52;
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+  const g=cv.getContext("2d");
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  const css=getComputedStyle(document.documentElement);
+  const line=css.getPropertyValue("--line").trim()||"#d6dce0";
+  const accent=css.getPropertyValue("--accent").trim()||"#0e6e7d";
+  const flag=css.getPropertyValue("--flag").trim()||"#c2410c";
+
+  /* dead air first, behind the wave */
+  if(A.peaks&&A.dur>0){
+    g.fillStyle=flag; g.globalAlpha=.14;
+    for(const s of A.silence){
+      if(s.secs<10) continue;
+      g.fillRect((s.at/A.dur)*w,0,Math.max(2,(s.secs/A.dur)*w),h);
+    }
+    g.globalAlpha=1;
+  }
+  const mid=h/2;
+  if(!A.peaks){
+    g.strokeStyle=line; g.beginPath(); g.moveTo(0,mid); g.lineTo(w,mid); g.stroke();
+    return;
+  }
+  const n=A.peaks.length, bw=w/n;
+  g.fillStyle=accent;
+  for(let b=0;b<n;b++){
+    const amp=Math.max(0.02,A.peaks[b])*(h*0.45);
+    g.fillRect(b*bw,mid-amp,Math.max(0.7,bw*0.82),amp*2);
+  }
+}
+
+function tickPlayer(){
+  if(!A.el) return;
+  const t=A.el.currentTime||0;
+  el("pNow").textContent=fmtTime(t);
+  const pct=A.dur>0?Math.min(1,t/A.dur):0;
+  el("waveHead").style.left=(pct*100)+"%";
+  /* highlight the turn being spoken */
+  if(S.turns&&S.turns.length&&S.ctx&&S.ctx.hasTs){
+    let cur=-1;
+    for(const tn of S.turns){ if(tn.ts!=null&&tn.ts<=t+0.35) cur=tn.i; else if(tn.ts!=null) break }
+    if(cur!==A.litTurn){
+      if(A.litTurn!=null){const p=el("turn-"+A.litTurn);if(p)p.classList.remove("playing")}
+      const node=el("turn-"+cur);
+      if(node) node.classList.add("playing");
+      A.litTurn=cur;
+    }
+  }
+}
+function loopPlayer(){
+  tickPlayer();
+  if(A.el&&!A.el.paused) A.raf=requestAnimationFrame(loopPlayer);
+}
+
+function seekTo(sec,play){
+  if(!A.el||!A.el.src) return false;
+  A.el.currentTime=Math.max(0,Math.min(sec,(A.dur||sec)-0.05));
+  tickPlayer();
+  if(play!==false){const p=A.el.play();if(p&&p.catch)p.catch(()=>{})}
+  return true;
+}
+function audioReady(){return !!(A.el&&A.el.src)}
+
+el("btnAudio").onclick=()=>el("fAudio").click();
+el("fAudio").onchange=ev=>{
+  const f=ev.target.files&&ev.target.files[0];
+  ev.target.value="";
+  if(!f) return;
+  loadRecording(f);
+  showMsg("ok","<b>"+esc(f.name)+"</b> loaded for listening. Click any transcript line or quoted line to "+
+    "jump to that moment. Scoring still needs the transcript — the recording is for judging tone.");
+};
+el("pPlay").onclick=()=>{
+  if(!audioReady()) return;
+  if(A.el.paused){const p=A.el.play();if(p&&p.catch)p.catch(()=>{})} else A.el.pause();
+};
+el("pBack").onclick=()=>{if(audioReady()) seekTo((A.el.currentTime||0)-5,false)};
+el("pClose").onclick=()=>{
+  if(A.el){A.el.pause();A.el.removeAttribute("src");A.el.load()}
+  if(A.url){try{URL.revokeObjectURL(A.url)}catch(e){}A.url=null}
+  A.peaks=null;A.silence=[];A.dur=0;A.channels=0;A.dual=false;
+  if(A.litTurn!=null){const p=el("turn-"+A.litTurn);if(p)p.classList.remove("playing");A.litTurn=null}
+  el("player").hidden=true;
+  document.body.classList.remove("has-audio");
+  S.mismatch=null;
+  /* Re-score so the measurements go back to the transcript's own timestamps
+     instead of stranding numbers taken from audio that is no longer loaded. */
+  if(S.scored) score(); else render();
+};
+el("pSpeeds").onclick=ev=>{
+  const b=ev.target.closest("button[data-rate]"); if(!b) return;
+  el("pSpeeds").querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  if(A.el) A.el.playbackRate=parseFloat(b.dataset.rate);
+};
+el("wave").onclick=ev=>{
+  if(!audioReady()||!A.dur) return;
+  const r=el("wave").getBoundingClientRect();
+  seekTo(((ev.clientX-r.left)/r.width)*A.dur,false);
+};
+document.addEventListener("keydown",ev=>{
+  if(ev.code!=="Space"||!audioReady()) return;
+  const t=ev.target;
+  if(t&&/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName)) return;
+  ev.preventDefault();
+  if(A.el.paused){const p=A.el.play();if(p&&p.catch)p.catch(()=>{})} else A.el.pause();
+});
+let waveRT=null;
+window.addEventListener("resize",()=>{clearTimeout(waveRT);waveRT=setTimeout(drawWave,120)});
 
 function handleFile(f){
   if(!f) return;
   showMsg("","");
+  /* An audio file is a recording to listen to, not a transcript to score. */
   if(AV_EXT.test(f.name)||/^(audio|video)\//.test(f.type||"")){
-    rejectRecording(f.name,"a recording");
+    loadRecording(f);
+    showMsg("ok","<b>"+esc(f.name)+"</b> loaded for listening, not scoring — a browser can’t turn speech "+
+      "into text reliably. Paste or open the transcript to get a score; the recording is then wired to it "+
+      "so you can hear any line you're judging.");
     return;
   }
   if(!TEXT_EXT.test(f.name)&&!/^text\//.test(f.type||"")){
@@ -1930,7 +2341,14 @@ function handleFile(f){
   rb.onerror=()=>showMsg("err","Couldn’t read that file.");
   rb.onload=()=>{
     const kind=sniffBinary(rb.result);
-    if(kind){rejectRecording(f.name,kind);return}
+    if(kind&&kind.audio){
+      /* A recording renamed to .txt. Do the useful thing rather than scold. */
+      loadRecording(f);
+      showMsg("ok","<b>"+esc(f.name)+"</b> is actually "+kind.name+" despite the file name, so it’s "+
+        "loaded for listening rather than scored. Add the transcript to get a score.");
+      return;
+    }
+    if(kind){rejectFile(f.name,kind.name);return}
     readTranscriptFile(f);
   };
   rb.readAsArrayBuffer(f.slice(0,8192));
