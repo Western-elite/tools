@@ -1,0 +1,1923 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Rule-based scoring for Western Elite WOW call reviews. Transcripts stay in your browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230e6e7d'/%3E%3Ctext x='16' y='22' font-family='Archivo,Arial,sans-serif' font-size='15' font-weight='700' fill='%23fff' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
+<style>
+  html{-webkit-text-size-adjust:100%}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>WOW Call Scorecard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f6f7f8;
+  --surface:#ffffff;
+  --surface-2:#eef1f3;
+  --line:#d6dce0;
+  --line-soft:#e5eaed;
+  --ink:#1b2227;
+  --ink-2:#4a565e;
+  --ink-3:#77848c;
+  --accent:#0e6e7d;
+  --accent-soft:#e2f0f2;
+  --accent-ink:#0a5460;
+  --earned:#2e7d4f;
+  --earned-soft:#e4f0e9;
+  --missed:#b03a2e;
+  --missed-soft:#f8e6e3;
+  --flag:#c2410c;
+  --flag-soft:#fbe9e0;
+  --wow:#a8761f;
+  --wow-soft:#f7eeda;
+  --judge:#5d6b8a;
+  --judge-soft:#e9ecf4;
+  --radius:6px;
+  --shadow:0 1px 2px rgba(27,34,39,.06), 0 4px 12px rgba(27,34,39,.04);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#14181b;
+    --surface:#1b2126;
+    --surface-2:#232b31;
+    --line:#333d45;
+    --line-soft:#283137;
+    --ink:#e8edf0;
+    --ink-2:#a9b6bf;
+    --ink-3:#7d8b95;
+    --accent:#3fb0c2;
+    --accent-soft:#12333a;
+    --accent-ink:#7fd0dd;
+    --earned:#5cb682;
+    --earned-soft:#14301f;
+    --missed:#e0705f;
+    --missed-soft:#341814;
+    --flag:#f08a4b;
+    --flag-soft:#35190d;
+    --wow:#d4a44a;
+    --wow-soft:#332711;
+    --judge:#9aa8c8;
+    --judge-soft:#1e2432;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#14181b;
+  --surface:#1b2126;
+  --surface-2:#232b31;
+  --line:#333d45;
+  --line-soft:#283137;
+  --ink:#e8edf0;
+  --ink-2:#a9b6bf;
+  --ink-3:#7d8b95;
+  --accent:#3fb0c2;
+  --accent-soft:#12333a;
+  --accent-ink:#7fd0dd;
+  --earned:#5cb682;
+  --earned-soft:#14301f;
+  --missed:#e0705f;
+  --missed-soft:#341814;
+  --flag:#f08a4b;
+  --flag-soft:#35190d;
+  --wow:#d4a44a;
+  --wow-soft:#332711;
+  --judge:#9aa8c8;
+  --judge-soft:#1e2432;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--ground);color:var(--ink);
+  font-family:"Source Sans 3","Source Sans Pro",system-ui,-apple-system,sans-serif;
+  font-size:15px;line-height:1.5;
+}
+h1,h2,h3,h4{font-family:Archivo,"Source Sans 3",system-ui,sans-serif;margin:0;text-wrap:balance}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.tnum{font-variant-numeric:tabular-nums}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- masthead ---------- */
+.masthead{
+  background:var(--surface);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:30;
+}
+.mast-inner{
+  max-width:1500px;margin:0 auto;padding:14px 22px;
+  display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+}
+.brandmark{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brandmark .eyebrow{
+  font-family:Archivo,sans-serif;font-size:10px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.brandmark h1{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.mast-spacer{flex:1 1 40px}
+
+.tally{display:flex;align-items:stretch;gap:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+.tally-cell{padding:7px 15px;display:flex;flex-direction:column;gap:1px;min-width:74px;border-right:1px solid var(--line-soft)}
+.tally-cell:last-child{border-right:0}
+.tally-cell .k{font-size:9.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);font-family:Archivo,sans-serif;white-space:nowrap}
+.tally-cell .v{font-family:Archivo,sans-serif;font-size:20px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.tally-cell .v small{font-size:12px;font-weight:600;color:var(--ink-3)}
+.tally-cell.is-flag .v{color:var(--flag)}
+.tally-cell.is-pending .v{color:var(--judge)}
+
+.verdict{
+  display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:var(--radius);
+  font-family:Archivo,sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;
+  border:1px solid transparent;white-space:nowrap;
+}
+.verdict.wow{background:var(--wow-soft);color:var(--wow);border-color:var(--wow)}
+.verdict.no{background:var(--surface-2);color:var(--ink-3);border-color:var(--line)}
+.verdict.pend{background:var(--judge-soft);color:var(--judge);border-color:var(--judge)}
+
+.btn{
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  padding:7px 14px;border-radius:var(--radius);font-weight:600;font-size:13.5px;
+  display:inline-flex;align-items:center;gap:6px;transition:background .12s,border-color .12s;
+}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+:root[data-theme="dark"] .btn.primary,
+:root:not([data-theme="light"]) .btn.primary{color:#08272c}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .btn.primary{color:#fff}}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1500px;margin:0 auto;padding:20px 22px 70px}
+.cols{display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:1080px){.cols{grid-template-columns:minmax(0,1fr)}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel-head{
+  padding:12px 16px;border-bottom:1px solid var(--line-soft);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.panel-head h2{font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.panel-head .hint{font-size:12.5px;color:var(--ink-3);margin-left:auto}
+
+/* ---------- setup / intake ---------- */
+.intake{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:14px 16px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-family:Archivo,sans-serif}
+.field input,.field select,.field textarea{
+  font-family:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);
+  border-radius:4px;background:var(--ground);color:var(--ink);width:100%;
+}
+.field textarea{resize:vertical}
+
+.dropzone{
+  margin:0 16px 14px;border:1.5px dashed var(--line);border-radius:var(--radius);
+  padding:0;background:var(--ground);transition:border-color .12s,background .12s;
+}
+.dropzone.hot{border-color:var(--accent);background:var(--accent-soft)}
+.dropzone textarea{
+  width:100%;min-height:150px;border:0;background:transparent;color:var(--ink);
+  padding:12px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.65;resize:vertical;
+}
+.dropzone textarea:focus{outline:none}
+.zone-foot{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px 12px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--ink-3);
+}
+
+/* ---------- conditionals ---------- */
+.cond-row{display:flex;flex-wrap:wrap;gap:7px;padding:12px 16px;border-top:1px solid var(--line-soft)}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 8px;border-radius:100px;
+  border:1px solid var(--line);background:var(--ground);font-size:12.5px;font-weight:600;color:var(--ink-3);
+  transition:all .12s;
+}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--line);flex:0 0 auto}
+.chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.chip.on .dot{background:var(--accent)}
+.chip .auto{font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.62;font-family:Archivo,sans-serif}
+
+/* ---------- scorecard ---------- */
+.phase-band{
+  display:flex;align-items:baseline;gap:10px;margin:22px 0 9px;padding:0 2px;
+}
+.phase-band .num{
+  font-family:Archivo,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  color:var(--accent);background:var(--accent-soft);padding:3px 7px;border-radius:3px;text-transform:uppercase;
+}
+.phase-band .nm{font-family:Archivo,sans-serif;font-size:13px;font-weight:600;color:var(--ink-2)}
+.phase-band .rule{flex:1;height:1px;background:var(--line-soft)}
+
+.q{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  margin-bottom:9px;overflow:hidden;
+}
+.q.na{opacity:.5}
+.q-top{display:flex;gap:12px;padding:12px 14px;align-items:flex-start}
+.mark{
+  flex:0 0 auto;width:24px;height:24px;border-radius:5px;display:grid;place-items:center;
+  font-family:Archivo,sans-serif;font-weight:700;font-size:13px;border:1px solid transparent;margin-top:1px;
+}
+.mark.yes{background:var(--earned-soft);color:var(--earned);border-color:var(--earned)}
+.mark.no{background:var(--missed-soft);color:var(--missed);border-color:var(--missed)}
+.mark.judge{background:var(--judge-soft);color:var(--judge);border-color:var(--judge)}
+.mark.na{background:var(--surface-2);color:var(--ink-3);border-color:var(--line)}
+.q-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.q-text{font-size:14.5px;line-height:1.42;font-weight:600}
+.q-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tag{
+  font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  padding:2.5px 6px;border-radius:3px;background:var(--surface-2);color:var(--ink-3);white-space:nowrap;
+}
+.tag.judge{background:var(--judge-soft);color:var(--judge)}
+.tag.partial{background:var(--wow-soft);color:var(--wow)}
+.tag.over{background:var(--accent-soft);color:var(--accent-ink)}
+
+.subchecks{display:flex;flex-wrap:wrap;gap:5px}
+.sub{
+  font-size:12px;padding:3px 8px;border-radius:100px;border:1px solid var(--line-soft);
+  background:var(--ground);color:var(--ink-3);display:inline-flex;align-items:center;gap:5px;
+}
+.sub.hit{border-color:var(--earned);color:var(--earned);background:var(--earned-soft)}
+.sub.miss{border-color:var(--missed);color:var(--missed);background:var(--missed-soft)}
+
+.ev{
+  border-left:2px solid var(--line);padding:2px 0 2px 11px;display:flex;flex-direction:column;gap:4px;
+}
+.ev.hit{border-left-color:var(--earned)}
+.ev-line{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.6;color:var(--ink-2);
+  background:none;border:0;text-align:left;padding:0;display:block;width:100%;
+}
+.ev-line:hover{color:var(--accent)}
+.ev-line .ts{color:var(--ink-3);margin-right:7px}
+.ev-line .who{font-weight:500;color:var(--ink-3)}
+.ev-line mark{background:var(--accent-soft);color:var(--accent-ink);padding:0 2px;border-radius:2px}
+.ev-none{font-size:12.5px;color:var(--ink-3);font-style:italic}
+.why{font-size:12.5px;color:var(--ink-3);line-height:1.5}
+
+.q-actions{display:flex;gap:5px;flex-wrap:wrap;padding-top:2px}
+.toggle{
+  border:1px solid var(--line);background:var(--ground);color:var(--ink-3);
+  padding:3.5px 10px;border-radius:100px;font-size:12px;font-weight:600;
+}
+.toggle:hover{border-color:var(--ink-3);color:var(--ink)}
+.toggle.act-yes{background:var(--earned-soft);border-color:var(--earned);color:var(--earned)}
+.toggle.act-no{background:var(--missed-soft);border-color:var(--missed);color:var(--missed)}
+.toggle.act-na{background:var(--surface-2);border-color:var(--ink-3);color:var(--ink-2)}
+.toggle.act-auto{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+
+/* ---------- flags ---------- */
+.flag{
+  display:flex;gap:11px;padding:11px 14px;border-bottom:1px solid var(--line-soft);align-items:flex-start;
+}
+.flag:last-child{border-bottom:0}
+.flag-bar{flex:0 0 3px;align-self:stretch;background:var(--flag);border-radius:2px;min-height:26px}
+.flag-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.flag-name{font-weight:700;font-size:14px;color:var(--flag);font-family:Archivo,sans-serif}
+.flag-why{font-size:12.5px;color:var(--ink-2)}
+.clean{padding:22px 16px;text-align:center;color:var(--ink-3);font-size:13.5px}
+.clean strong{color:var(--earned);font-family:Archivo,sans-serif;display:block;font-size:15px;margin-bottom:3px}
+
+/* ---------- metrics ---------- */
+/* six metrics, three columns — two full rows, no orphan cell */
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line-soft)}
+@media (max-width:520px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.metric{background:var(--surface);padding:11px 13px;display:flex;flex-direction:column;gap:2px}
+.metric .k{font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.metric .v{font-family:Archivo,sans-serif;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.metric .v small{font-size:11.5px;color:var(--ink-3);font-weight:600}
+.metric .n{font-size:11.5px;color:var(--ink-3);line-height:1.35}
+.metric.warn .v{color:var(--flag)}
+.metric.good .v{color:var(--earned)}
+
+.bar{height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden;display:flex;margin-top:4px}
+.bar i{display:block;height:100%}
+.bar i.a{background:var(--accent)}
+.bar i.c{background:var(--line)}
+
+/* ---------- transcript ---------- */
+/* The transcript scrolls inside its own panel rather than sticking to the
+   viewport — a sticky panel with siblings after it covers them once it
+   offsets downward, which hid the history table. */
+.tscroll{max-height:62vh;min-height:260px;overflow-y:auto;padding:6px 0}
+@media (max-width:1080px){.tscroll{max-height:520px}}
+.turn{display:flex;gap:9px;padding:5px 15px;font-size:13px;line-height:1.55;scroll-margin-top:16px}
+.turn .ts{
+  flex:0 0 52px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);
+  padding-top:2px;font-variant-numeric:tabular-nums;
+}
+.turn .sp{
+  flex:0 0 62px;font-family:Archivo,sans-serif;font-size:10px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;padding-top:3px;
+}
+.turn.agent .sp{color:var(--accent)}
+.turn.cust .sp{color:var(--ink-3)}
+.turn .tx{flex:1;min-width:0;word-wrap:break-word}
+.turn.lit{background:var(--accent-soft);border-radius:4px}
+.turn.flagged{background:var(--flag-soft);border-radius:4px}
+.turn mark{background:transparent;color:inherit;font-weight:700;box-shadow:inset 0 -.45em 0 var(--accent-soft)}
+
+/* ---------- history ---------- */
+.htable{width:100%;border-collapse:collapse;font-size:13.5px}
+.htable th{
+  text-align:left;font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+.htable td{padding:8px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.htable tr:last-child td{border-bottom:0}
+.htable td.num{font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.pill{display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;font-family:Archivo,sans-serif}
+.pill.wow{background:var(--wow-soft);color:var(--wow)}
+.pill.notwow{background:var(--surface-2);color:var(--ink-3)}
+.pill.f{background:var(--flag-soft);color:var(--flag)}
+
+/* ---------- settings ---------- */
+dialog{
+  border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);
+  max-width:640px;width:calc(100% - 40px);padding:0;box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+dialog::backdrop{background:rgba(15,20,24,.55)}
+.dlg-head{padding:14px 18px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:12px}
+.dlg-head h3{font-size:15px;font-weight:700}
+.dlg-body{padding:16px 18px;display:flex;flex-direction:column;gap:16px;max-height:66vh;overflow-y:auto}
+.dlg-foot{padding:12px 18px;border-top:1px solid var(--line-soft);display:flex;gap:8px;justify-content:flex-end}
+.note{font-size:12.5px;color:var(--ink-3);line-height:1.5}
+
+.caveat{
+  margin:0;padding:11px 16px;background:var(--wow-soft);border-top:1px solid var(--line-soft);
+  font-size:12.5px;color:var(--ink-2);line-height:1.5;
+}
+.caveat b{color:var(--wow);font-family:Archivo,sans-serif;font-size:11px;letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="mast-inner">
+    <div class="brandmark">
+      <span class="eyebrow">Western Elite &middot; Customer Care</span>
+      <h1>WOW Call Scorecard</h1>
+    </div>
+    <div class="mast-spacer"></div>
+    <div class="tally" id="tally"></div>
+    <div id="verdictSlot"></div>
+    <button class="btn ghost" id="btnSettings" title="Phrases and thresholds">Settings</button>
+    <button class="btn" id="btnSave">Save scorecard</button>
+    <button class="btn primary" id="btnScore">Score call</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="cols">
+    <main>
+      <section class="panel" id="intakePanel">
+        <div class="panel-head">
+          <h2>Call under review</h2>
+          <span class="hint" id="parseHint">Paste a transcript below, or load the example</span>
+        </div>
+        <div class="intake">
+          <div class="field">
+            <label for="fAgent">Agent</label>
+            <input id="fAgent" type="text" placeholder="Agent name" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="fDate">Call date</label>
+            <input id="fDate" type="date">
+          </div>
+          <div class="field">
+            <label for="fPhase">Coaching phase</label>
+            <select id="fPhase">
+              <option value="1">1 &middot; Greeting</option>
+              <option value="2">2 &middot; Listening</option>
+              <option value="3">3 &middot; Questions</option>
+              <option value="4">4 &middot; Solutions</option>
+              <option value="5">5 &middot; Self-scoring</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fLang">Language</label>
+            <select id="fLang">
+              <option value="auto">Detect</option>
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fScorer">Scored by</label>
+            <input id="fScorer" type="text" placeholder="Supervisor / self" autocomplete="off">
+          </div>
+        </div>
+        <div class="dropzone" id="dz">
+          <label class="sr" for="fTranscript">Call transcript</label>
+          <textarea id="fTranscript" spellcheck="false" placeholder="[00:00:02] AGENT: Thank you for calling Western Elite, this is ...&#10;[00:00:08] CUSTOMER: Hi, I need to get a container out to a job site."></textarea>
+          <div class="zone-foot">
+            <button class="btn ghost" id="btnExStrong">Example: strong call</button>
+            <button class="btn ghost" id="btnExWeak">Example: weak call</button>
+            <button class="btn ghost" id="btnSwap" title="Flip which speaker is the agent">Swap speakers</button>
+            <button class="btn ghost" id="btnClear">Clear</button>
+            <span id="zoneStat" style="margin-left:auto"></span>
+          </div>
+        </div>
+        <div class="cond-row" id="condRow"></div>
+      </section>
+
+      <div id="scorecard"></div>
+    </main>
+
+    <aside>
+      <section class="panel" style="margin-bottom:22px">
+        <div class="panel-head"><h2>Red flags</h2><span class="hint" id="flagHint"></span></div>
+        <div id="flagList"></div>
+      </section>
+
+      <section class="panel" style="margin-bottom:22px">
+        <div class="panel-head"><h2>Call mechanics</h2><span class="hint">Inputs for your Phase 5 rating</span></div>
+        <div class="metrics" id="metrics"></div>
+        <p class="caveat" id="mechCaveat" hidden></p>
+      </section>
+
+      <section class="panel" style="margin-bottom:22px">
+        <div class="panel-head"><h2>Transcript</h2><span class="hint" id="tstat"></span></div>
+        <div class="tscroll" id="tview"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Scored history</h2>
+          <span class="hint" id="histHint">Saved in this browser</span>
+          <button class="btn ghost" id="btnCsv" style="padding:4px 9px;font-size:12.5px">Export CSV</button>
+          <button class="btn ghost" id="btnWipe" style="padding:4px 9px;font-size:12.5px">Clear</button>
+        </div>
+        <div id="histBody"></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<dialog id="dlgSettings">
+  <div class="dlg-head">
+    <h3>Phrases &amp; thresholds</h3>
+    <button class="btn ghost" style="margin-left:auto" id="dlgClose">Close</button>
+  </div>
+  <div class="dlg-body">
+    <div class="field">
+      <label for="sBenefits">Your benefit talking points</label>
+      <textarea id="sBenefits" rows="4" spellcheck="false" placeholder="One per line — same day service, we own our own trucks, no hidden fees..."></textarea>
+      <p class="note">Phase 3 asks whether the agent offered <em>our benefits</em>. The starter list below is generic hauling language. Replace it with the talking points your agents are actually trained on and detection gets sharper immediately.</p>
+    </div>
+    <div class="field">
+      <label for="sFlags">Additional red flag phrases</label>
+      <textarea id="sFlags" rows="4" spellcheck="false" placeholder="One per line — anything supervisors already listen for"></textarea>
+      <p class="note">Each line becomes its own flag. Plain phrases, not patterns.</p>
+    </div>
+    <div class="field">
+      <label for="sCompetitors">Competitors to listen for</label>
+      <textarea id="sCompetitors" rows="2" spellcheck="false" placeholder="One per line"></textarea>
+    </div>
+    <div class="field">
+      <label for="sTalk">Red-flag thresholds</label>
+      <div style="display:flex;gap:10px">
+        <label style="flex:1;font-size:12.5px;color:var(--ink-3)">Agent talk share over
+          <input id="sTalk" type="number" min="50" max="95" step="1" style="margin-top:4px"></label>
+        <label style="flex:1;font-size:12.5px;color:var(--ink-3)">Agent pace over (wpm)
+          <input id="sWpm" type="number" min="120" max="260" step="5" style="margin-top:4px"></label>
+      </div>
+      <p class="note">A full order restate pushes talk share up by design, so a good sales call often lands near 75%. Pace is estimated from timestamp gaps — treat it as directional, not a measurement.</p>
+    </div>
+    <div class="field">
+      <label for="sWow">WOW threshold</label>
+      <select id="sWow">
+        <option value="all">Every applicable question Yes, zero red flags (strict)</option>
+        <option value="90">90% or better, zero red flags</option>
+        <option value="80">80% or better, zero red flags</option>
+        <option value="80f">80% or better, red flags allowed</option>
+      </select>
+      <p class="note">Your program doesn't state a threshold, so this is a placeholder. Strict is the default reading of Phase 5 — a WOW call is the exemplar, not the average.</p>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="dlgReset">Restore defaults</button>
+    <button class="btn primary" id="dlgSave">Save settings</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   0. Text normalization — everything matches against ASCII-folded text
+   ===================================================================== */
+/* foldMapped folds text to plain lowercase ASCII AND records, for every
+   character of the result, which character of the original produced it.
+   fold() is defined from it so a match found in folded text can always
+   be pointed back at the original span. */
+function foldMapped(text){
+  let out="", map=[], prevSpace=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    let n=ch.normalize("NFD").replace(/[̀-ͯ]/g,"");
+    if(n==="¿"||n==="¡") n=" ";
+    else if(n==="‘"||n==="’") n="'";
+    else if(n==="“"||n==="”") n='"';
+    n=n.toLowerCase();
+    if(n==="") continue;
+    if(/^\s+$/.test(n)){
+      if(!prevSpace&&out.length){out+=" ";map.push(i);prevSpace=true}
+      continue;
+    }
+    for(const c of n){out+=c;map.push(i)}
+    prevSpace=false;
+  }
+  while(out.endsWith(" ")){out=out.slice(0,-1);map.pop()}
+  return {folded:out,map:map};
+}
+function fold(s){return foldMapped(String(s)).folded}
+
+/* =====================================================================
+   1. Phrase library — English + Spanish, folded at build time
+   ===================================================================== */
+const P = {
+  company:        ["western elite","westernelite","western elight","western lite"],
+  agentSelfId:    ["this is","my name is","speaking","you're speaking with","le habla","habla","mi nombre es","soy"],
+  askName:        ["who am i speaking with","who am i speaking to","may i ask who","can i get your name","could i get your name",
+                   "what's your name","whats your name","who do i have","may i have your name","and your name",
+                   "can i have your name","who's calling","whos calling","may i get your name",
+                   "con quien tengo el gusto","con quien hablo","me puede dar su nombre","cual es su nombre",
+                   "su nombre por favor","como se llama","de parte de quien","con quien tengo el placer"],
+  rapport:        ["how are you","how are you doing","how's your day","hows your day","how's it going","hows it going",
+                   "how's the weather","hope you're having","good to hear from you","welcome back","thanks for calling back",
+                   "how's the project","hows the project","how's everything","hows everything","hope your day",
+                   "como esta","como le va","como esta usted","como ha estado","que tal","espero que","gusto en saludarle",
+                   "buenos dias","buenas tardes","good morning","good afternoon"],
+  validate:       ["so you're looking for","so youre looking for","just to make sure i understand","let me make sure i","so you need",
+                   "what i'm hearing is","what im hearing is","so what you're saying","so what youre saying","okay so you want",
+                   "so if i understand","got it so","so you want","just so i'm clear","just so im clear","let me make sure i've got",
+                   "sounds like you need","so we're looking at","so were looking at","if i understand you",
+                   "entonces necesita","para confirmar","dejeme ver si entendi","dejame ver si entendi","o sea que",
+                   "entonces usted quiere","si entiendo bien","entonces quiere","o sea necesita","para estar seguro"],
+  restateCue:     ["let me repeat that back","let me read that back","so to confirm","just to confirm","let me confirm",
+                   "just to recap","let me recap","i'm going to read","im going to read","so i have you down for",
+                   "i have you down for","let me go over that","confirming that","to review your order","so that's",
+                   "le repito","le confirmo","confirmo","le voy a repetir","entonces tenemos","para repasar",
+                   "le leo la orden","asi que tenemos"],
+  closing:        ["would you like me to get that scheduled","can i get that on the schedule","shall i go ahead",
+                   "do you want me to set that up","should i book","can we get that delivered","would you like to move forward",
+                   "want me to get that","can i get you scheduled","do you want to go ahead","would you like to go ahead",
+                   "should i get that ordered","can i put that on the schedule","want me to lock that in","how does that sound",
+                   "would you like to book","do you want to schedule","can i schedule that","shall i schedule",
+                   "are you ready to","would that work for you","does that work for you","can i get that set up",
+                   "want me to include","want me to add","should i add","should i include","can i add that",
+                   "want me to throw in","do you want me to add","shall i add","want one of those",
+                   "quiere que le agregue","le agrego","quiere que incluya","se lo agrego",
+                   "le interesa","le sirve","que le parece","lo quiere","se lo agendo","are you interested",
+                   "quiere que lo programe","le agendo","quiere que se lo mande","lo dejamos programado","le parece bien",
+                   "quiere seguir adelante","le programo","quiere que lo agende","se lo puedo agendar","asi lo dejamos"],
+  trailClose:     ["what would it take","anything holding you back","if i could","when would be a good time",
+                   "what day works","what day would work","when were you thinking","when do you need it",
+                   "would tomorrow work","would monday work","is there anything else keeping","what's holding",
+                   "whats holding","how about","if we could get","would it help if","let me see what i can do",
+                   "que se necesita","cuando le gustaria","que dia le funciona","cuando lo necesita",
+                   "le funciona mañana","le funciona manana","hay algo mas que","le sirve si"],
+  storage:        ["storage container","storage box","storage unit","storage bin","conex","connex","job box","jobsite box",
+                   "storage roll off","storage rolloff","secure storage","lockable container","storage can",
+                   "contenedor de almacenamiento","contenedor de almacenaje","caja de almacenaje","bodega movil","bodega portatil"],
+  finalTrigger:   ["final pickup","final pick up","final pick-up","last pickup","last pick up","final haul","final removal",
+                   "we're done","were done","we're finished","were finished","finished the job","job is done","job's done",
+                   "jobs done","wrapping up","all done with","take it for good","permanent removal","pull it for good",
+                   "ultima recogida","ultimo viaje","recogida final","ya terminamos","terminamos el trabajo","es el ultimo",
+                   "ya acabamos","retiro final"],
+  nextProject:    ["next project","next job","anything else coming up","any other jobs","what's next","whats next",
+                   "when's your next","whens your next","got anything else","anything coming up","other projects",
+                   "keep us in mind","next one","future projects","working on anything else","anything on the horizon",
+                   "more work coming","proximo proyecto","proximo trabajo","otro trabajo","algo mas que venga",
+                   "tiene otro proyecto","siguiente trabajo","nos tenga en cuenta","va a necesitar otro"],
+  siteContact:    ["site contact","contact on site","contact on the site","who's the contact","whos the contact",
+                   "is the contact the same","same contact","who should the driver","who will be on site","wholl be on site",
+                   "who'll be on site","who do we call when","point of contact","who's meeting the driver","whos meeting the driver",
+                   "best number for the site","contact number for the site","who's on site","whos on site",
+                   "contacto en el sitio","contacto en la obra","quien va a estar","a quien le llama el chofer",
+                   "mismo contacto","numero del sitio","quien recibe","quien esta en la obra"],
+  thanks:         ["thank you","thanks","appreciate it","appreciate your","thank you so much","thanks so much",
+                   "gracias","muchas gracias","le agradezco","mil gracias","muy amable"],
+  confirmText:    ["confirmation text","text you a confirmation","send you a text","text message confirmation","shoot you a text",
+                   "send a text","text you the confirmation","text confirmation","send that to you by text","text you when",
+                   "texto de confirmacion","le mando un texto","mensaje de texto","le envio un texto","le manda un mensaje"],
+  priceTalk:      ["how much","price","pricing","quote","cost","costs","rate","rates","charge","how much is","what do you charge",
+                   "ballpark","estimate","total","fee","cuanto cuesta","cuanto es","precio","precios","cotizacion","tarifa",
+                   "cuanto seria","cuanto me sale"],
+  delivery:       ["delivery","deliver","drop off","dropoff","drop it off","bring one out","set one out","new container",
+                   "get one out there","entrega","entregar","dejar uno","llevar uno","mandar uno"],
+  newSite:        ["new site","new job site","new jobsite","first time","new account","new customer","haven't used",
+                   "havent used","never used","new address","new location","first order","brand new",
+                   "sitio nuevo","obra nueva","primera vez","cuenta nueva","cliente nuevo","nunca hemos usado","direccion nueva"],
+  benefitsDefault:["same day","next day","same-day","next-day","on time","on-time","locally owned","family owned","family-owned",
+                   "no hidden fees","flat rate","flat-rate","all included","included in the price","our own trucks","our own drivers",
+                   "our own landfill","we recycle","recycling","licensed","insured","six days a week","6 days a week","saturday",
+                   "saturdays","24 hour","24-hour","fastest","most reliable","been around","years in business","best price",
+                   "we handle everything","one call","no extra charge","free swap","we take care of",
+                   "mismo dia","siguiente dia","a tiempo","negocio familiar","sin cargos escondidos","precio fijo",
+                   "todo incluido","nuestros propios camiones","reciclamos","con licencia","asegurados","seis dias",
+                   "los sabados","el mas rapido","sin cargo extra"],
+  /* order attributes for the full-restate detector */
+  attrSize:       ["10 yard","20 yard","30 yard","40 yard","10 yarder","20 yarder","30 yarder","40 yarder","10 yd","20 yd","30 yd",
+                   "40 yard","yard container","yard box","yard bin","roll off","roll-off","rolloff","dumpster","container","the box",
+                   "the can","yarda","contenedor","caja"],
+  attrService:    ["delivery","deliver","pickup","pick up","pick-up","swap","exchange","haul","dump and return","empty and return",
+                   "final","service","entrega","recoger","recogida","cambio","vaciar"],
+  attrDate:       ["monday","tuesday","wednesday","thursday","friday","saturday","sunday","tomorrow","today","this afternoon",
+                   "this morning","next week","january","february","march","april","may","june","july","august","september",
+                   "october","november","december","lunes","martes","miercoles","jueves","viernes","sabado","domingo",
+                   "mañana","manana","hoy","la semana que viene","en la tarde","en la mañana"],
+  attrMaterial:   ["construction debris","c and d","c&d","green waste","yard waste","dirt","concrete","asphalt","roofing","shingles",
+                   "trash","garbage","household","demo","demolition","mixed load","clean load","escombro","basura","tierra",
+                   "concreto","techo","demolicion"],
+  attrAddress:    ["address","street","avenue","road","boulevard","drive","lane","court","highway","suite","unit","cross street",
+                   "site address","direccion","calle","avenida","carretera","numero"],
+  /* --- red flag phrase sets --- */
+  flagManager:    ["speak to a manager","talk to a manager","speak to your manager","talk to your manager","a supervisor",
+                   "your supervisor","speak to a supervisor","talk to a supervisor","your boss","the owner","someone above you",
+                   "someone else","escalate this","who's your manager","whos your manager","let me talk to someone",
+                   "hablar con un gerente","hablar con el gerente","su supervisor","hablar con su supervisor","el dueño",
+                   "el dueno","alguien mas","su jefe"],
+  flagChurn:      ["cancel my service","cancel the service","cancel my account","close my account","cancel everything",
+                   "take my business elsewhere","take our business elsewhere","go somewhere else","going somewhere else",
+                   "find another company","switch to","done with you guys","done with western elite","never using you again",
+                   "last time i use","stop service","terminate","cancelar mi servicio","cancelar el servicio","cancelar la cuenta",
+                   "me voy con otro","buscar otra compania","otra compania","ya no quiero el servicio","es la ultima vez"],
+  flagGuess:      ["i think it's about","i think its about","probably around","somewhere around","i'm not sure but","im not sure but",
+                   "should be about","should be around","maybe like","i wanna say","i want to say","give or take","roughly around",
+                   "i'd guess","id guess","i think it's","i think its","don't quote me","dont quote me","off the top of my head",
+                   "creo que como","mas o menos como","no estoy seguro pero","como unos","creo que es","tal vez como",
+                   "no me haga caso pero"],
+  flagPromise:    ["i guarantee","i can guarantee","i promise","i promise you","100 percent","100%","absolutely will be there",
+                   "definitely will be there","definitely be there","no question we'll","guaranteed to be","you have my word",
+                   "for sure be there","i'll make sure it's there by","ill make sure its there by",
+                   "le garantizo","garantizado","le prometo","se lo prometo","seguro llega","cien por ciento","le doy mi palabra"],
+  flagBlame:      ["dispatch didn't","dispatch never","dispatch messed","the drivers never","the driver didn't","the driver never",
+                   "that department","they always mess","they never do","not my department","that's not my job","thats not my job",
+                   "i just work here","nobody told me","they didn't tell me","they didnt tell me","the office never",
+                   "sales always","billing never","el chofer nunca","despacho no","no es mi departamento","no es mi trabajo",
+                   "nadie me dijo","ellos nunca","la oficina nunca"],
+  flagDismiss:    ["that's not what you said","thats not what you said","like i said","as i told you","as i said",
+                   "there's nothing i can do","theres nothing i can do","nothing i can do about","you have to understand",
+                   "you need to understand","that's just how it is","thats just how it is","that's our policy","thats our policy",
+                   "i already told you","calm down","there's no way","theres no way","that's impossible","thats impossible",
+                   "como le dije","ya le dije","no puedo hacer nada","no hay nada que pueda","es la politica",
+                   "asi es","tiene que entender","calmese"],
+  flagUpset:      ["this is ridiculous","this is unacceptable","unacceptable","this is the third time","third time i've called",
+                   "third time ive called","second time i've called","second time ive called","i've called twice","ive called twice",
+                   "i'm frustrated","im frustrated","this is frustrating","fed up","sick of this","waste of my time",
+                   "nobody called me back","no one called me back","still waiting","been waiting all day","this is a joke",
+                   "esto es ridiculo","es inaceptable","ya llame tres veces","ya llame dos veces","estoy frustrado",
+                   "estoy cansado de","perdida de tiempo","nadie me llamo","sigo esperando","es una broma"],
+  flagRecover:    ["i'm sorry","im sorry","i apologize","let me fix","let me make this right","let me take care of",
+                   "i'll take care of","ill take care of","that shouldn't have","that shouldnt have","you're right",
+                   "youre right","i understand your frustration","let me get this handled","i'll own that","ill own that",
+                   "lo siento","disculpe","mis disculpas","permitame arreglarlo","lo voy a resolver","tiene razon",
+                   "entiendo su frustracion","yo me encargo"],
+  flagProfanity:  ["fuck","fucking","shit","bullshit","goddamn","god damn","asshole","dumbass","bastard","piss off","pissed off",
+                   "chinga","pinche","cabron","mierda","pendejo","joder","carajo"],
+  flagHoldNoAsk:  ["hold on","one moment","just a second","hang on","give me a sec","bear with me",
+                   "un momento","espereme","aguante","deme un segundo"],
+  flagHoldAsk:    ["may i place you on hold","can i place you on hold","do you mind holding","is it okay if i put you on hold",
+                   "would you mind holding","can i put you on a brief hold","may i put you on hold","okay to hold",
+                   "puedo ponerlo en espera","le puedo poner en espera","me permite un momento","esta bien si lo dejo en espera"],
+  flagIdk:        ["i don't know","i dont know","no idea","not sure","i have no clue","beats me",
+                   "no se","no tengo idea","no estoy seguro","ni idea"],
+  flagIdkRescue:  ["let me find out","let me check","let me look","i'll find out","ill find out","let me ask","i'll check",
+                   "ill check","let me get you an answer","i'll get back to you","ill get back to you","let me confirm",
+                   "voy a averiguar","dejeme revisar","voy a checar","le averiguo","dejeme preguntar","le confirmo"],
+  resolveConfirm: ["anything else i can","anything else for you","is there anything else","did that answer","does that take care",
+                   "are you all set","you're all set","youre all set","we're all set","that's all set","thats all set",
+                   "you should be good","all taken care of","have you covered","is that everything",
+                   "algo mas en que","hay algo mas","quedo resuelto","con eso queda","ya quedo","esta todo bien",
+                   "le sirve asi","es todo"]
+};
+/* fold every phrase once */
+for(const k in P) P[k]=P[k].map(fold);
+
+/* =====================================================================
+   2. Transcript parsing
+   ===================================================================== */
+const AGENT_LABELS = ["agent","rep","representative","csr","operator","a","western elite","we","agente","representante"];
+const CUST_LABELS  = ["customer","caller","client","cust","c","customer 1","cliente","llamante"];
+
+function tsToSec(raw){
+  if(!raw) return null;
+  const p = raw.split(":").map(x=>parseFloat(x));
+  if(p.some(isNaN)) return null;
+  if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+  if(p.length===2) return p[0]*60+p[1];
+  return p[0];
+}
+function secToTs(s){
+  if(s==null||isNaN(s)) return "";
+  s=Math.max(0,Math.round(s));
+  const m=Math.floor(s/60), ss=s%60;
+  return m+":"+String(ss).padStart(2,"0");
+}
+
+/* Is this folded label a plausible speaker label rather than a phrase
+   that happens to be followed by a colon? */
+function knownLabel(l){
+  const test=list=>list.some(a=>a.length<=2?l===a:(l===a||l.startsWith(a+" ")||l.startsWith(a+"_")));
+  if(test(AGENT_LABELS)) return "agent";
+  if(test(CUST_LABELS))  return "cust";
+  return null;
+}
+
+function parseTranscript(raw){
+  const lines=String(raw).split(/\r?\n/).filter(l=>l.trim());
+  const reLine=/^\s*(?:[\[\(]?\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*[\]\)]?)?\s*([^:\n]{1,42}?)\s*:\s*(.*)$/;
+
+  /* pass 1 — count candidate labels so a mid-sentence colon doesn't
+     invent a speaker. A label counts if it recurs, or is a known role. */
+  const seen=new Map();
+  for(const ln of lines){
+    const m=ln.match(reLine);
+    if(!m||!m[2]) continue;
+    const k=fold(m[2]);
+    if(!k||/^https?$/.test(k)) continue;
+    seen.set(k,(seen.get(k)||0)+1);
+  }
+  const valid=new Set();
+  seen.forEach((n,k)=>{if(n>=2||knownLabel(k)) valid.add(k)});
+
+  /* pass 2 — build turns, folding unlabelled lines into the previous turn */
+  const turns=[]; let last=null;
+  for(const ln of lines){
+    const m=ln.match(reLine);
+    const k=m&&m[2]?fold(m[2]):"";
+    if(m&&k&&valid.has(k)){
+      turns.push({ts:tsToSec(m[1]),label:m[2].trim(),labelKey:k,text:m[3].trim()});
+      last=turns[turns.length-1];
+    } else if(last){
+      last.text=(last.text+" "+ln.trim()).trim();
+    } else {
+      turns.push({ts:null,label:"",labelKey:"",text:ln.trim()});
+      last=turns[turns.length-1];
+    }
+  }
+  return turns.filter(t=>t.text);
+}
+
+/* Decide which label is the agent. */
+function assignRoles(turns,swapped){
+  const labels=[...new Set(turns.map(t=>t.labelKey).filter(Boolean))];
+  let agentKeys=new Set(), custKeys=new Set(), how="labels";
+
+  const explicitA=labels.filter(l=>knownLabel(l)==="agent");
+  const explicitC=labels.filter(l=>knownLabel(l)==="cust");
+
+  if(explicitA.length||explicitC.length){
+    explicitA.forEach(l=>agentKeys.add(l));
+    explicitC.forEach(l=>custKeys.add(l));
+    labels.forEach(l=>{if(!agentKeys.has(l)&&!custKeys.has(l)) custKeys.add(l)});
+  } else if(labels.length){
+    /* heuristic: whoever says the company name first is the agent */
+    how="heuristic";
+    let best=null;
+    for(const t of turns){
+      if(P.company.some(c=>fold(t.text).includes(c))){best=t.labelKey;break}
+    }
+    if(!best){
+      /* fall back: first speaker is the agent on an inbound call */
+      best=turns[0].labelKey;
+      how="first-speaker";
+    }
+    agentKeys.add(best);
+    labels.forEach(l=>{if(l!==best) custKeys.add(l)});
+  } else {
+    how="none";
+  }
+  if(swapped){const t=agentKeys;agentKeys=custKeys;custKeys=t}
+  for(const t of turns){
+    t.role = agentKeys.has(t.labelKey) ? "agent" : (custKeys.has(t.labelKey) ? "cust" : "unknown");
+  }
+  return {how,agentLabels:[...agentKeys],custLabels:[...custKeys],labelCount:labels.length};
+}
+
+/* =====================================================================
+   3. Context building
+   ===================================================================== */
+function words(s){const m=fold(s).match(/[a-z0-9']+/g);return m?m.length:0}
+
+function buildContext(turns,langPref){
+  turns.forEach((t,i)=>{t.i=i;t.f=fold(t.text);t.w=words(t.text)});
+  const agent=turns.filter(t=>t.role==="agent");
+  const cust=turns.filter(t=>t.role==="cust");
+  const all=fold(turns.map(t=>t.text).join(" "));
+  const agentText=fold(agent.map(t=>t.text).join(" "));
+
+  /* language */
+  const esMarks=[" que "," para "," con "," una "," por "," esta "," pero "," muy "," bien "," senor "," usted "," gracias "," necesito "," puede "," donde "," cuando "];
+  const esHits=esMarks.reduce((n,m)=>n+(all.split(m).length-1),0);
+  const lang = langPref!=="auto" ? langPref : (esHits>=6 ? "es" : "en");
+
+  /* timing */
+  const withTs=turns.filter(t=>t.ts!=null);
+  const hasTs=withTs.length>=Math.max(3,Math.floor(turns.length*0.5));
+  let duration=null;
+  if(hasTs){
+    const lastT=withTs[withTs.length-1];
+    duration=lastT.ts + Math.max(2, lastT.w/2.6);
+  }
+
+  /* opening / closing windows */
+  const openTurns = hasTs ? turns.filter(t=>t.ts!=null&&t.ts<=45) : turns.slice(0,6);
+  const earlyTurns= hasTs ? turns.filter(t=>t.ts!=null&&t.ts<=110) : turns.slice(0,Math.max(6,Math.ceil(turns.length*0.35)));
+  const closeTurns= hasTs && duration ? turns.filter(t=>t.ts!=null&&t.ts>=duration-70) : turns.slice(-Math.max(4,Math.ceil(turns.length*0.2)));
+
+  return {turns,agent,cust,all,agentText,lang,hasTs,duration,openTurns,earlyTurns,closeTurns};
+}
+
+/* Whole-phrase search. A bare indexOf finds "no se" inside "no second"
+   and "like" inside "likely", so a match must begin and end on a word
+   boundary. A trailing plural is still a match (container/containers). */
+const SUFFIXES=["","s","es","'s"];
+function phraseIn(f,p){
+  if(!p) return -1;
+  let at=f.indexOf(p);
+  while(at>-1){
+    const before=at===0?" ":f[at-1];
+    if(!/[a-z0-9]/.test(before)){
+      for(const suf of SUFFIXES){
+        if(f.substr(at+p.length,suf.length)===suf){
+          const end=at+p.length+suf.length;
+          const after=end>=f.length?" ":f[end];
+          if(!/[a-z0-9]/.test(after)) return at;
+        }
+      }
+    }
+    at=f.indexOf(p,at+1);
+  }
+  return -1;
+}
+
+/* find phrases in a set of turns, restricted to a role */
+function findIn(turnList,phrases,role){
+  const hits=[];
+  for(const t of turnList){
+    if(role && t.role!==role) continue;
+    for(const p of phrases){
+      const at=phraseIn(t.f,p);
+      if(at>-1){hits.push({turn:t,phrase:p,at:at});break}
+    }
+  }
+  return hits;
+}
+function anyIn(turnList,phrases,role){return findIn(turnList,phrases,role).length>0}
+
+/* =====================================================================
+   4. Conditional triggers
+   ===================================================================== */
+const TRIGGERS=[
+  {id:"sales",  name:"Pricing / sales call",
+   detect:c=>findIn(c.turns,P.priceTalk)},
+  {id:"newsite",name:"New delivery to a new site",
+   detect:c=>{
+     const d=findIn(c.turns,P.delivery), n=findIn(c.turns,P.newSite);
+     return (d.length&&n.length)?[...n,...d].slice(0,2):[];
+   }},
+  {id:"final",  name:"Final pickup",
+   detect:c=>findIn(c.turns,P.finalTrigger)},
+  {id:"ordered",name:"Order placed or scheduled",
+   detect:c=>{
+     const cue=findIn(c.turns,[...P.restateCue,...P.closing],"agent");
+     const dat=findIn(c.turns,P.attrDate,"agent");
+     return (cue.length&&dat.length)?[cue[0],dat[0]]:[];
+   }}
+];
+
+/* =====================================================================
+   5. The 12 scorecard questions
+   ===================================================================== */
+const QUESTIONS=[
+{
+  id:"q1", phases:[1],
+  text:"Did the agent have a proper intro greeting? Speak slowly and clearly. Could the customer understand “Western Elite” and the agent’s name easily, did the agent ask for the customer’s name?",
+  kind:"auto",
+  run(c){
+    const co=findIn(c.openTurns,P.company,"agent");
+    const name=(()=>{
+      for(const t of c.openTurns){
+        if(t.role!=="agent") continue;
+        if(/\b(this is|my name is|le habla|mi nombre es|habla)\s+[a-z]/i.test(t.text)) return [{turn:t,phrase:"self-identified"}];
+        if(/^\s*[a-z]+\s+speaking\b/i.test(t.text) || /\b[a-z]+\s+speaking\b/i.test(t.text)) return [{turn:t,phrase:"speaking"}];
+      }
+      return [];
+    })();
+    const ask=findIn(c.openTurns,P.askName,"agent");
+    const subs=[
+      {label:"Company name clear",hit:co.length>0},
+      {label:"Agent gave their name",hit:name.length>0},
+      {label:"Asked customer's name",hit:ask.length>0}
+    ];
+    const ev=[...co,...name,...ask];
+    return {
+      hit: subs.every(s=>s.hit), subs, evidence:ev,
+      why: subs.filter(s=>!s.hit).length
+        ? "Missing from the first 45 seconds: "+subs.filter(s=>!s.hit).map(s=>s.label.toLowerCase()).join(", ")+"."
+        : "All three greeting elements present in the opening."
+    };
+  }
+},
+{
+  id:"q2", phases:[1,3],
+  text:"Did the agent ask a good intro question or say anything to build trust, establish a warm connection and set the tone for the call?",
+  kind:"judgment",
+  run(c){
+    const r=findIn(c.openTurns,P.rapport,"agent");
+    const q=c.openTurns.filter(t=>t.role==="agent"&&/\?/.test(t.text));
+    return {
+      hit:null, evidence:[...r,...q.slice(0,2).map(t=>({turn:t,phrase:null}))],
+      gate:r.length>0||q.length>0,
+      why:r.length
+        ? "Rapport language found in the opening. Whether it landed as warm is your call — the opening turns are above."
+        : (q.length ? "The agent asked a question early but nothing that reads as rapport-building. Read the opening and rate it."
+                    : "No rapport language and no opening question detected. Read the opening turns and rate it.")
+    };
+  }
+},
+{
+  id:"q3", phases:[2],
+  text:"Did the agent validate the customer’s request at the beginning of the call?",
+  kind:"auto",
+  run(c){
+    const v=findIn(c.earlyTurns,P.validate,"agent");
+    return {
+      hit:v.length>0, evidence:v,
+      why:v.length ? "Validation language in the first "+(c.hasTs?"110 seconds":"third of the call")+"."
+                   : "No restating or confirming language early in the call — the agent moved straight into the order."
+    };
+  }
+},
+{
+  id:"q4", phases:[2,4],
+  text:"Did the agent include a full restate of the order anytime throughout the call?",
+  kind:"auto",
+  run(c){
+    const classes=[
+      {k:"size/container",list:P.attrSize},
+      {k:"service type",list:P.attrService},
+      {k:"date/time",list:P.attrDate},
+      {k:"material",list:P.attrMaterial},
+      {k:"address/site",list:P.attrAddress}
+    ];
+    /* slide a 3-agent-turn window and look for >=3 attribute classes */
+    const ag=c.agent;
+    let best={n:0,found:[],turns:[]};
+    for(let i=0;i<ag.length;i++){
+      const win=ag.slice(i,i+3);
+      const txt=win.map(t=>t.f).join(" ");
+      if(words(txt)<8) continue;
+      const found=classes.filter(cl=>cl.list.some(p=>txt.includes(p))).map(cl=>cl.k);
+      if(found.length>best.n) best={n:found.length,found,turns:win};
+    }
+    const cue=findIn(c.agent,P.restateCue,"agent");
+    const hit=best.n>=3;
+    return {
+      hit, evidence:hit?best.turns.map(t=>({turn:t,phrase:null})):(cue.length?cue.slice(0,1):[]),
+      subs:classes.map(cl=>({label:cl.k,hit:best.found.includes(cl.k)})),
+      why:hit
+        ? "Found "+best.n+" order details recited together ("+best.found.join(", ")+")"+(cue.length?", with a restate cue.":".")
+        : "No stretch of the call recites 3 or more order details together. Best found was "+best.n+
+          (best.n?" ("+best.found.join(", ")+")":"")+"."
+    };
+  }
+},
+{
+  id:"q5", phases:[3], cond:"sales",
+  text:"On a pricing or sales call, did the agent ask discovery questions and offer our benefits?",
+  kind:"auto",
+  run(c,cfg){
+    const openers=/^(what|how|when|where|which|why|who|tell me|walk me|describe|que|como|cuando|donde|cual|por que|quien|cuantos|cuanta)/;
+    const disc=c.agent.filter(t=>{
+      if(!/\?/.test(t.text)) return false;
+      const segs=t.f.split(/[.?!]/).map(s=>s.trim()).filter(Boolean);
+      return segs.some(s=>openers.test(s));
+    });
+    const benefits=findIn(c.agent,cfg.benefits,"agent");
+    const hit=disc.length>=2&&benefits.length>0;
+    return {
+      hit, evidence:[...disc.slice(0,3).map(t=>({turn:t,phrase:null})),...benefits.slice(0,2)],
+      subs:[
+        {label:disc.length+" open discovery question"+(disc.length===1?"":"s")+" (need 2)",hit:disc.length>=2},
+        {label:benefits.length?"Benefits mentioned":"No benefits mentioned",hit:benefits.length>0}
+      ],
+      why:hit ? "Discovery and benefit language both present."
+              : (disc.length<2
+                  ? "Only "+disc.length+" open-ended discovery question"+(disc.length===1?"":"s")+" detected"+
+                    (benefits.length?", though benefits did come up.":", and no phrase from your benefits list came up.")
+                  : "Discovery was fine, but no phrase from your benefits list came up.")
+    };
+  }
+},
+{
+  id:"q6", phases:[3], cond:"sales",
+  text:"On a pricing or sales call, did the agent ask a closing question? Did the agent ask a secondary trail close?",
+  kind:"auto",
+  run(c){
+    const closes=findIn(c.agent,P.closing,"agent");
+    const trails=findIn(c.agent,P.trailClose,"agent");
+    const first=closes[0]||trails[0]||null;
+    const second=[...closes,...trails]
+      .filter(h=>first&&h.turn.i>first.turn.i)
+      .sort((a,b)=>a.turn.i-b.turn.i)[0]||null;
+    const hit=!!(first&&second);
+    return {
+      hit, evidence:[first,second].filter(Boolean),
+      subs:[
+        {label:"Closing question asked",hit:!!first},
+        {label:"Secondary trail close",hit:!!second}
+      ],
+      why:hit ? "Closed, then asked again later in the call."
+              : (first ? "Closed once and never re-asked. The trail close is the coachable gap here."
+                       : "No closing question detected anywhere in the call.")
+    };
+  }
+},
+{
+  id:"q7", phases:[3,4], cond:"newsite",
+  text:"If appropriate, did the agent offer a storage container on all new deliveries to new sites?",
+  kind:"auto",
+  run(c){
+    const s=findIn(c.agent,P.storage,"agent");
+    return {
+      hit:s.length>0, evidence:s,
+      why:s.length ? "Storage container offered."
+                   : "No storage container offer detected on what looks like a new-site delivery."
+    };
+  }
+},
+{
+  id:"q8", phases:[3,4], cond:"final",
+  text:"If the order was a FINAL pickup, did the agent ask the customer a follow-up question about the next project?",
+  kind:"auto",
+  run(c){
+    const n=findIn(c.agent,P.nextProject,"agent");
+    return {
+      hit:n.length>0, evidence:n,
+      why:n.length ? "Forward-looking question asked after the final pickup."
+                   : "Final pickup identified, but no question about the customer's next project."
+    };
+  }
+},
+{
+  id:"q9", phases:[3],
+  text:"Did the agent verify the site contact in Encore if different than the call?",
+  kind:"partial",
+  run(c){
+    const s=findIn(c.agent,P.siteContact,"agent");
+    return {
+      hit:s.length>0, evidence:s,
+      why:s.length ? "The agent asked about the site contact. Whether Encore was actually updated isn't audible — check the record."
+                   : "No site-contact question detected. Also confirm the Encore record separately."
+    };
+  }
+},
+{
+  id:"q10", phases:[4],
+  text:"Did the agent thank the customer at the end of the call?",
+  kind:"auto",
+  run(c){
+    const t=findIn(c.closeTurns,P.thanks,"agent");
+    return {
+      hit:t.length>0, evidence:t,
+      why:t.length ? "Thanked the customer while closing out."
+                   : "No thanks detected in the closing "+(c.hasTs?"70 seconds":"turns")+" of the call."
+    };
+  }
+},
+{
+  id:"q11", phases:[4], cond:"ordered",
+  text:"If appropriate, did the agent offer to send a confirmation text?",
+  kind:"auto",
+  run(c){
+    const t=findIn(c.agent,P.confirmText,"agent");
+    return {
+      hit:t.length>0, evidence:t,
+      why:t.length ? "Confirmation text offered."
+                   : "An order was placed but no confirmation text was offered."
+    };
+  }
+},
+{
+  id:"q12", phases:[5],
+  text:"How was the overall feeling of the call? Could I hear the agent’s smile? Did the customer have peace of mind? Did I speak slowly and clearly? Did I treat the customer like a VIP and make it easy for the customer?",
+  kind:"judgment",
+  run(c){
+    return {hit:null,evidence:[],
+      why:"This one is yours. The call mechanics panel gives you the measurable half — pace, talk share, dead air, interruptions — so you're rating tone, not guessing at numbers."};
+  }
+}
+];
+
+/* =====================================================================
+   6. Red flags
+   ===================================================================== */
+const FLAGS=[
+{id:"manager",name:"Customer asked for a manager",
+ run:c=>{const h=findIn(c.cust,P.flagManager,"cust");return h.length?{hits:h,why:"The customer asked to be escalated."}:null}},
+{id:"churn",name:"Cancellation or churn language",
+ run:c=>{const h=findIn(c.cust,P.flagChurn,"cust");return h.length?{hits:h,why:"The customer raised leaving or cancelling."}:null}},
+{id:"competitor",name:"Competitor named",
+ run:(c,cfg)=>{
+   if(!cfg.competitors.length) return null;
+   const h=findIn(c.turns,cfg.competitors);
+   return h.length?{hits:h,why:"A competitor came up in the call."}:null}},
+{id:"guess",name:"Agent guessed at a price or fact",
+ run:c=>{const h=findIn(c.agent,P.flagGuess,"agent");return h.length?{hits:h,why:"Hedging language on something the customer will act on."}:null}},
+{id:"promise",name:"Unauthorized guarantee",
+ run:c=>{const h=findIn(c.agent,P.flagPromise,"agent");return h.length?{hits:h,why:"The agent promised an outcome dispatch has to deliver."}:null}},
+{id:"blame",name:"Blamed another team",
+ run:c=>{const h=findIn(c.agent,P.flagBlame,"agent");return h.length?{hits:h,why:"Internal problems surfaced to the customer."}:null}},
+{id:"dismiss",name:"Dismissive language",
+ run:c=>{const h=findIn(c.agent,P.flagDismiss,"agent");return h.length?{hits:h,why:"Phrasing that reads as shutting the customer down."}:null}},
+{id:"unresolved",name:"Frustration left unaddressed",
+ run:c=>{
+   const up=findIn(c.cust,P.flagUpset,"cust");
+   if(!up.length) return null;
+   const after=c.agent.filter(t=>t.i>up[0].turn.i);
+   const rec=findIn(after,P.flagRecover,"agent");
+   return rec.length?null:{hits:up,why:"The customer voiced frustration and no recovery language followed."}}},
+{id:"profanity",name:"Profanity",
+ run:c=>{const h=findIn(c.turns,P.flagProfanity);return h.length?{hits:h,why:"Profanity in the call."}:null}},
+{id:"hold",name:"Placed on hold without asking",
+ run:c=>{
+   const h=findIn(c.agent,P.flagHoldNoAsk,"agent");
+   if(!h.length) return null;
+   if(anyIn(c.agent,P.flagHoldAsk,"agent")) return null;
+   return {hits:h,why:"The agent held the customer without asking permission first."}}},
+{id:"idk",name:"“I don’t know” with no path forward",
+ run:c=>{
+   const h=findIn(c.agent,P.flagIdk,"agent");
+   if(!h.length) return null;
+   const out=[];
+   for(const hit of h){
+     const nextTwo=c.agent.filter(t=>t.i>=hit.turn.i&&t.i<=hit.turn.i+2);
+     if(!anyIn(nextTwo,P.flagIdkRescue,"agent")) out.push(hit);
+   }
+   return out.length?{hits:out,why:"The agent said they didn't know and didn't offer to find out."}:null}},
+{id:"noname",name:"Customer's name never captured",
+ run:c=>{
+   if(anyIn(c.openTurns,P.askName,"agent")) return null;
+   if(anyIn(c.agent,P.askName,"agent")) return null;
+   return {hits:[],why:"No point in the call where the agent asked the customer's name."}}},
+{id:"noresolve",name:"Call ended without confirming resolution",
+ run:c=>{
+   if(anyIn(c.closeTurns,P.resolveConfirm,"agent")) return null;
+   return {hits:c.closeTurns.filter(t=>t.role==="agent").slice(-1).map(t=>({turn:t,phrase:null})),
+           why:"The agent never checked that the customer was set before closing."}}},
+{id:"dominate",name:"Agent dominated the call",
+ run:(c,cfg,m)=>m.talkShare!=null&&m.talkShare>cfg.talkMax
+   ?{hits:[],why:"The agent used "+m.talkShare+"% of the words, over your "+cfg.talkMax+"% line. Phase 2 is about listening."}:null},
+{id:"rushed",name:"Agent spoke too fast",
+ run:(c,cfg,m)=>m.wpm!=null&&m.wpm>cfg.wpmMax
+   ?{hits:[],why:"About "+m.wpm+" words per minute, over your "+cfg.wpmMax+" line. “Slowly and clearly” is the Phase 1 standard."}:null},
+{id:"deadair",name:"Long dead air",
+ run:(c,cfg,m)=>m.deadAir&&m.deadAir.length
+   ?{hits:m.deadAir.map(d=>({turn:d.turn,phrase:null})),
+     why:m.deadAir.length+" gap"+(m.deadAir.length===1?"":"s")+" over 10 seconds, longest "+m.deadAir[0].gap+"s."}:null},
+{id:"repeat",name:"Customer repeated themselves",
+ run:(c,cfg,m)=>m.repeats&&m.repeats.length
+   ?{hits:m.repeats.map(r=>({turn:r.turn,phrase:r.term})),
+     why:"The customer stated "+m.repeats.map(r=>"“"+r.term+"”").join(", ")+" three or more times."}:null}
+];
+
+/* =====================================================================
+   7. Mechanics
+   ===================================================================== */
+function computeMetrics(c){
+  const aw=c.agent.reduce((n,t)=>n+t.w,0);
+  const cw=c.cust.reduce((n,t)=>n+t.w,0);
+  const talkShare=(aw+cw)?Math.round(aw/(aw+cw)*100):null;
+
+  /* Agent pace, estimated. A start timestamp tells us when a turn began,
+     not when it ended, so only long turns are usable: on a 15+ word turn
+     spanning 5-60s the speaker was talking for most of that span. Short
+     turns are dropped — the gap there is mostly silence and would read as
+     impossibly fast. This is an estimate and the UI says so. */
+  let wpm=null, wpmTurns=0;
+  if(c.hasTs){
+    let secs=0,wds=0;
+    for(let i=0;i<c.turns.length;i++){
+      const t=c.turns[i];
+      if(t.role!=="agent"||t.ts==null||t.w<15) continue;
+      const nx=c.turns.slice(i+1).find(x=>x.ts!=null);
+      if(!nx) continue;
+      const span=nx.ts-t.ts;
+      if(span>=5&&span<=60){secs+=span;wds+=t.w;wpmTurns++}
+    }
+    if(wpmTurns>=2&&secs>15) wpm=Math.round(wds/(secs/60));
+  }
+
+  /* dead air: gap between end of one turn and start of the next */
+  const deadAir=[];
+  if(c.hasTs){
+    for(let i=0;i<c.turns.length-1;i++){
+      const t=c.turns[i], nx=c.turns[i+1];
+      if(t.ts==null||nx.ts==null) continue;
+      const spoken=t.w/2.6;
+      const gap=nx.ts-(t.ts+spoken);
+      if(gap>10) deadAir.push({turn:nx,gap:Math.round(gap)});
+    }
+    deadAir.sort((a,b)=>b.gap-a.gap);
+  }
+
+  /* interruptions: next turn starts before the current one plausibly ended */
+  let interruptions=0;
+  if(c.hasTs){
+    for(let i=0;i<c.turns.length-1;i++){
+      const t=c.turns[i], nx=c.turns[i+1];
+      if(t.ts==null||nx.ts==null||nx.role!=="agent"||t.role!=="cust") continue;
+      if(t.w>8 && nx.ts < t.ts + (t.w/2.6)*0.7) interruptions++;
+    }
+  }
+
+  /* customer repeating key facts */
+  const repeats=[];
+  const terms=new Map();
+  for(const t of c.cust){
+    const found=new Set();
+    const addr=t.f.match(/\b\d{2,6}\s+[a-z]+\b/g)||[];
+    const size=t.f.match(/\b(10|20|30|40)\s*(yard|yd)\b/g)||[];
+    const day =t.f.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|lunes|martes|miercoles|jueves|viernes|sabado)\b/g)||[];
+    [...addr,...size,...day].forEach(x=>found.add(x.trim()));
+    found.forEach(x=>{
+      const rec=terms.get(x)||{n:0,turn:t};
+      rec.n++; terms.set(x,rec);
+    });
+  }
+  terms.forEach((rec,term)=>{if(rec.n>=3) repeats.push({term,turn:rec.turn,n:rec.n})});
+
+  const fillers=(c.agentText.match(/\b(um+|uh+|er+|like|you know|i mean|este|o sea)\b/g)||[]).length;
+  const fillerRate=aw?Math.round(fillers/aw*1000)/10:null;
+
+  return {talkShare,wpm,wpmTurns,deadAir,interruptions,repeats,agentWords:aw,custWords:cw,fillerRate,
+          duration:c.duration,turnCount:c.turns.length};
+}
+
+/* =====================================================================
+   8. State
+   ===================================================================== */
+const DEFAULT_CFG={
+  benefits:P.benefitsDefault.slice(),
+  extraFlags:[],
+  competitors:[],
+  wow:"all",
+  talkMax:80,
+  wpmMax:195
+};
+const S={
+  turns:[], ctx:null, roles:null, metrics:null,
+  results:{}, flags:[], triggers:{}, trigEvidence:{},
+  overrides:{}, trigOverrides:{},
+  swapped:false, scored:false,
+  cfg:JSON.parse(JSON.stringify(DEFAULT_CFG)),
+  db:null, downloads:null, litTurns:new Set(), flaggedTurns:new Set()
+};
+
+const EX_STRONG=`[00:00:01] AGENT: Thank you for calling Western Elite, this is Marisol, who am I speaking with?
+[00:00:08] CUSTOMER: Hey, this is Dave over at Sierra Framing.
+[00:00:12] AGENT: Hi Dave, good to hear from you. How's that Reno project treating you?
+[00:00:18] CUSTOMER: Ah it's going. Busy. Listen, I need to get a box out to a new site we just opened up.
+[00:00:27] AGENT: Absolutely, I can help with that. So you're looking for a container delivered out to a brand new site, is that right?
+[00:00:36] CUSTOMER: Yeah, first time we've worked out there.
+[00:00:40] AGENT: Perfect. What kind of material are you putting in it?
+[00:00:45] CUSTOMER: Mostly construction debris, some scrap lumber, maybe a little drywall.
+[00:00:50] AGENT: Got it. And how long is the job running — are we talking a couple weeks or is this a longer build?
+[00:00:59] CUSTOMER: Probably a month, month and a half.
+[00:01:03] AGENT: Okay. For construction debris on a job that long I'd put you in a 30 yard. That gives you room so you're not paying for extra swaps. And because we run our own trucks out of Sparks, we can usually get you a swap same day if you call before ten.
+[00:01:24] CUSTOMER: How much is that gonna run me?
+[00:01:28] AGENT: The 30 yard for C and D is four ninety five, and that's a flat rate — no hidden fees, tonnage is included up to six tons.
+[00:01:39] CUSTOMER: Okay that's not bad.
+[00:01:42] AGENT: What's the site address?
+[00:01:44] CUSTOMER: It's 4820 Vista Ridge Road, off Pyramid.
+[00:01:48] AGENT: 4820 Vista Ridge. And when do you need it out there?
+[00:01:53] CUSTOMER: Thursday would be great.
+[00:01:56] AGENT: Thursday works. Can I get that on the schedule for you?
+[00:02:01] CUSTOMER: Yeah let's do it.
+[00:02:03] AGENT: Wonderful. And since this is a new site for you — a lot of our crews out that way add a storage container so tools aren't going back and forth every night. Want me to include one?
+[00:02:19] CUSTOMER: Oh. Yeah actually, that'd help. What's that run?
+[00:02:23] AGENT: One twenty five a month, and I can drop it the same trip as the roll-off so there's no second delivery fee.
+[00:02:33] CUSTOMER: Let's add it.
+[00:02:35] AGENT: You got it. Now who's going to be the contact on site? Is that you or somebody else out there?
+[00:02:44] CUSTOMER: That'll be my foreman, Luis. 775-555-0142.
+[00:02:48] AGENT: Luis at 775-555-0142, I'll put him on the order so the driver calls him. Let me read this back to you: one 30 yard roll-off for construction debris and one storage container, both delivered Thursday to 4820 Vista Ridge Road, flat rate four ninety five on the roll-off plus one twenty five a month on the storage, site contact Luis at 775-555-0142.
+[00:03:16] CUSTOMER: That's it.
+[00:03:18] AGENT: Beautiful. Can I text you a confirmation so you've got it in writing?
+[00:03:24] CUSTOMER: Yeah please, this number's fine.
+[00:03:27] AGENT: Sent. Is there anything else I can get squared away for you today?
+[00:03:33] CUSTOMER: Nope, that's everything. Appreciate it.
+[00:03:36] AGENT: My pleasure, Dave. Thank you for calling Western Elite, and good luck out there on Vista Ridge.`;
+
+const EX_WEAK=`[00:00:01] AGENT: Western Elite.
+[00:00:02] CUSTOMER: Uh, hi. I put in for a pickup on Monday and nobody ever came out.
+[00:00:09] AGENT: What's the address.
+[00:00:10] CUSTOMER: 1290 Glendale Ave. This is the third time I've called about this.
+[00:00:15] AGENT: I don't know why dispatch didn't get out there. The drivers never tell us anything.
+[00:00:22] CUSTOMER: Okay, well, when is it actually getting picked up? I've got a final inspection Friday.
+[00:00:28] AGENT: I think it's about a two day turnaround right now, so probably around Thursday. I guarantee somebody will be out there.
+[00:00:36] CUSTOMER: Thursday? That's unacceptable. Let me talk to a supervisor.
+[00:00:40] AGENT: Like I said, there's nothing I can do about the routing. That's our policy.
+[00:00:46] CUSTOMER: 1290 Glendale Ave. I've told you people this three times now. Monday, Monday, and now today.
+[00:00:52] AGENT: Hold on.
+[00:01:32] AGENT: Okay, you're on the list for Thursday.
+[00:01:35] CUSTOMER: Whatever. Fine.
+[00:01:36] AGENT: Yep. Bye.`;
+
+/* =====================================================================
+   9. Scoring
+   ===================================================================== */
+function score(){
+  const raw=el("fTranscript").value;
+  S.turns=parseTranscript(raw);
+  if(!S.turns.length){
+    S.scored=false; S.ctx=null; render();
+    el("parseHint").textContent="Nothing to score yet";
+    return;
+  }
+  S.roles=assignRoles(S.turns,S.swapped);
+  S.ctx=buildContext(S.turns,el("fLang").value);
+  S.metrics=computeMetrics(S.ctx);
+
+  const cfg={
+    benefits:S.cfg.benefits.length?S.cfg.benefits:P.benefitsDefault,
+    competitors:S.cfg.competitors,
+    extraFlags:S.cfg.extraFlags,
+    talkMax:S.cfg.talkMax,
+    wpmMax:S.cfg.wpmMax
+  };
+
+  /* triggers */
+  S.triggers={}; S.trigEvidence={};
+  for(const t of TRIGGERS){
+    const ev=t.detect(S.ctx)||[];
+    S.triggers[t.id]=ev.length>0;
+    S.trigEvidence[t.id]=ev;
+  }
+
+  /* questions */
+  S.results={};
+  for(const q of QUESTIONS) S.results[q.id]=q.run(S.ctx,cfg);
+
+  /* flags */
+  S.flags=[];
+  for(const f of FLAGS){
+    let r=null;
+    try{ r=f.run(S.ctx,cfg,S.metrics) }catch(e){ r=null }
+    if(r) S.flags.push({id:f.id,name:f.name,why:r.why,hits:r.hits||[]});
+  }
+  for(const phrase of cfg.extraFlags){
+    const p=fold(phrase);
+    if(!p) continue;
+    const h=findIn(S.ctx.turns,[p]);
+    if(h.length) S.flags.push({id:"custom:"+p,name:"“"+phrase+"”",why:"From your own watch list.",hits:h,custom:true});
+  }
+
+  S.scored=true;
+  render();
+}
+
+/* effective applicability & answer */
+function isApplicable(q){
+  if(!q.cond) return true;
+  const o=S.trigOverrides[q.cond];
+  if(o==="on") return true;
+  if(o==="off") return false;
+  return !!S.triggers[q.cond];
+}
+function answerOf(q){
+  const o=S.overrides[q.id];
+  if(o==="yes") return "yes";
+  if(o==="no")  return "no";
+  if(o==="na")  return "na";
+  const r=S.results[q.id];
+  if(!r) return "pending";
+  if(r.hit===true)  return "yes";
+  if(r.hit===false) return "no";
+  return "pending";
+}
+function totals(){
+  let earned=0,applicable=0,pending=0,na=0;
+  for(const q of QUESTIONS){
+    if(!isApplicable(q)||S.overrides[q.id]==="na"){na++;continue}
+    const a=answerOf(q);
+    if(a==="pending"){pending++;applicable++;continue}
+    applicable++;
+    if(a==="yes") earned++;
+  }
+  const flagCount=S.flags.length;
+  let wow=false;
+  const pct=applicable?earned/applicable*100:0;
+  if(pending===0){
+    if(S.cfg.wow==="all")      wow = earned===applicable && flagCount===0;
+    else if(S.cfg.wow==="90")  wow = pct>=90 && flagCount===0;
+    else if(S.cfg.wow==="80")  wow = pct>=80 && flagCount===0;
+    else if(S.cfg.wow==="80f") wow = pct>=80;
+  }
+  return {earned,applicable,pending,na,flagCount,pct:Math.round(pct),wow};
+}
+
+/* =====================================================================
+   10. Render
+   ===================================================================== */
+function el(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function hilite(text,phrase){
+  if(!phrase) return esc(text);
+  const {folded,map}=foldMapped(text);
+  const at=phraseIn(folded,phrase);
+  if(at<0||!map.length) return esc(text);
+  const start=map[at];
+  const lastIdx=Math.min(at+phrase.length-1,map.length-1);
+  const end=map[lastIdx]+1;
+  if(start==null||end==null||start>=end) return esc(text);
+  return esc(text.slice(0,start))+"<mark>"+esc(text.slice(start,end))+"</mark>"+esc(text.slice(end));
+}
+
+function renderTally(){
+  const t=totals();
+  el("tally").innerHTML=`
+    <div class="tally-cell"><span class="k">Score</span>
+      <span class="v">${t.earned}<small> / ${t.applicable}</small></span></div>
+    <div class="tally-cell${t.pending?" is-pending":""}"><span class="k">Awaiting you</span>
+      <span class="v">${t.pending}</span></div>
+    <div class="tally-cell"><span class="k">N/A</span>
+      <span class="v">${t.na}</span></div>
+    <div class="tally-cell${t.flagCount?" is-flag":""}"><span class="k">Red flags</span>
+      <span class="v">${t.flagCount}</span></div>`;
+  const v=el("verdictSlot");
+  if(!S.scored){v.innerHTML="";return}
+  if(t.pending) v.innerHTML=`<span class="verdict pend">${t.pending} to rate</span>`;
+  else if(t.wow) v.innerHTML=`<span class="verdict wow">WOW call</span>`;
+  else v.innerHTML=`<span class="verdict no">Not a WOW call</span>`;
+}
+
+function renderConditions(){
+  const row=el("condRow");
+  if(!S.scored){row.innerHTML='<span class="chip"><span class="dot"></span>Score a call to detect call type</span>';return}
+  row.innerHTML=TRIGGERS.map(t=>{
+    const o=S.trigOverrides[t.id];
+    const on=o==="on"?true:o==="off"?false:!!S.triggers[t.id];
+    const overridden=o&&((o==="on")!==!!S.triggers[t.id]);
+    return `<button class="chip${on?" on":""}" data-trig="${t.id}" title="Click to flip">
+      <span class="dot"></span>${esc(t.name)}
+      <span class="auto">${overridden?"you set":(S.triggers[t.id]?"detected":"not found")}</span>
+    </button>`;
+  }).join("");
+  row.querySelectorAll("[data-trig]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.trig;
+    const o=S.trigOverrides[id];
+    const cur=o==="on"?true:o==="off"?false:!!S.triggers[id];
+    S.trigOverrides[id]=cur?"off":"on";
+    render();
+  });
+}
+
+function evidenceHTML(r,q){
+  if(!r) return "";
+  const ev=(r.evidence||[]).filter(Boolean);
+  if(!ev.length){
+    return `<div class="ev-none">No matching line found.</div>`;
+  }
+  const seen=new Set();
+  const lines=ev.filter(h=>{
+    const k=h.turn?h.turn.i:-1;
+    if(seen.has(k)) return false; seen.add(k); return true;
+  }).slice(0,4).map(h=>{
+    const t=h.turn; if(!t) return "";
+    return `<button class="ev-line" data-goto="${t.i}">
+      <span class="ts mono">${t.ts!=null?secToTs(t.ts):"&mdash;"}</span><span class="who">${t.role==="agent"?"Agent":"Customer"}</span>
+      ${hilite(t.text,h.phrase)}</button>`;
+  }).join("");
+  const cls=(r.hit===true)?"ev hit":"ev";
+  return `<div class="${cls}">${lines}</div>`;
+}
+
+function renderScorecard(){
+  const host=el("scorecard");
+  if(!S.scored){
+    host.innerHTML=`<section class="panel" style="margin-top:22px"><div class="clean">
+      <strong>Nothing scored yet</strong>Load the example call or paste a transcript, then press Score call.</div></section>`;
+    return;
+  }
+  const phases=[
+    {n:"Phase 1",nm:"Mastering the proper greeting"},
+    {n:"Phase 2",nm:"Understanding needs &amp; active listening"},
+    {n:"Phase 3",nm:"Gathering information through good questions"},
+    {n:"Phase 4",nm:"Providing solutions &amp; confirming satisfaction"},
+    {n:"Phase 5",nm:"Self-identifying a Western Elite WOW call"}
+  ];
+  let html="";
+  phases.forEach((ph,idx)=>{
+    const pn=idx+1;
+    const qs=QUESTIONS.filter(q=>q.phases[0]===pn);
+    if(!qs.length) return;
+    html+=`<div class="phase-band"><span class="num">${ph.n}</span><span class="nm">${ph.nm}</span><span class="rule"></span></div>`;
+    for(const q of qs) html+=qCardHTML(q);
+  });
+  host.innerHTML=html;
+
+  host.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>gotoTurn(+b.dataset.goto));
+  host.querySelectorAll("[data-ov]").forEach(b=>b.onclick=()=>{
+    const [id,val]=b.dataset.ov.split("|");
+    if(val==="auto") delete S.overrides[id]; else S.overrides[id]=val;
+    render();
+  });
+}
+
+function qCardHTML(q){
+  const r=S.results[q.id];
+  const applicable=isApplicable(q);
+  const a=answerOf(q);
+  const overridden=!!S.overrides[q.id];
+  const naByCond=!applicable;
+
+  let markCls="na",markTxt="&ndash;";
+  if(naByCond||a==="na"){markCls="na";markTxt="&ndash;"}
+  else if(a==="yes"){markCls="yes";markTxt="&#10003;"}
+  else if(a==="no"){markCls="no";markTxt="&#10007;"}
+  else {markCls="judge";markTxt="?"}
+
+  const tags=[];
+  if(q.kind==="judgment") tags.push('<span class="tag judge">Your call</span>');
+  if(q.kind==="partial")  tags.push('<span class="tag partial">Partly audible</span>');
+  if(q.cond){
+    const tr=TRIGGERS.find(t=>t.id===q.cond);
+    tags.push(`<span class="tag">${applicable?"Applies":"N/A"} &middot; ${esc(tr?tr.name:q.cond)}</span>`);
+  }
+  if(overridden) tags.push('<span class="tag over">Overridden</span>');
+
+  let subs="";
+  if(r&&r.subs&&r.subs.length&&applicable){
+    subs=`<div class="subchecks">`+r.subs.map(s=>
+      `<span class="sub ${s.hit?"hit":"miss"}">${s.hit?"&#10003;":"&#10007;"} ${esc(s.label)}</span>`).join("")+`</div>`;
+  }
+
+  const body=naByCond
+    ? `<div class="why">Not applicable — ${esc((TRIGGERS.find(t=>t.id===q.cond)||{}).name||"trigger")} wasn't found in this call. Click the chip above to score it anyway.</div>`
+    : `${subs}${r&&r.why?`<div class="why">${r.why}</div>`:""}${evidenceHTML(r,q)}`;
+
+  const opts=[["yes","Yes"],["no","No"],["na","N/A"]];
+  const actions=`<div class="q-actions">`+
+    opts.map(([v,l])=>`<button class="toggle${S.overrides[q.id]===v?" act-"+v:""}" data-ov="${q.id}|${v}">${l}</button>`).join("")+
+    (overridden?`<button class="toggle act-auto" data-ov="${q.id}|auto">Back to detected</button>`:"")+
+    `</div>`;
+
+  return `<article class="q${naByCond?" na":""}">
+    <div class="q-top">
+      <div class="mark ${markCls}">${markTxt}</div>
+      <div class="q-body">
+        <div class="q-text">${esc(q.text)}</div>
+        ${tags.length?`<div class="q-meta">${tags.join("")}</div>`:""}
+        ${body}
+        ${actions}
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderFlags(){
+  const host=el("flagList");
+  el("flagHint").textContent=S.scored?(S.flags.length?S.flags.length+" found":"none"):"";
+  if(!S.scored){host.innerHTML=`<div class="clean">Score a call to check for red flags.</div>`;return}
+  if(!S.flags.length){
+    host.innerHTML=`<div class="clean"><strong>Clean call</strong>Nothing on the watch list came up.</div>`;
+    return;
+  }
+  host.innerHTML=S.flags.map(f=>{
+    const lines=(f.hits||[]).filter(h=>h&&h.turn).slice(0,2).map(h=>
+      `<button class="ev-line" data-goto="${h.turn.i}">
+        <span class="ts mono">${h.turn.ts!=null?secToTs(h.turn.ts):"&mdash;"}</span><span class="who">${h.turn.role==="agent"?"Agent":"Customer"}</span>
+        ${hilite(h.turn.text,h.phrase)}</button>`).join("");
+    return `<div class="flag">
+      <div class="flag-bar"></div>
+      <div class="flag-body">
+        <div class="flag-name">${esc(f.name)}</div>
+        <div class="flag-why">${esc(f.why)}</div>
+        ${lines?`<div class="ev">${lines}</div>`:""}
+      </div>
+    </div>`;
+  }).join("");
+  host.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>gotoTurn(+b.dataset.goto));
+}
+
+function renderMetrics(){
+  const host=el("metrics");
+  if(!S.scored){host.innerHTML=`<div class="metric" style="grid-column:1/-1"><span class="n">Score a call to see pace, talk share and dead air.</span></div>`;
+    el("mechCaveat").hidden=true; return}
+  const m=S.metrics;
+  const cells=[];
+  cells.push(`<div class="metric ${m.wpm==null?"":m.wpm>S.cfg.wpmMax?"warn":m.wpm>=115?"good":""}">
+    <span class="k">Agent pace, est.</span>
+    <span class="v">${m.wpm==null?"&mdash;":m.wpm}<small> wpm</small></span>
+    <span class="n">${m.wpm==null
+      ? (S.ctx.hasTs?"Not enough long turns":"Needs timestamps")
+      : (m.wpm>S.cfg.wpmMax?"Reads as rushed":m.wpm<115?"Very measured":"In a good band")+" &middot; "+m.wpmTurns+" turns"}</span></div>`);
+  cells.push(`<div class="metric ${m.talkShare==null?"":m.talkShare>S.cfg.talkMax?"warn":""}">
+    <span class="k">Agent talk share</span>
+    <span class="v">${m.talkShare==null?"&mdash;":m.talkShare+"<small>%</small>"}</span>
+    ${m.talkShare!=null?`<div class="bar"><i class="a" style="width:${m.talkShare}%"></i><i class="c" style="width:${100-m.talkShare}%"></i></div>`:""}
+    <span class="n">${m.agentWords} vs ${m.custWords} words</span></div>`);
+  cells.push(`<div class="metric ${m.deadAir.length?"warn":""}">
+    <span class="k">Dead air</span>
+    <span class="v">${S.ctx.hasTs?m.deadAir.length:"&mdash;"}</span>
+    <span class="n">${S.ctx.hasTs?(m.deadAir.length?"Longest "+m.deadAir[0].gap+"s":"None over 10s"):"Needs timestamps"}</span></div>`);
+  cells.push(`<div class="metric ${m.interruptions?"warn":""}">
+    <span class="k">Interruptions</span>
+    <span class="v">${S.ctx.hasTs?m.interruptions:"&mdash;"}</span>
+    <span class="n">${S.ctx.hasTs?"Agent over customer":"Needs timestamps"}</span></div>`);
+  cells.push(`<div class="metric">
+    <span class="k">Call length</span>
+    <span class="v">${m.duration?secToTs(m.duration):"&mdash;"}</span>
+    <span class="n">${m.turnCount} turns</span></div>`);
+  cells.push(`<div class="metric">
+    <span class="k">Filler rate</span>
+    <span class="v">${m.fillerRate==null?"&mdash;":m.fillerRate}<small>/100w</small></span>
+    <span class="n">um, uh, like, you know</span></div>`);
+  host.innerHTML=cells.join("");
+
+  const c=el("mechCaveat");
+  if(!S.ctx.hasTs){
+    c.hidden=false;
+    c.innerHTML="<b>No timestamps in this transcript</b>Pace, dead air and interruptions can't be measured without them. Everything else still scores.";
+  } else if(S.roles.how!=="labels"){
+    c.hidden=false;
+    c.innerHTML="<b>Speaker roles were guessed</b>"+
+      (S.roles.how==="heuristic"
+        ? "The agent was identified as whoever said “Western Elite” first. Use Swap speakers if that's backwards."
+        : "No speaker labels found, so the first speaker was treated as the agent. Use Swap speakers if that's backwards.");
+  } else c.hidden=true;
+}
+
+function renderTranscript(){
+  const host=el("tview");
+  if(!S.turns.length){
+    host.innerHTML=`<div class="clean">No transcript loaded.</div>`;
+    el("tstat").textContent="";
+    return;
+  }
+  S.litTurns=new Set(); S.flaggedTurns=new Set();
+  for(const q of QUESTIONS){
+    const r=S.results[q.id];
+    if(r&&r.hit===true) (r.evidence||[]).forEach(h=>h&&h.turn&&S.litTurns.add(h.turn.i));
+  }
+  S.flags.forEach(f=>(f.hits||[]).forEach(h=>h&&h.turn&&S.flaggedTurns.add(h.turn.i)));
+
+  host.innerHTML=S.turns.map(t=>{
+    const cls=t.role==="agent"?"agent":t.role==="cust"?"cust":"";
+    const extra=S.flaggedTurns.has(t.i)?" flagged":(S.litTurns.has(t.i)?" lit":"");
+    return `<div class="turn ${cls}${extra}" id="turn-${t.i}">
+      <span class="ts">${t.ts!=null?secToTs(t.ts):""}</span>
+      <span class="sp">${t.role==="agent"?"Agent":t.role==="cust"?"Customer":esc(t.label||"?")}</span>
+      <span class="tx">${esc(t.text)}</span></div>`;
+  }).join("");
+  el("tstat").textContent=(S.ctx?S.ctx.lang==="es"?"Spanish":"English":"")+" · "+S.turns.length+" turns";
+}
+
+function gotoTurn(i){
+  const n=el("turn-"+i);
+  if(!n) return;
+  n.scrollIntoView({behavior:"smooth",block:"center"});
+  n.style.transition="outline-color .9s";
+  n.style.outline="2px solid var(--accent)";
+  setTimeout(()=>{n.style.outlineColor="transparent"},900);
+  setTimeout(()=>{n.style.outline=""},1900);
+}
+
+function render(){
+  renderTally(); renderConditions(); renderScorecard();
+  renderFlags(); renderMetrics(); renderTranscript();
+  const n=parseTranscript(el("fTranscript").value).length;
+  el("zoneStat").textContent=n?n+" turns parsed":"";
+  el("parseHint").textContent=S.scored
+    ? "Click any quoted line to jump to it in the transcript"
+    : (n?"Ready to score":"Paste a transcript below, or load the example");
+  el("btnSave").disabled=!S.scored;
+}
+
+/* =====================================================================
+   11. Wiring
+   ===================================================================== */
+el("btnScore").onclick=score;
+function loadExample(which){
+  el("fTranscript").value = which==="weak" ? EX_WEAK : EX_STRONG;
+  el("fAgent").value = which==="weak" ? "Example \u2014 weak call" : "Example \u2014 strong call";
+  if(!el("fDate").value) el("fDate").value=new Date().toISOString().slice(0,10);
+  el("fLang").value="auto";
+  S.swapped=false; S.overrides={}; S.trigOverrides={};
+  score();
+}
+el("btnExStrong").onclick=()=>loadExample("strong");
+el("btnExWeak").onclick=()=>loadExample("weak");
+el("btnClear").onclick=()=>{
+  el("fTranscript").value="";
+  S.turns=[];S.ctx=null;S.scored=false;S.results={};S.flags=[];S.overrides={};S.trigOverrides={};
+  render();
+};
+el("btnSwap").onclick=()=>{S.swapped=!S.swapped; if(S.scored) score(); };
+el("fTranscript").addEventListener("input",()=>{
+  const n=parseTranscript(el("fTranscript").value).length;
+  el("zoneStat").textContent=n?n+" turns parsed":"";
+});
+el("fLang").onchange=()=>{if(S.scored) score()};
+
+/* drag & drop a transcript file */
+const dz=el("dz");
+["dragenter","dragover"].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add("hot")}));
+["dragleave","drop"].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove("hot")}));
+dz.addEventListener("drop",ev=>{
+  const f=ev.dataTransfer.files&&ev.dataTransfer.files[0];
+  if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{el("fTranscript").value=rd.result;score()};
+  rd.readAsText(f);
+});
+
+/* settings dialog */
+const dlg=el("dlgSettings");
+el("btnSettings").onclick=()=>{
+  el("sBenefits").value=S.cfg.benefits.join("\n");
+  el("sFlags").value=S.cfg.extraFlags.join("\n");
+  el("sCompetitors").value=S.cfg.competitors.join("\n");
+  el("sWow").value=S.cfg.wow;
+  el("sTalk").value=S.cfg.talkMax;
+  el("sWpm").value=S.cfg.wpmMax;
+  dlg.showModal();
+};
+el("dlgClose").onclick=()=>dlg.close();
+el("dlgReset").onclick=()=>{
+  el("sBenefits").value=DEFAULT_CFG.benefits.join("\n");
+  el("sFlags").value=""; el("sCompetitors").value=""; el("sWow").value="all";
+  el("sTalk").value=DEFAULT_CFG.talkMax; el("sWpm").value=DEFAULT_CFG.wpmMax;
+};
+el("dlgSave").onclick=async()=>{
+  const lines=v=>v.split("\n").map(s=>s.trim()).filter(Boolean);
+  S.cfg.benefits=lines(el("sBenefits").value).map(fold);
+  S.cfg.extraFlags=lines(el("sFlags").value);
+  S.cfg.competitors=lines(el("sCompetitors").value).map(fold);
+  S.cfg.wow=el("sWow").value;
+  S.cfg.talkMax=Math.min(95,Math.max(50,+el("sTalk").value||DEFAULT_CFG.talkMax));
+  S.cfg.wpmMax=Math.min(260,Math.max(120,+el("sWpm").value||DEFAULT_CFG.wpmMax));
+  dlg.close();
+  saveSettings();
+  if(S.scored) score(); else render();
+};
+
+/* =====================================================================
+   12. Persistence — browser storage (standalone build)
+
+   This build runs as a plain HTML file on any static host, so there is no
+   shared server behind it. Scorecards and settings live in this browser's
+   localStorage: they survive reloads and stay on this machine. They are NOT
+   shared between supervisors and NOT synced across devices — export the CSV
+   if the numbers need to leave this browser.
+   ===================================================================== */
+const LS_CARDS="we_wow_scorecards_v1", LS_CFG="we_wow_settings_v1";
+let lsOK=true;
+
+function lsGet(k,fb){
+  try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch(e){lsOK=false;return fb}
+}
+function lsSet(k,v){
+  try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){lsOK=false;return false}
+}
+function loadCards(){const a=lsGet(LS_CARDS,[]);return Array.isArray(a)?a:[]}
+
+function saveSettings(){
+  lsSet(LS_CFG,{benefits:S.cfg.benefits,extraFlags:S.cfg.extraFlags,
+    competitors:S.cfg.competitors,wow:S.cfg.wow,
+    talkMax:S.cfg.talkMax,wpmMax:S.cfg.wpmMax});
+}
+function loadSettings(){
+  const d=lsGet(LS_CFG,null); if(!d) return;
+  if(Array.isArray(d.benefits)&&d.benefits.length) S.cfg.benefits=d.benefits;
+  if(Array.isArray(d.extraFlags)) S.cfg.extraFlags=d.extraFlags;
+  if(Array.isArray(d.competitors)) S.cfg.competitors=d.competitors;
+  if(d.wow) S.cfg.wow=d.wow;
+  if(typeof d.talkMax==="number") S.cfg.talkMax=d.talkMax;
+  if(typeof d.wpmMax==="number") S.cfg.wpmMax=d.wpmMax;
+}
+
+function renderHistory(){
+  const host=el("histBody");
+  const rows=loadCards().sort((a,b)=>String(b.scoredAt).localeCompare(String(a.scoredAt)));
+  el("histHint").textContent = lsOK
+    ? (rows.length?rows.length+" saved in this browser":"Saved in this browser")
+    : "Browser storage blocked";
+  el("btnCsv").disabled=!rows.length;
+  el("btnWipe").disabled=!rows.length;
+  if(!lsOK){
+    host.innerHTML=`<div class="clean">This browser is blocking site storage, so scorecards can't be kept.
+      Scoring still works — export each one before you close the tab.</div>`;
+    return;
+  }
+  if(!rows.length){
+    host.innerHTML=`<div class="clean">No scorecards saved yet. Score a call and press Save scorecard.</div>`;
+    return;
+  }
+  host.innerHTML=`<div style="overflow-x:auto"><table class="htable">
+    <thead><tr><th>Agent</th><th>Date</th><th>Ph</th><th>Score</th><th>Flags</th><th>Result</th></tr></thead>
+    <tbody>${rows.slice(0,60).map(r=>`<tr>
+      <td>${esc(r.agent||"—")}</td>
+      <td class="num">${esc(r.callDate||"—")}</td>
+      <td class="num">${esc(r.phase||"—")}</td>
+      <td class="num">${r.earned}/${r.applicable}</td>
+      <td class="num">${r.flagCount?`<span class="pill f">${r.flagCount}</span>`:"0"}</td>
+      <td>${r.wow?'<span class="pill wow">WOW</span>':'<span class="pill notwow">—</span>'}</td>
+    </tr>`).join("")}</tbody></table></div>`;
+}
+
+el("btnSave").onclick=()=>{
+  if(!S.scored) return;
+  const t=totals();
+  const answers={};
+  QUESTIONS.forEach(q=>{answers[q.id]=isApplicable(q)?answerOf(q):"na"});
+  const rec={
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    agent:el("fAgent").value.trim()||"(unnamed)",
+    callDate:el("fDate").value||new Date().toISOString().slice(0,10),
+    phase:el("fPhase").value,
+    language:S.ctx?S.ctx.lang:"",
+    scoredBy:el("fScorer").value.trim()||"",
+    scoredAt:new Date().toISOString(),
+    earned:t.earned,applicable:t.applicable,flagCount:t.flagCount,
+    wow:t.wow,pct:t.pct,
+    flags:S.flags.map(f=>f.name),
+    answers:answers,
+    turns:S.turns.length
+  };
+  const btn=el("btnSave"), old=btn.textContent;
+  const cards=loadCards(); cards.push(rec);
+  const ok=lsSet(LS_CARDS,cards);
+  btn.textContent=ok?"Saved":"Couldn't save";
+  btn.disabled=true;
+  renderHistory();
+  setTimeout(()=>{btn.textContent=old;btn.disabled=!S.scored},1600);
+};
+
+/* ---- CSV export. A plain download link, which a static host allows. ---- */
+function toCsv(rows){
+  const q=v=>{const s=v==null?"":String(v);return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const cols=[["Call date","callDate"],["Agent","agent"],["Phase","phase"],["Language","language"],
+              ["Scored by","scoredBy"],["Earned","earned"],["Applicable","applicable"],["Percent","pct"],
+              ["WOW","wow"],["Red flag count","flagCount"],["Red flags","flags"],
+              ["Turns","turns"],["Scored at","scoredAt"]];
+  const head=cols.map(c=>c[0]).concat(QUESTIONS.map(x=>x.id.toUpperCase()));
+  const body=rows.map(r=>
+    cols.map(c=>q(c[1]==="flags"?(r.flags||[]).join("; "):r[c[1]]))
+        .concat(QUESTIONS.map(x=>q((r.answers||{})[x.id]||""))).join(","));
+  return [head.map(q).join(",")].concat(body).join("\r\n");
+}
+el("btnCsv").onclick=()=>{
+  const rows=loadCards().sort((a,b)=>String(b.scoredAt).localeCompare(String(a.scoredAt)));
+  if(!rows.length) return;
+  const blob=new Blob(["﻿"+toCsv(rows)],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="wow-scorecards-"+new Date().toISOString().slice(0,10)+".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+};
+
+/* Two-click clear, so no one wipes the history by mis-clicking. */
+let wipeArmed=false, wipeTimer=null;
+el("btnWipe").onclick=()=>{
+  const b=el("btnWipe");
+  if(!wipeArmed){
+    wipeArmed=true; b.textContent="Click again to clear";
+    b.style.color="var(--missed)"; b.style.borderColor="var(--missed)";
+    wipeTimer=setTimeout(()=>{wipeArmed=false;b.textContent="Clear";b.style.color="";b.style.borderColor=""},4000);
+    return;
+  }
+  clearTimeout(wipeTimer); wipeArmed=false;
+  b.textContent="Clear"; b.style.color=""; b.style.borderColor="";
+  lsSet(LS_CARDS,[]);
+  renderHistory();
+};
+
+/* =====================================================================
+   13. Boot
+   ===================================================================== */
+el("fDate").value=new Date().toISOString().slice(0,10);
+loadSettings();
+renderHistory();
+loadExample("strong");
+</script>
+
+</body>
+</html>
