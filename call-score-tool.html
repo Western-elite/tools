@@ -201,6 +201,18 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .zone-msg.ok{background:var(--earned-soft);color:var(--earned)}
 .zone-msg b{font-weight:700}
 
+.asr-prog{padding:11px 12px;border-top:1px solid var(--line-soft);background:var(--accent-soft)}
+.asr-top{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.asr-label{font-size:12.5px;color:var(--accent-ink);line-height:1.45;flex:1}
+.asr-label b{font-weight:700}
+.asr-track{height:5px;border-radius:3px;background:var(--surface);overflow:hidden}
+.asr-track i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.asr-track i.indet{
+  width:34%!important;transition:none;
+  animation:asrslide 1.15s ease-in-out infinite;
+}
+@keyframes asrslide{0%{margin-left:-34%}100%{margin-left:100%}}
+
 /* ---------- conditionals ---------- */
 .cond-row{display:flex;flex-wrap:wrap;gap:7px;padding:12px 16px;border-top:1px solid var(--line-soft)}
 .chip{
@@ -444,7 +456,6 @@ body.has-audio{padding-bottom:120px}
     <div class="tally" id="tally"></div>
     <div id="verdictSlot"></div>
     <button class="btn ghost" id="btnSettings" title="Phrases and thresholds">Settings</button>
-    <button class="btn" id="btnSave">Save scorecard</button>
     <button class="btn primary" id="btnScore">Score call</button>
   </div>
 </header>
@@ -503,6 +514,13 @@ body.has-audio{padding-bottom:120px}
             <button class="btn ghost" id="btnClear">Clear</button>
             <span id="zoneStat" style="margin-left:auto"></span>
           </div>
+          <div class="asr-prog" id="asrProg" hidden>
+            <div class="asr-top">
+              <span class="asr-label" id="asrLabel"></span>
+              <button class="btn ghost" id="asrCancel" style="padding:3px 9px;font-size:12px">Stop</button>
+            </div>
+            <div class="asr-track"><i id="asrBar"></i></div>
+          </div>
           <div class="zone-msg" id="zoneMsg" hidden></div>
         </div>
         <div class="cond-row" id="condRow"></div>
@@ -528,15 +546,6 @@ body.has-audio{padding-bottom:120px}
         <div class="tscroll" id="tview"></div>
       </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Scored history</h2>
-          <span class="hint" id="histHint">Saved in this browser</span>
-          <button class="btn ghost" id="btnCsv" style="padding:4px 9px;font-size:12.5px">Export CSV</button>
-          <button class="btn ghost" id="btnWipe" style="padding:4px 9px;font-size:12.5px">Clear</button>
-        </div>
-        <div id="histBody"></div>
-      </section>
     </aside>
   </div>
 </div>
@@ -558,6 +567,7 @@ body.has-audio{padding-bottom:120px}
         <button data-rate="1.25">1.25&times;</button>
         <button data-rate="1.5">1.5&times;</button>
       </div>
+      <button class="btn primary" id="btnTranscribe" style="padding:5px 13px;font-size:13px">Transcribe</button>
       <span class="pmeta" id="pMeta"></span>
       <span class="pname" id="pName"></span>
       <button class="btn ghost" id="pClose" style="padding:4px 9px;font-size:12.5px">Close</button>
@@ -594,6 +604,15 @@ body.has-audio{padding-bottom:120px}
           <input id="sWpm" type="number" min="120" max="260" step="5" style="margin-top:4px"></label>
       </div>
       <p class="note">A full order restate pushes talk share up by design, so a good sales call often lands near 75%. Pace is estimated from timestamp gaps — treat it as directional, not a measurement.</p>
+    </div>
+    <div class="field">
+      <label for="sModel">Transcription model</label>
+      <select id="sModel">
+        <option value="onnx-community/whisper-base">Base — balanced (recommended)</option>
+        <option value="onnx-community/whisper-tiny">Tiny — fastest, least accurate</option>
+        <option value="onnx-community/whisper-small">Small — slowest, most accurate</option>
+      </select>
+      <p class="note">Downloaded once and kept by the browser, then it works offline. Base is roughly 80MB and transcribes a ten-minute call in a couple of minutes; Small is several times that in both. Setting Language to English or Spanish rather than Detect improves accuracy on every model.</p>
     </div>
     <div class="field">
       <label for="sWow">WOW threshold</label>
@@ -1421,7 +1440,8 @@ const DEFAULT_CFG={
   competitors:[],
   wow:"all",
   talkMax:80,
-  wpmMax:195
+  wpmMax:195,
+  asrModel:"onnx-community/whisper-base"
 };
 const S={
   turns:[], ctx:null, roles:null, metrics:null,
@@ -1965,7 +1985,6 @@ function render(){
   el("parseHint").textContent=S.scored
     ? "Click any quoted line to jump to it in the transcript"
     : (n?"Ready to score":"Paste a transcript below, or load the example");
-  el("btnSave").disabled=!S.scored;
 }
 
 /* =====================================================================
@@ -2119,7 +2138,7 @@ function rejectFile(name,what){
    recordings are one mixed track or two separate voices.
    ===================================================================== */
 const A={
-  el:null, url:null, name:"", peaks:null, silence:[], dur:0,
+  el:null, url:null, file:null, name:"", peaks:null, silence:[], dur:0,
   channels:0, dual:false, raf:0, litTurn:null
 };
 
@@ -2132,7 +2151,7 @@ function fmtTime(s){
 function loadRecording(f){
   if(A.url){try{URL.revokeObjectURL(A.url)}catch(e){}}
   A.url=URL.createObjectURL(f);
-  A.name=f.name; A.peaks=null; A.silence=[]; A.dual=false; A.channels=0;
+  A.file=f; A.name=f.name; A.peaks=null; A.silence=[]; A.dual=false; A.channels=0;
 
   if(!A.el){
     A.el=new Audio();
@@ -2322,6 +2341,8 @@ el("fAudio").onchange=ev=>{
   showMsg("ok","<b>"+esc(f.name)+"</b> loaded for listening. Click any transcript line or quoted line to "+
     "jump to that moment. Scoring still needs the transcript — the recording is for judging tone.");
 };
+el("btnTranscribe").onclick=transcribeRecording;
+el("asrCancel").onclick=()=>{ASR.cancel=true;setProg(null,"Stopping…",false)};
 el("pPlay").onclick=()=>{
   if(!audioReady()) return;
   if(A.el.paused){const p=A.el.play();if(p&&p.catch)p.catch(()=>{})} else A.el.pause();
@@ -2330,7 +2351,8 @@ el("pBack").onclick=()=>{if(audioReady()) seekTo((A.el.currentTime||0)-5,false)}
 el("pClose").onclick=()=>{
   if(A.el){A.el.pause();A.el.removeAttribute("src");A.el.load()}
   if(A.url){try{URL.revokeObjectURL(A.url)}catch(e){}A.url=null}
-  A.peaks=null;A.silence=[];A.dur=0;A.channels=0;A.dual=false;
+  A.peaks=null;A.silence=[];A.dur=0;A.channels=0;A.dual=false;A.file=null;
+  ASR.cancel=true; hideProg();
   if(A.litTurn!=null){const p=el("turn-"+A.litTurn);if(p)p.classList.remove("playing");A.litTurn=null}
   el("player").hidden=true;
   document.body.classList.remove("has-audio");
@@ -2360,15 +2382,225 @@ document.addEventListener("keydown",ev=>{
 let waveRT=null;
 window.addEventListener("resize",()=>{clearTimeout(waveRT);waveRT=setTimeout(drawWave,120)});
 
+/* =====================================================================
+   11d. Transcription, in the browser
+
+   Western Elite's Zoom recordings are dual-channel: the agent is on one
+   track and the customer on the other, entirely separate. That removes the
+   hard half of this problem. There is no need to tell voices apart — each
+   channel is transcribed on its own and labelled by which side it came
+   from, so speaker attribution is exact rather than inferred.
+
+   Whisper runs locally through transformers.js. The model is fetched once
+   from a CDN and cached by the browser; the audio itself never leaves the
+   machine.
+
+   Silence is skipped rather than transcribed. Whisper invents text when
+   fed near-silence ("Thank you.", "Thanks for watching."), and on a
+   separated channel the quiet stretches are exactly when the OTHER person
+   is talking — roughly half the call. Gating on energy avoids the
+   hallucinations and halves the work.
+   ===================================================================== */
+const ASR={mod:null, pipe:null, pipeId:null, busy:false, cancel:false};
+const TJS_URL="https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+function setProg(pct,label,showCancel){
+  const bar=el("asrBar"), wrap=el("asrProg");
+  wrap.hidden=false;
+  el("asrLabel").innerHTML=label||"";
+  bar.style.width=(pct==null?0:Math.max(0,Math.min(100,pct)))+"%";
+  bar.classList.toggle("indet",pct==null);
+  el("asrCancel").hidden=!showCancel;
+}
+function hideProg(){el("asrProg").hidden=true}
+
+/* Resample one channel to 16 kHz, which is what Whisper expects. */
+async function to16k(buf,chIdx){
+  if(Math.abs(buf.sampleRate-16000)<1) return buf.getChannelData(chIdx).slice();
+  const n=Math.max(1,Math.round(buf.length*16000/buf.sampleRate));
+  const oc=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,n,16000);
+  const src=oc.createBufferSource();
+  const one=oc.createBuffer(1,buf.length,buf.sampleRate);
+  one.copyToChannel(buf.getChannelData(chIdx),0);
+  src.buffer=one; src.connect(oc.destination); src.start();
+  const out=await oc.startRendering();
+  return out.getChannelData(0).slice();
+}
+
+/* Energy-gated speech regions. Reliable here precisely because the channel
+   holds one voice: there is no second speaker to confuse the threshold. */
+function speechSegments(ch,sr){
+  const W=Math.round(sr*0.02), nb=Math.floor(ch.length/W);
+  if(nb<5) return [{s:0,e:ch.length/sr}];
+  const rms=new Float32Array(nb);
+  for(let b=0;b<nb;b++){
+    let s=0; const o=b*W;
+    for(let i=0;i<W;i++){const v=ch[o+i];s+=v*v}
+    rms[b]=Math.sqrt(s/W);
+  }
+  const sorted=Float32Array.from(rms).sort();
+  const floor=sorted[Math.floor(nb*0.25)]||0;
+  let peak=0; for(const v of rms) if(v>peak) peak=v;
+  const th=Math.max(floor*3.2, peak*0.02, 0.0015);
+  const HOLD=Math.round(0.55/0.02);           /* bridge pauses inside a sentence */
+  const segs=[]; let start=-1, last=-1;
+  for(let b=0;b<nb;b++){
+    if(rms[b]>=th){ if(start<0) start=b; last=b; }
+    else if(start>=0 && b-last>HOLD){ segs.push([start,last]); start=-1; }
+  }
+  if(start>=0) segs.push([start,last]);
+  const dur=ch.length/sr, PAD=0.25, MAXLEN=26;
+  const out=[];
+  for(const [a,b] of segs){
+    let s=Math.max(0,a*0.02-PAD), e=Math.min(dur,(b+1)*0.02+PAD);
+    if(e-s<0.35) continue;
+    while(e-s>MAXLEN){ out.push({s:s,e:s+MAXLEN}); s+=MAXLEN; }
+    out.push({s:s,e:e});
+  }
+  return out;
+}
+
+async function getPipeline(modelId,onProgress){
+  if(ASR.pipe&&ASR.pipeId===modelId) return ASR.pipe;
+  if(!ASR.mod){
+    setProg(null,"Loading the speech engine…",true);
+    ASR.mod=await import(/* webpackIgnore: true */ TJS_URL);
+    ASR.mod.env.allowLocalModels=false;
+  }
+  ASR.pipe=await ASR.mod.pipeline("automatic-speech-recognition",modelId,{
+    dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},
+    device:"wasm",
+    progress_callback:onProgress
+  });
+  ASR.pipeId=modelId;
+  return ASR.pipe;
+}
+
+async function transcribeRecording(){
+  if(ASR.busy||!A.file) return;
+  ASR.busy=true; ASR.cancel=false;
+  el("btnTranscribe").disabled=true;
+  showMsg("","");
+  try{
+    setProg(null,"Reading the recording…",true);
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    const ctx=new Ctx();
+    const buf=await ctx.decodeAudioData(await A.file.arrayBuffer());
+    try{ctx.close()}catch(e){}
+
+    /* Which tracks to transcribe: both sides if truly dual-channel,
+       otherwise the single mixed track. */
+    const dual=buf.numberOfChannels>=2&&A.dual;
+    const tracks=[];
+    if(dual){
+      tracks.push({name:"A",data:await to16k(buf,0)});
+      tracks.push({name:"B",data:await to16k(buf,1)});
+    } else {
+      tracks.push({name:"A",data:await to16k(buf,0)});
+    }
+
+    const modelId=S.cfg.asrModel||DEFAULT_CFG.asrModel;
+    let dlSeen=false;
+    const pipe=await getPipeline(modelId,(p)=>{
+      if(ASR.cancel) return;
+      if(p&&p.status==="progress"&&p.file&&typeof p.progress==="number"){
+        dlSeen=true;
+        setProg(p.progress,"Downloading the speech model, one time only — <b>"+
+          esc(String(p.file).split("/").pop())+"</b> "+Math.round(p.progress)+"%",true);
+      } else if(p&&p.status==="ready"){
+        setProg(null,"Starting up…",true);
+      }
+    });
+    if(ASR.cancel) throw {cancelled:true};
+
+    /* segment each track */
+    for(const t of tracks) t.segs=speechSegments(t.data,16000);
+    const total=tracks.reduce((n,t)=>n+t.segs.length,0);
+    if(!total) throw new Error("No speech found in this recording.");
+
+    const langSel=el("fLang").value;
+    const opts={chunk_length_s:30,stride_length_s:5};
+    if(langSel==="en"||langSel==="es"){opts.language=langSel;opts.task="transcribe"}
+
+    const rows=[]; let done=0;
+    for(const t of tracks){
+      for(const seg of t.segs){
+        if(ASR.cancel) throw {cancelled:true};
+        const a=Math.round(seg.s*16000), b=Math.round(seg.e*16000);
+        const clip=t.data.subarray(a,Math.min(b,t.data.length));
+        if(clip.length<1600){done++;continue}
+        let txt="";
+        try{
+          const r=await pipe(clip instanceof Float32Array?clip:new Float32Array(clip),opts);
+          txt=((r&&r.text)||"").trim();
+        }catch(e){ txt=""; }
+        done++;
+        setProg(done/total*100,
+          "Transcribing — "+done+" of "+total+" passages"+(dual?" across both channels":"")+"…",true);
+        if(!txt) continue;
+        if(/^(you|thank you|thanks|bye|\.|\s)*$/i.test(txt)&&seg.e-seg.s<1.2) continue; /* silence artefact */
+        rows.push({t:seg.s,track:t.name,text:txt});
+      }
+    }
+    if(ASR.cancel) throw {cancelled:true};
+    if(!rows.length) throw new Error("Nothing could be transcribed from this recording.");
+
+    rows.sort((x,y)=>x.t-y.t);
+
+    /* Which track is the agent? Whoever names the company first; failing
+       that, whoever speaks first, since these are inbound calls. */
+    let agentTrack=null;
+    for(const r of rows){ if(P.company.some(c=>phraseIn(fold(r.text),c)>-1)){agentTrack=r.track;break} }
+    if(!agentTrack&&!dual) agentTrack="A";
+    if(!agentTrack) agentTrack=rows[0].track;
+
+    /* merge consecutive passages from the same side into one turn */
+    const merged=[];
+    for(const r of rows){
+      const role=(r.track===agentTrack)?"AGENT":"CUSTOMER";
+      const prev=merged[merged.length-1];
+      if(prev&&prev.role===role&&r.t-prev.last<10){ prev.text+=" "+r.text; prev.last=r.t; }
+      else merged.push({t:r.t,role:role,text:r.text,last:r.t});
+    }
+    const lines=merged.map(m=>{
+      const s=Math.round(m.t);
+      const hh=String(Math.floor(s/3600)).padStart(2,"0");
+      const mm=String(Math.floor((s%3600)/60)).padStart(2,"0");
+      const ss=String(s%60).padStart(2,"0");
+      return "["+hh+":"+mm+":"+ss+"] "+m.role+": "+m.text.replace(/\s+/g," ").trim();
+    });
+
+    el("fTranscript").value=lines.join("\n");
+    S.swapped=false; S.overrides={}; S.trigOverrides={}; S.unscorable=null;
+    hideProg();
+    score();
+    showMsg("ok","Transcribed "+lines.length+" turns from <b>"+esc(A.name)+"</b>"+
+      (dual
+        ? ". The recording is dual-channel, so agent and customer come from separate tracks — the speaker labels are exact."
+        : ". This recording is a single mixed track, so the speaker labels are a guess — read the transcript and use <b>Swap speakers</b> if they're reversed.")+
+      " Whisper mishears names, addresses and figures, so check any line a score depends on before you rely on it.");
+  }catch(e){
+    hideProg();
+    if(e&&e.cancelled){ showMsg("","") }
+    else{
+      const m=(e&&e.message)?e.message:String(e);
+      showMsg("err","Transcription failed: "+esc(m)+"<br>The speech engine is downloaded from a public CDN "+
+        "the first time it runs, so this usually means no internet connection or a network that blocks it. "+
+        "You can still paste or open a transcript and score normally.");
+    }
+  }
+  ASR.busy=false; ASR.cancel=false;
+  el("btnTranscribe").disabled=!A.file;
+}
+
 function handleFile(f){
   if(!f) return;
   showMsg("","");
-  /* An audio file is a recording to listen to, not a transcript to score. */
+  /* An audio file is a recording: play it, and offer to transcribe it. */
   if(AV_EXT.test(f.name)||/^(audio|video)\//.test(f.type||"")){
     loadRecording(f);
-    showMsg("ok","<b>"+esc(f.name)+"</b> loaded for listening, not scoring — a browser can’t turn speech "+
-      "into text reliably. Paste or open the transcript to get a score; the recording is then wired to it "+
-      "so you can hear any line you're judging.");
+    showMsg("ok","<b>"+esc(f.name)+"</b> loaded. Press <b>Transcribe</b> in the player to turn it into a "+
+      "scoreable transcript, or paste one in if you already have it.");
     return;
   }
   if(!TEXT_EXT.test(f.name)&&!/^text\//.test(f.type||"")){
@@ -2447,6 +2679,7 @@ el("btnSettings").onclick=()=>{
   el("sFlags").value=S.cfg.extraFlags.join("\n");
   el("sCompetitors").value=S.cfg.competitors.join("\n");
   el("sWow").value=S.cfg.wow;
+  el("sModel").value=S.cfg.asrModel||DEFAULT_CFG.asrModel;
   el("sTalk").value=S.cfg.talkMax;
   el("sWpm").value=S.cfg.wpmMax;
   dlg.showModal();
@@ -2455,6 +2688,7 @@ el("dlgClose").onclick=()=>dlg.close();
 el("dlgReset").onclick=()=>{
   el("sBenefits").value=DEFAULT_CFG.benefits.join("\n");
   el("sFlags").value=""; el("sCompetitors").value=""; el("sWow").value="all";
+  el("sModel").value=DEFAULT_CFG.asrModel;
   el("sTalk").value=DEFAULT_CFG.talkMax; el("sWpm").value=DEFAULT_CFG.wpmMax;
 };
 el("dlgSave").onclick=async()=>{
@@ -2465,152 +2699,40 @@ el("dlgSave").onclick=async()=>{
   S.cfg.wow=el("sWow").value;
   S.cfg.talkMax=Math.min(95,Math.max(50,+el("sTalk").value||DEFAULT_CFG.talkMax));
   S.cfg.wpmMax=Math.min(260,Math.max(120,+el("sWpm").value||DEFAULT_CFG.wpmMax));
+  S.cfg.asrModel=el("sModel").value;
   dlg.close();
   saveSettings();
   if(S.scored) score(); else render();
 };
 
 /* =====================================================================
-   12. Persistence — browser storage (standalone build)
+   12. Boot
 
-   This build runs as a plain HTML file on any static host, so there is no
-   shared server behind it. Scorecards and settings live in this browser's
-   localStorage: they survive reloads and stay on this machine. They are NOT
-   shared between supervisors and NOT synced across devices — export the CSV
-   if the numbers need to leave this browser.
+   Nothing is stored between calls: one call is scored, read, and closed.
+   The only thing that persists is Settings — the benefit phrases and
+   thresholds — because re-typing those every session would be absurd.
    ===================================================================== */
-const LS_CARDS="we_wow_scorecards_v1", LS_CFG="we_wow_settings_v1";
-let lsOK=true;
-
-function lsGet(k,fb){
-  try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch(e){lsOK=false;return fb}
-}
-function lsSet(k,v){
-  try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){lsOK=false;return false}
-}
-function loadCards(){const a=lsGet(LS_CARDS,[]);return Array.isArray(a)?a:[]}
-
+const LS_CFG="we_wow_settings_v1";
 function saveSettings(){
-  lsSet(LS_CFG,{benefits:S.cfg.benefits,extraFlags:S.cfg.extraFlags,
-    competitors:S.cfg.competitors,wow:S.cfg.wow,
-    talkMax:S.cfg.talkMax,wpmMax:S.cfg.wpmMax});
+  try{ localStorage.setItem(LS_CFG,JSON.stringify({
+    benefits:S.cfg.benefits,extraFlags:S.cfg.extraFlags,competitors:S.cfg.competitors,
+    wow:S.cfg.wow,talkMax:S.cfg.talkMax,wpmMax:S.cfg.wpmMax,asrModel:S.cfg.asrModel})) }catch(e){}
 }
 function loadSettings(){
-  const d=lsGet(LS_CFG,null); if(!d) return;
+  let d=null;
+  try{ const v=localStorage.getItem(LS_CFG); d=v?JSON.parse(v):null }catch(e){ d=null }
+  if(!d) return;
   if(Array.isArray(d.benefits)&&d.benefits.length) S.cfg.benefits=d.benefits;
   if(Array.isArray(d.extraFlags)) S.cfg.extraFlags=d.extraFlags;
   if(Array.isArray(d.competitors)) S.cfg.competitors=d.competitors;
   if(d.wow) S.cfg.wow=d.wow;
   if(typeof d.talkMax==="number") S.cfg.talkMax=d.talkMax;
   if(typeof d.wpmMax==="number") S.cfg.wpmMax=d.wpmMax;
+  if(d.asrModel) S.cfg.asrModel=d.asrModel;
 }
 
-function renderHistory(){
-  const host=el("histBody");
-  const rows=loadCards().sort((a,b)=>String(b.scoredAt).localeCompare(String(a.scoredAt)));
-  el("histHint").textContent = lsOK
-    ? (rows.length?rows.length+" saved in this browser":"Saved in this browser")
-    : "Browser storage blocked";
-  el("btnCsv").disabled=!rows.length;
-  el("btnWipe").disabled=!rows.length;
-  if(!lsOK){
-    host.innerHTML=`<div class="clean">This browser is blocking site storage, so scorecards can't be kept.
-      Scoring still works — export each one before you close the tab.</div>`;
-    return;
-  }
-  if(!rows.length){
-    host.innerHTML=`<div class="clean">No scorecards saved yet. Score a call and press Save scorecard.</div>`;
-    return;
-  }
-  host.innerHTML=`<div style="overflow-x:auto"><table class="htable">
-    <thead><tr><th>Agent</th><th>Date</th><th>Ph</th><th>Score</th><th>Flags</th><th>Result</th></tr></thead>
-    <tbody>${rows.slice(0,60).map(r=>`<tr>
-      <td>${esc(r.agent||"—")}</td>
-      <td class="num">${esc(r.callDate||"—")}</td>
-      <td class="num">${esc(r.phase||"—")}</td>
-      <td class="num">${r.earned}/${r.applicable}</td>
-      <td class="num">${r.flagCount?`<span class="pill f">${r.flagCount}</span>`:"0"}</td>
-      <td>${r.wow?'<span class="pill wow">WOW</span>':'<span class="pill notwow">—</span>'}</td>
-    </tr>`).join("")}</tbody></table></div>`;
-}
-
-el("btnSave").onclick=()=>{
-  if(!S.scored) return;
-  const t=totals();
-  const answers={};
-  QUESTIONS.forEach(q=>{answers[q.id]=isApplicable(q)?answerOf(q):"na"});
-  const rec={
-    id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),
-    agent:el("fAgent").value.trim()||"(unnamed)",
-    callDate:el("fDate").value||new Date().toISOString().slice(0,10),
-    phase:el("fPhase").value,
-    language:S.ctx?S.ctx.lang:"",
-    scoredBy:el("fScorer").value.trim()||"",
-    scoredAt:new Date().toISOString(),
-    earned:t.earned,applicable:t.applicable,flagCount:t.flagCount,
-    wow:t.wow,pct:t.pct,
-    flags:S.flags.map(f=>f.name),
-    answers:answers,
-    turns:S.turns.length
-  };
-  const btn=el("btnSave"), old=btn.textContent;
-  const cards=loadCards(); cards.push(rec);
-  const ok=lsSet(LS_CARDS,cards);
-  btn.textContent=ok?"Saved":"Couldn't save";
-  btn.disabled=true;
-  renderHistory();
-  setTimeout(()=>{btn.textContent=old;btn.disabled=!S.scored},1600);
-};
-
-/* ---- CSV export. A plain download link, which a static host allows. ---- */
-function toCsv(rows){
-  const q=v=>{const s=v==null?"":String(v);return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
-  const cols=[["Call date","callDate"],["Agent","agent"],["Phase","phase"],["Language","language"],
-              ["Scored by","scoredBy"],["Earned","earned"],["Applicable","applicable"],["Percent","pct"],
-              ["WOW","wow"],["Red flag count","flagCount"],["Red flags","flags"],
-              ["Turns","turns"],["Scored at","scoredAt"]];
-  const head=cols.map(c=>c[0]).concat(QUESTIONS.map(x=>x.id.toUpperCase()));
-  const body=rows.map(r=>
-    cols.map(c=>q(c[1]==="flags"?(r.flags||[]).join("; "):r[c[1]]))
-        .concat(QUESTIONS.map(x=>q((r.answers||{})[x.id]||""))).join(","));
-  return [head.map(q).join(",")].concat(body).join("\r\n");
-}
-el("btnCsv").onclick=()=>{
-  const rows=loadCards().sort((a,b)=>String(b.scoredAt).localeCompare(String(a.scoredAt)));
-  if(!rows.length) return;
-  const blob=new Blob(["﻿"+toCsv(rows)],{type:"text/csv;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="wow-scorecards-"+new Date().toISOString().slice(0,10)+".csv";
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
-};
-
-/* Two-click clear, so no one wipes the history by mis-clicking. */
-let wipeArmed=false, wipeTimer=null;
-el("btnWipe").onclick=()=>{
-  const b=el("btnWipe");
-  if(!wipeArmed){
-    wipeArmed=true; b.textContent="Click again to clear";
-    b.style.color="var(--missed)"; b.style.borderColor="var(--missed)";
-    wipeTimer=setTimeout(()=>{wipeArmed=false;b.textContent="Clear";b.style.color="";b.style.borderColor=""},4000);
-    return;
-  }
-  clearTimeout(wipeTimer); wipeArmed=false;
-  b.textContent="Clear"; b.style.color=""; b.style.borderColor="";
-  lsSet(LS_CARDS,[]);
-  renderHistory();
-};
-
-/* =====================================================================
-   13. Boot
-   ===================================================================== */
-/* Boot empty. The example calls stay one click away on the buttons above,
-   but a scorecard sitting there on open reads like a call already scored. */
 el("fDate").value=new Date().toISOString().slice(0,10);
 loadSettings();
-renderHistory();
 score();
 </script>
 
