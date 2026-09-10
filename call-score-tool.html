@@ -621,7 +621,7 @@ body.has-audio{padding-bottom:120px}
         <option value="webgpu">Graphics card</option>
         <option value="wasm">CPU only</option>
       </select>
-      <p class="note">A page served from GitHub Pages can’t switch on multi-core CPU processing, so CPU-only transcription is slow. The graphics card is usually several times faster. Switch to CPU only if transcription fails or returns nothing.</p>
+      <p class="note">Auto checks for a real graphics card and uses it when there is one, falling back to CPU on its own if there isn’t. CPU is correct but slow — a page served from GitHub Pages can’t switch on multi-core processing — so pair CPU with the Tiny model if calls are taking too long.</p>
     </div>
     <div class="field">
       <label for="sWow">WOW threshold</label>
@@ -2510,14 +2510,17 @@ function ask(msg,transfer){
   });
 }
 
-function pickDevice(){
+/* `navigator.gpu` existing does NOT mean there is a usable GPU behind it —
+   plenty of machines expose the API and then fail at "requestAdapter" with
+   "Failed to get GPU adapter". Ask for the adapter itself. */
+async function probeDevice(){
   const pref=S.cfg.asrDevice||"auto";
-  if(pref==="wasm") return "wasm";
-  if(pref==="webgpu") return "webgpu";
-  /* GitHub Pages can't send the COOP/COEP headers that let WASM use
-     multiple threads, so CPU here is single-threaded and slow. Prefer the
-     GPU when the browser has one. */
-  return (typeof navigator!=="undefined"&&navigator.gpu)?"webgpu":"wasm";
+  if(pref==="wasm"||pref==="webgpu") return pref;
+  try{
+    if(typeof navigator==="undefined"||!navigator.gpu) return "wasm";
+    const adapter=await navigator.gpu.requestAdapter();
+    return adapter?"webgpu":"wasm";
+  }catch(e){ return "wasm" }
 }
 
 function setProg(pct,label,showCancel){
@@ -2606,16 +2609,33 @@ async function transcribeRecording(){
     if(!total) throw new Error("No speech found in this recording.");
 
     const modelId=S.cfg.asrModel||DEFAULT_CFG.asrModel;
-    const device=pickDevice();
-    startWorker((p)=>{
+    const onDl=(p)=>{
       if(ASR.cancel) return;
       if(p&&p.status==="progress"&&p.file&&typeof p.progress==="number"){
         setProg(p.progress,"Downloading the speech model — one time only, then it's kept for next time.<br><b>"+
           esc(String(p.file).split("/").pop())+"</b> "+Math.round(p.progress)+"%",true);
       }
-    });
+    };
+
+    let device=await probeDevice();
+    let fellBack=false;
+    startWorker(onDl);
     setProg(null,"Loading the speech engine…",true);
-    await ask({type:"init",model:modelId,device:device});
+    try{
+      await ask({type:"init",model:modelId,device:device});
+    }catch(e){
+      if(ASR.cancel) throw {cancelled:true};
+      if(device!=="webgpu") throw e;
+      /* The graphics card was there in name only. Drop to CPU rather than
+         handing back an error the reader can do nothing with. The model is
+         already downloaded, so the retry starts immediately. */
+      killWorker();
+      device="wasm"; fellBack=true;
+      startWorker(onDl);
+      setProg(null,"No usable graphics card — switching to CPU. This is slower, "+
+        "so give it time.",true);
+      await ask({type:"init",model:modelId,device:device});
+    }
     if(ASR.cancel) throw {cancelled:true};
 
     const langSel=el("fLang").value;
@@ -2685,6 +2705,7 @@ async function transcribeRecording(){
     hideProg();
     score();
     showMsg("ok","Transcribed "+lines.length+" turns from <b>"+esc(A.name)+"</b>"+
+      (fellBack?" (on CPU — no usable graphics card was found)":"")+
       (dual
         ? ". The recording is dual-channel, so agent and customer come from separate tracks — the speaker labels are exact."
         : ". This recording is a single mixed track, so the speaker labels are a guess — read the transcript and use <b>Swap speakers</b> if they're reversed.")+
@@ -2694,9 +2715,23 @@ async function transcribeRecording(){
     if(e&&e.cancelled){ showMsg("","") }
     else{
       const m=(e&&e.message)?e.message:String(e);
-      showMsg("err","Transcription failed: "+esc(m)+"<br>The speech engine is downloaded from a public CDN "+
-        "the first time it runs, so this usually means no internet connection or a network that blocks it. "+
-        "You can still paste or open a transcript and score normally.");
+      /* Say something the reader can act on, rather than blaming the network
+         for every failure. */
+      let advice;
+      if(/gpu|webgpu|adapter|backend/i.test(m)){
+        advice="This machine has no graphics card the browser can use. Open <b>Settings</b> and set "+
+               "<b>Processing</b> to <b>CPU only</b> — and consider the <b>Tiny</b> model, since CPU "+
+               "transcription is a good deal slower.";
+      } else if(/fetch|network|import|load|failed to load|cdn|offline/i.test(m)){
+        advice="The speech engine is downloaded from a public CDN the first time it runs, so this usually "+
+               "means no internet connection, or a network that blocks it.";
+      } else if(/memory|allocat/i.test(m)){
+        advice="The browser ran out of memory. Try the <b>Tiny</b> model under Settings, or a shorter recording.";
+      } else {
+        advice="Try again, or switch <b>Processing</b> and <b>Model</b> under Settings.";
+      }
+      showMsg("err","Transcription failed: "+esc(m)+"<br>"+advice+
+        "<br>You can still paste or open a transcript and score normally.");
     }
   }
   ASR.busy=false; ASR.cancel=false;
