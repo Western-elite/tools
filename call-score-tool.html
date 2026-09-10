@@ -615,6 +615,15 @@ body.has-audio{padding-bottom:120px}
       <p class="note">Downloaded once and kept by the browser, then it works offline. Base is roughly 80MB and transcribes a ten-minute call in a couple of minutes; Small is several times that in both. Setting Language to English or Spanish rather than Detect improves accuracy on every model.</p>
     </div>
     <div class="field">
+      <label for="sDevice">Processing</label>
+      <select id="sDevice">
+        <option value="auto">Auto — graphics card if available (recommended)</option>
+        <option value="webgpu">Graphics card</option>
+        <option value="wasm">CPU only</option>
+      </select>
+      <p class="note">A page served from GitHub Pages can’t switch on multi-core CPU processing, so CPU-only transcription is slow. The graphics card is usually several times faster. Switch to CPU only if transcription fails or returns nothing.</p>
+    </div>
+    <div class="field">
       <label for="sWow">WOW threshold</label>
       <select id="sWow">
         <option value="all">Every applicable question Yes, zero red flags (strict)</option>
@@ -1441,7 +1450,8 @@ const DEFAULT_CFG={
   wow:"all",
   talkMax:80,
   wpmMax:195,
-  asrModel:"onnx-community/whisper-base"
+  asrModel:"onnx-community/whisper-base",
+  asrDevice:"auto"
 };
 const S={
   turns:[], ctx:null, roles:null, metrics:null,
@@ -2342,7 +2352,9 @@ el("fAudio").onchange=ev=>{
     "jump to that moment. Scoring still needs the transcript — the recording is for judging tone.");
 };
 el("btnTranscribe").onclick=transcribeRecording;
-el("asrCancel").onclick=()=>{ASR.cancel=true;setProg(null,"Stopping…",false)};
+el("asrCancel").onclick=()=>{
+  ASR.cancel=true; setProg(null,"Stopping…",false); killWorker();
+};
 el("pPlay").onclick=()=>{
   if(!audioReady()) return;
   if(A.el.paused){const p=A.el.play();if(p&&p.catch)p.catch(()=>{})} else A.el.pause();
@@ -2401,8 +2413,112 @@ window.addEventListener("resize",()=>{clearTimeout(waveRT);waveRT=setTimeout(dra
    is talking — roughly half the call. Gating on energy avoids the
    hallucinations and halves the work.
    ===================================================================== */
-const ASR={mod:null, pipe:null, pipeId:null, busy:false, cancel:false};
+const ASR={worker:null, url:null, busy:false, cancel:false, seq:0, waits:new Map(), watchdog:0};
 const TJS_URL="https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+/* Whisper runs in a Web Worker, NOT on the page's own thread. Inference
+   blocks whatever thread it runs on for seconds at a time, and on the main
+   thread that freezes the whole tab — Chrome shows "page unresponsive" and
+   the progress bar never moves. The worker keeps the UI alive and the Stop
+   button answering. It is built from a Blob so this stays one file. */
+const WORKER_SRC=`
+let TJ=null, pipe=null, pipeId=null;
+async function ensure(model, device){
+  if(!TJ){
+    TJ = await import(${JSON.stringify(TJS_URL)});
+    TJ.env.allowLocalModels = false;
+  }
+  const id = model + "|" + device;
+  if(!pipe || pipeId !== id){
+    pipe = await TJ.pipeline("automatic-speech-recognition", model, {
+      dtype: { encoder_model: "fp32", decoder_model_merged: "q4" },
+      device: device,
+      progress_callback: (p) => self.postMessage({ type: "progress", p: p })
+    });
+    pipeId = id;
+  }
+  return pipe;
+}
+self.onmessage = async (e) => {
+  const m = e.data || {};
+  try{
+    if(m.type === "init"){
+      await ensure(m.model, m.device);
+      self.postMessage({ type: "ready", id: m.id });
+    } else if(m.type === "seg"){
+      const p = await ensure(m.model, m.device);
+      const r = await p(m.pcm, m.opts || {});
+      self.postMessage({ type: "seg", id: m.id, text: ((r && r.text) || "").trim() });
+    }
+  }catch(err){
+    self.postMessage({ type: "error", id: m.id, message: String((err && err.message) || err) });
+  }
+};
+`;
+
+function killWorker(){
+  clearTimeout(ASR.watchdog);
+  if(ASR.worker){try{ASR.worker.terminate()}catch(e){}}
+  if(ASR.url){try{URL.revokeObjectURL(ASR.url)}catch(e){}}
+  ASR.worker=null; ASR.url=null;
+  ASR.waits.forEach(w=>w.reject(new Error("Transcription stopped.")));
+  ASR.waits.clear();
+}
+
+function startWorker(onProgress){
+  if(ASR.worker) return ASR.worker;
+  ASR.url=URL.createObjectURL(new Blob([WORKER_SRC],{type:"text/javascript"}));
+  const w=new Worker(ASR.url,{type:"module"});
+  w.onmessage=(e)=>{
+    const m=e.data||{};
+    bumpWatchdog();
+    if(m.type==="progress"){ onProgress&&onProgress(m.p); return }
+    const wait=ASR.waits.get(m.id);
+    if(!wait) return;
+    ASR.waits.delete(m.id);
+    if(m.type==="error") wait.reject(new Error(m.message||"worker error"));
+    else wait.resolve(m);
+  };
+  w.onerror=(e)=>{
+    const msg=(e&&e.message)||"the speech engine could not be loaded";
+    ASR.waits.forEach(x=>x.reject(new Error(msg)));
+    ASR.waits.clear();
+  };
+  ASR.worker=w;
+  return w;
+}
+
+/* If the worker goes quiet for a long stretch something has gone wrong;
+   fail loudly rather than leaving a progress bar spinning forever. */
+function bumpWatchdog(){
+  clearTimeout(ASR.watchdog);
+  ASR.watchdog=setTimeout(()=>{
+    ASR.waits.forEach(w=>w.reject(new Error(
+      "the speech engine stopped responding. Try the Tiny model under Settings, or a smaller recording.")));
+    ASR.waits.clear();
+  },240000);
+}
+
+function ask(msg,transfer){
+  return new Promise((resolve,reject)=>{
+    if(!ASR.worker) return reject(new Error("speech engine not running"));
+    const id=++ASR.seq;
+    ASR.waits.set(id,{resolve,reject});
+    bumpWatchdog();
+    try{ ASR.worker.postMessage(Object.assign({id:id},msg),transfer||[]) }
+    catch(e){ ASR.waits.delete(id); reject(e) }
+  });
+}
+
+function pickDevice(){
+  const pref=S.cfg.asrDevice||"auto";
+  if(pref==="wasm") return "wasm";
+  if(pref==="webgpu") return "webgpu";
+  /* GitHub Pages can't send the COOP/COEP headers that let WASM use
+     multiple threads, so CPU here is single-threaded and slow. Prefer the
+     GPU when the browser has one. */
+  return (typeof navigator!=="undefined"&&navigator.gpu)?"webgpu":"wasm";
+}
 
 function setProg(pct,label,showCancel){
   const bar=el("asrBar"), wrap=el("asrProg");
@@ -2460,22 +2576,6 @@ function speechSegments(ch,sr){
   return out;
 }
 
-async function getPipeline(modelId,onProgress){
-  if(ASR.pipe&&ASR.pipeId===modelId) return ASR.pipe;
-  if(!ASR.mod){
-    setProg(null,"Loading the speech engine…",true);
-    ASR.mod=await import(/* webpackIgnore: true */ TJS_URL);
-    ASR.mod.env.allowLocalModels=false;
-  }
-  ASR.pipe=await ASR.mod.pipeline("automatic-speech-recognition",modelId,{
-    dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},
-    device:"wasm",
-    progress_callback:onProgress
-  });
-  ASR.pipeId=modelId;
-  return ASR.pipe;
-}
-
 async function transcribeRecording(){
   if(ASR.busy||!A.file) return;
   ASR.busy=true; ASR.cancel=false;
@@ -2499,46 +2599,56 @@ async function transcribeRecording(){
       tracks.push({name:"A",data:await to16k(buf,0)});
     }
 
-    const modelId=S.cfg.asrModel||DEFAULT_CFG.asrModel;
-    let dlSeen=false;
-    const pipe=await getPipeline(modelId,(p)=>{
-      if(ASR.cancel) return;
-      if(p&&p.status==="progress"&&p.file&&typeof p.progress==="number"){
-        dlSeen=true;
-        setProg(p.progress,"Downloading the speech model, one time only — <b>"+
-          esc(String(p.file).split("/").pop())+"</b> "+Math.round(p.progress)+"%",true);
-      } else if(p&&p.status==="ready"){
-        setProg(null,"Starting up…",true);
-      }
-    });
-    if(ASR.cancel) throw {cancelled:true};
-
-    /* segment each track */
+    /* segment each track before loading the model, so a recording with no
+       speech in it fails before a 80MB download rather than after */
     for(const t of tracks) t.segs=speechSegments(t.data,16000);
     const total=tracks.reduce((n,t)=>n+t.segs.length,0);
     if(!total) throw new Error("No speech found in this recording.");
+
+    const modelId=S.cfg.asrModel||DEFAULT_CFG.asrModel;
+    const device=pickDevice();
+    startWorker((p)=>{
+      if(ASR.cancel) return;
+      if(p&&p.status==="progress"&&p.file&&typeof p.progress==="number"){
+        setProg(p.progress,"Downloading the speech model — one time only, then it's kept for next time.<br><b>"+
+          esc(String(p.file).split("/").pop())+"</b> "+Math.round(p.progress)+"%",true);
+      }
+    });
+    setProg(null,"Loading the speech engine…",true);
+    await ask({type:"init",model:modelId,device:device});
+    if(ASR.cancel) throw {cancelled:true};
 
     const langSel=el("fLang").value;
     const opts={chunk_length_s:30,stride_length_s:5};
     if(langSel==="en"||langSel==="es"){opts.language=langSel;opts.task="transcribe"}
 
-    const rows=[]; let done=0;
+    const rows=[]; let done=0; const t0=Date.now();
+    setProg(0,"Transcribing 0 of "+total+" passages…",true);
     for(const t of tracks){
       for(const seg of t.segs){
         if(ASR.cancel) throw {cancelled:true};
-        const a=Math.round(seg.s*16000), b=Math.round(seg.e*16000);
-        const clip=t.data.subarray(a,Math.min(b,t.data.length));
-        if(clip.length<1600){done++;continue}
+        const a=Math.round(seg.s*16000), b=Math.min(Math.round(seg.e*16000),t.data.length);
+        if(b-a<1600){done++;continue}
+        /* copy the slice so its buffer can be transferred to the worker
+           without detaching the whole track */
+        const clip=new Float32Array(t.data.subarray(a,b));
         let txt="";
         try{
-          const r=await pipe(clip instanceof Float32Array?clip:new Float32Array(clip),opts);
-          txt=((r&&r.text)||"").trim();
-        }catch(e){ txt=""; }
+          const r=await ask({type:"seg",model:modelId,device:device,pcm:clip,opts:opts},[clip.buffer]);
+          txt=(r&&r.text)||"";
+        }catch(e){
+          if(ASR.cancel) throw {cancelled:true};
+          throw e;
+        }
         done++;
+        const el_s=(Date.now()-t0)/1000;
+        const left=done>1?Math.round(el_s/done*(total-done)):null;
         setProg(done/total*100,
-          "Transcribing — "+done+" of "+total+" passages"+(dual?" across both channels":"")+"…",true);
+          "Transcribing — "+done+" of "+total+" passages"+(dual?" across both channels":"")+
+          (left!=null&&left>5?" · about "+(left>90?Math.round(left/60)+" min":left+"s")+" left":"")+"…",true);
         if(!txt) continue;
-        if(/^(you|thank you|thanks|bye|\.|\s)*$/i.test(txt)&&seg.e-seg.s<1.2) continue; /* silence artefact */
+        /* Whisper emits filler like "Thank you." on near-silence */
+        if(seg.e-seg.s<1.4&&/^(you|thank you|thanks|bye|okay|oh|mm|hmm|\.|,|\s)*$/i.test(txt)) continue;
         rows.push({t:seg.s,track:t.name,text:txt});
       }
     }
@@ -2680,6 +2790,7 @@ el("btnSettings").onclick=()=>{
   el("sCompetitors").value=S.cfg.competitors.join("\n");
   el("sWow").value=S.cfg.wow;
   el("sModel").value=S.cfg.asrModel||DEFAULT_CFG.asrModel;
+  el("sDevice").value=S.cfg.asrDevice||DEFAULT_CFG.asrDevice;
   el("sTalk").value=S.cfg.talkMax;
   el("sWpm").value=S.cfg.wpmMax;
   dlg.showModal();
@@ -2689,9 +2800,11 @@ el("dlgReset").onclick=()=>{
   el("sBenefits").value=DEFAULT_CFG.benefits.join("\n");
   el("sFlags").value=""; el("sCompetitors").value=""; el("sWow").value="all";
   el("sModel").value=DEFAULT_CFG.asrModel;
+  el("sDevice").value=DEFAULT_CFG.asrDevice;
   el("sTalk").value=DEFAULT_CFG.talkMax; el("sWpm").value=DEFAULT_CFG.wpmMax;
 };
 el("dlgSave").onclick=async()=>{
+  const beforeModel=S.cfg.asrModel, beforeDevice=S.cfg.asrDevice;
   const lines=v=>v.split("\n").map(s=>s.trim()).filter(Boolean);
   S.cfg.benefits=lines(el("sBenefits").value).map(fold);
   S.cfg.extraFlags=lines(el("sFlags").value);
@@ -2700,6 +2813,8 @@ el("dlgSave").onclick=async()=>{
   S.cfg.talkMax=Math.min(95,Math.max(50,+el("sTalk").value||DEFAULT_CFG.talkMax));
   S.cfg.wpmMax=Math.min(260,Math.max(120,+el("sWpm").value||DEFAULT_CFG.wpmMax));
   S.cfg.asrModel=el("sModel").value;
+  S.cfg.asrDevice=el("sDevice").value;
+  if(S.cfg.asrModel!==beforeModel||S.cfg.asrDevice!==beforeDevice) killWorker();
   dlg.close();
   saveSettings();
   if(S.scored) score(); else render();
@@ -2716,7 +2831,8 @@ const LS_CFG="we_wow_settings_v1";
 function saveSettings(){
   try{ localStorage.setItem(LS_CFG,JSON.stringify({
     benefits:S.cfg.benefits,extraFlags:S.cfg.extraFlags,competitors:S.cfg.competitors,
-    wow:S.cfg.wow,talkMax:S.cfg.talkMax,wpmMax:S.cfg.wpmMax,asrModel:S.cfg.asrModel})) }catch(e){}
+    wow:S.cfg.wow,talkMax:S.cfg.talkMax,wpmMax:S.cfg.wpmMax,
+    asrModel:S.cfg.asrModel,asrDevice:S.cfg.asrDevice})) }catch(e){}
 }
 function loadSettings(){
   let d=null;
@@ -2729,6 +2845,7 @@ function loadSettings(){
   if(typeof d.talkMax==="number") S.cfg.talkMax=d.talkMax;
   if(typeof d.wpmMax==="number") S.cfg.wpmMax=d.wpmMax;
   if(d.asrModel) S.cfg.asrModel=d.asrModel;
+  if(d.asrDevice) S.cfg.asrDevice=d.asrDevice;
 }
 
 el("fDate").value=new Date().toISOString().slice(0,10);
