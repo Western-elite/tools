@@ -1717,8 +1717,19 @@ function renderScorecard(){
     return;
   }
   if(!S.scored){
-    host.innerHTML=`<section class="panel" style="margin-top:22px"><div class="clean">
-      <strong>Nothing scored yet</strong>Load the example call or paste a transcript, then press Score call.</div></section>`;
+    host.innerHTML=`<section class="panel" style="margin-top:22px">
+      <div class="clean" style="text-align:left;padding:20px 20px 22px">
+        <strong style="text-align:left">Start a call review</strong>
+        <p style="margin:0 0 12px;color:var(--ink-2);font-size:13.5px;line-height:1.6">
+          Paste the transcript into the box above, or use <b>Open transcript file</b> for a .txt, .vtt or
+          .srt. Then press <b>Score call</b>.</p>
+        <p style="margin:0 0 12px;color:var(--ink-2);font-size:13.5px;line-height:1.6">
+          <b>Open recording</b> loads the call audio alongside it, so you can hear any line you're judging —
+          which is the only way to answer the questions about tone and pace.</p>
+        <p style="margin:0;color:var(--ink-3);font-size:12.5px;line-height:1.55">
+          New to this? The two example buttons load a strong call and a weak one, scored, to show what the
+          tool looks for.</p>
+      </div></section>`;
     return;
   }
   const phases=[
@@ -2595,10 +2606,12 @@ el("btnWipe").onclick=()=>{
 /* =====================================================================
    13. Boot
    ===================================================================== */
+/* Boot empty. The example calls stay one click away on the buttons above,
+   but a scorecard sitting there on open reads like a call already scored. */
 el("fDate").value=new Date().toISOString().slice(0,10);
 loadSettings();
 renderHistory();
-loadExample("strong");
+score();
 </script>
 
 </body>
