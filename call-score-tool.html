@@ -713,9 +713,16 @@ const P = {
   confirmText:    ["confirmation text","text you a confirmation","send you a text","text message confirmation","shoot you a text",
                    "send a text","text you the confirmation","text confirmation","send that to you by text","text you when",
                    "texto de confirmacion","le mando un texto","mensaje de texto","le envio un texto","le manda un mensaje"],
-  priceTalk:      ["how much","price","pricing","quote","cost","costs","rate","rates","charge","how much is","what do you charge",
-                   "ballpark","estimate","total","fee","cuanto cuesta","cuanto es","precio","precios","cotizacion","tarifa",
-                   "cuanto seria","cuanto me sale"],
+  /* Deliberately narrow. A billing dispute is full of "fee", "charge" and
+     "$90" but is not a sales call — scoring it against discovery questions
+     and trial closes marks an agent down for a call that never called for
+     them. These are phrases someone SHOPPING uses. */
+  priceTalk:      ["how much","how much is","how much would","how much for","how much does","what do you charge",
+                   "what would it cost","what does it cost","cost to","price for","price on","pricing on",
+                   "give me a quote","get a quote","need a quote","a quote for","quote me","ballpark",
+                   "what are your rates","your rates","how much are","what's the price","whats the price",
+                   "cuanto cuesta","cuanto es","cuanto seria","cuanto me sale","cuanto sale","precio de",
+                   "cotizacion","me cotiza","que precio"],
   delivery:       ["delivery","deliver","drop off","dropoff","drop it off","bring one out","set one out","new container",
                    "get one out there","entrega","entregar","dejar uno","llevar uno","mandar uno"],
   newSite:        ["new site","new job site","new jobsite","first time","new account","new customer","haven't used",
@@ -760,10 +767,16 @@ const P = {
                    "i'd guess","id guess","i think it's","i think its","don't quote me","dont quote me","off the top of my head",
                    "creo que como","mas o menos como","no estoy seguro pero","como unos","creo que es","tal vez como",
                    "no me haga caso pero"],
-  flagPromise:    ["i guarantee","i can guarantee","i promise","i promise you","100 percent","100%","absolutely will be there",
-                   "definitely will be there","definitely be there","no question we'll","guaranteed to be","you have my word",
-                   "for sure be there","i'll make sure it's there by","ill make sure its there by",
-                   "le garantizo","garantizado","le prometo","se lo prometo","seguro llega","cien por ciento","le doy mi palabra"],
+  /* "100%" was removed: agents say "yeah, no, 100%" to mean "I agree", and
+     it was firing an unauthorized-guarantee flag on plain agreement. What
+     remains is language that actually commits the company to an outcome. */
+  flagPromise:    ["i guarantee","i can guarantee","we guarantee","i promise","i promise you","absolutely will be there",
+                   "definitely will be there","definitely be there","will definitely be there","no question we'll",
+                   "guaranteed to be","you have my word","for sure be there","it will be there by","he'll be there by",
+                   "ill make sure its there by","i'll make sure it's there by","that won't happen again",
+                   "that wont happen again",
+                   "le garantizo","garantizado","le prometo","se lo prometo","seguro llega","le doy mi palabra",
+                   "no va a volver a pasar"],
   flagBlame:      ["dispatch didn't","dispatch never","dispatch messed","the drivers never","the driver didn't","the driver never",
                    "that department","they always mess","they never do","not my department","that's not my job","thats not my job",
                    "i just work here","nobody told me","they didn't tell me","they didnt tell me","the office never",
@@ -798,11 +811,17 @@ const P = {
   flagIdkRescue:  ["let me find out","let me check","let me look","i'll find out","ill find out","let me ask","i'll check",
                    "ill check","let me get you an answer","i'll get back to you","ill get back to you","let me confirm",
                    "voy a averiguar","dejeme revisar","voy a checar","le averiguo","dejeme preguntar","le confirmo"],
+  booked:         ["i have you down for","have you down for","scheduled for","on the schedule for","got you scheduled",
+                   "put you down for","booked for","i've got that scheduled","ive got that scheduled","all scheduled",
+                   "se lo agende","queda agendado","lo tengo agendado","ya quedo agendado","se lo programe"],
   resolveConfirm: ["anything else i can","anything else for you","is there anything else","did that answer","does that take care",
                    "are you all set","you're all set","youre all set","we're all set","that's all set","thats all set",
                    "you should be good","all taken care of","have you covered","is that everything",
-                   "algo mas en que","hay algo mas","quedo resuelto","con eso queda","ya quedo","esta todo bien",
-                   "le sirve asi","es todo"]
+                   "was everything else ok","everything else ok","was everything else alright",
+                   "everything else alright","anything else going on","did that help","does that help",
+                   "that make sense","sound good","we good","other than that",
+                   "algo mas en que","hay algo mas","algo mas que","quedo resuelto","con eso queda","ya quedo",
+                   "esta todo bien","todo bien con","le sirve asi","es todo","alguna otra cosa"]
 };
 /* fold every phrase once */
 for(const k in P) P[k]=P[k].map(fold);
@@ -947,7 +966,12 @@ function buildContext(turns,langPref){
   /* opening / closing windows */
   const openTurns = hasTs ? turns.filter(t=>t.ts!=null&&t.ts<=45) : turns.slice(0,6);
   const earlyTurns= hasTs ? turns.filter(t=>t.ts!=null&&t.ts<=110) : turns.slice(0,Math.max(6,Math.ceil(turns.length*0.35)));
-  const closeTurns= hasTs && duration ? turns.filter(t=>t.ts!=null&&t.ts>=duration-70) : turns.slice(-Math.max(4,Math.ceil(turns.length*0.2)));
+  /* The closing stretch, by time or by turn count — whichever reaches
+     further back. A wrap-up question 80 seconds from the end was falling
+     outside a fixed 70-second window and reading as "never confirmed". */
+  const closeByCount=turns.slice(-Math.max(5,Math.ceil(turns.length*0.25)));
+  const closeByTime = hasTs&&duration ? turns.filter(t=>t.ts!=null&&t.ts>=duration-100) : [];
+  const closeTurns  = closeByTime.length>closeByCount.length ? closeByTime : closeByCount;
 
   return {turns,agent,cust,all,agentText,lang,hasTs,duration,openTurns,earlyTurns,closeTurns};
 }
@@ -1003,10 +1027,13 @@ const TRIGGERS=[
   {id:"final",  name:"Final pickup",
    detect:c=>findIn(c.turns,P.finalTrigger)},
   {id:"ordered",name:"Order placed or scheduled",
+   /* Needs actual booking language, not merely a restate cue near a date.
+      On a billing complaint the agent says "so that's" and mentions a day,
+      which was enough to invent an order that was never placed. */
    detect:c=>{
-     const cue=findIn(c.turns,[...P.restateCue,...P.closing],"agent");
-     const dat=findIn(c.turns,P.attrDate,"agent");
-     return (cue.length&&dat.length)?[cue[0],dat[0]]:[];
+     const book=findIn(c.agent,[...P.closing,...P.booked],"agent");
+     const dat=findIn(c.agent,P.attrDate,"agent");
+     return (book.length&&dat.length)?[book[0],dat[0]]:[];
    }}
 ];
 
@@ -1328,7 +1355,13 @@ function computeMetrics(c){
       const nx=c.turns.slice(i+1).find(x=>x.ts!=null);
       if(!nx) continue;
       const span=nx.ts-t.ts;
-      if(span>=5&&span<=60){secs+=span;wds+=t.w;wpmTurns++}
+      /* Drop turns whose implied rate is not humanly possible. A merged or
+         mis-timestamped turn reports 300+ wpm and drags the whole estimate
+         with it — better to ignore it than to publish a false number. */
+      if(span>=5&&span<=60){
+        const rate=t.w/(span/60);
+        if(rate>=60&&rate<=260){secs+=span;wds+=t.w;wpmTurns++}
+      }
     }
     if(wpmTurns>=2&&secs>15) wpm=Math.round(wds/(secs/60));
   }
