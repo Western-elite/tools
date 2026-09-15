@@ -538,6 +538,14 @@
   body.esc-open #escPanel{transform:translateX(0);}
   body.hist-open #histPanel{transform:translateX(0);}
   .pp-side-btn.st-hist{background:#3a5a78;}
+  .pp-side-btn.st-daily{background:#5a3d78;}
+  body.daily-open #dailyPanel{transform:translateX(0);}
+  body.hist-open #histTab,body.daily-open #dailyTab{box-shadow:inset 0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.22);}
+  .dly-form{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:#f7f9fb;margin-bottom:8px;}
+  .dly-lab{display:block;font-size:12px;font-weight:800;color:#556;margin:10px 0 3px;text-transform:uppercase;letter-spacing:.03em;}
+  .dly-ta{width:100%;font-family:inherit;font-size:13px;border:1px solid #cdd6df;border-radius:6px;padding:7px 9px;resize:vertical;box-sizing:border-box;}
+  .dly-costly{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#b5562e;}
+  .dly-tbl td.dly-cell{white-space:normal;min-width:180px;max-width:320px;vertical-align:top;}
   body.coach-open #coachTab,body.esc-open #escTab,body.hist-open #histTab{box-shadow:inset 0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.22);}
   .side-submit{margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--line,#dce3ea);}
   .side-submit .kb-btn{width:100%;justify-content:center;}
@@ -900,6 +908,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   <button id="coachTab" class="pp-side-btn" type="button">&#9776; Supervisor Log</button>
   <button id="escTab" class="pp-side-btn st-esc" type="button">&#9650; Manager Log</button>
   <button id="histTab" class="pp-side-btn st-hist" type="button">&#128337; History</button>
+  <button id="dailyTab" class="pp-side-btn st-daily" type="button">&#128203; Daily</button>
 </div></nav>
 
 <div class="wrap"><!-- ═══ 1 · OVERVIEW ═══ -->
@@ -1953,6 +1962,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       </div>
       <div id="histBody"></div>
     </div>
+    <div id="dailyPanel" class="side-panel">
+      <div class="coach-head"><b>Daily</b><button class="side-close" type="button" aria-label="Close">&times;</button></div>
+      <p class="coach-lede">Your daily log &mdash; mistakes and coaching notes filed under your name, newest first. Tap a card to see the feedback.</p>
+      <div id="dailyBody"></div>
+    </div>
   </div>
 
   <div class="sec" id="tetrack">
@@ -2342,11 +2356,12 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     document.querySelectorAll(".pp-nav a.toc-link").forEach(function(a){a.addEventListener("click",function(e){e.preventDefault();gotoPage(this.getAttribute("href").slice(1));});});
     makeCollapsibles();prepOverview();markEmpSign();
     (function(){var d=document.getElementById("coachDrawer");if(!d)return;var body=document.body;
-      function closeAll(){body.classList.remove("coach-open","esc-open","hist-open","panel-open");}
-      function toggle(which){var was=body.classList.contains(which+"-open");closeAll();if(!was){body.classList.add(which+"-open","panel-open");if(which==="hist"&&window.__histRefresh)window.__histRefresh();}}
+      function closeAll(){body.classList.remove("coach-open","esc-open","hist-open","daily-open","panel-open");}
+      function toggle(which){var was=body.classList.contains(which+"-open");closeAll();if(!was){body.classList.add(which+"-open","panel-open");if(which==="hist"&&window.__histRefresh)window.__histRefresh();if(which==="daily"&&window.__weDailyRefresh)window.__weDailyRefresh();}}
       var ct=document.getElementById("coachTab");if(ct)ct.addEventListener("click",function(){toggle("coach");});
       var et=document.getElementById("escTab");if(et)et.addEventListener("click",function(){toggle("esc");});
       var ht=document.getElementById("histTab");if(ht)ht.addEventListener("click",function(){toggle("hist");});
+      var dyt=document.getElementById("dailyTab");if(dyt)dyt.addEventListener("click",function(){toggle("daily");});
       document.querySelectorAll(".side-close").forEach(function(b){b.addEventListener("click",function(){closeAll();});});
       // escalation direction gate
       function applyEscDir(){var f=document.getElementById("escDirField");if(!f)return;var dir=(f.value||"").toLowerCase();
@@ -2504,7 +2519,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var dt=document.createElement("div");dt.id="dataTab";dt.style.display="none";
     dt.innerHTML=''+
       '<div class="dt-head"><h2>Data tab <span>· manager only · daily scoreboard</span></h2><button id="dtBack" class="mb-btn2" type="button">‹ Back to dashboard</button></div>'+
-      '<div class="dt-subtabs"><button class="dt-tab dt-tab-on" data-sub="calls" type="button">Calls</button><button class="dt-tab" data-sub="text" type="button">Text</button><button class="dt-tab" data-sub="email" type="button">Emails</button></div>'+
+      '<div class="dt-subtabs"><button class="dt-tab dt-tab-on" data-sub="calls" type="button">Calls</button><button class="dt-tab" data-sub="text" type="button">Text</button><button class="dt-tab" data-sub="email" type="button">Emails</button><button class="dt-tab" data-sub="daily" type="button">Daily</button></div>'+
       '<div id="dtPaneCalls" class="dt-pane">'+
         '<div class="dt-note">Pick a date and enter each agent’s <b>raw counts</b> for that day — the percentages auto-calculate exactly like the scoreboard.</div>'+
         '<div class="dt-daterow"><label>Date&nbsp;</label><input type="date" id="dtDate"> <button class="mb-btn2" id="dtToday" type="button">Today</button> <span class="dt-daynote" id="dtDayNote"></span></div>'+
@@ -2531,6 +2546,17 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         '<div class="dt-scroll"><div id="emlLog"></div></div>'+
         '<button class="mb-btn2" id="emlAdd" type="button" style="margin-top:10px">+ Add email</button>'+
         '<div id="emlSummary" class="dt-daynote" style="margin-top:10px"></div>'+
+      '</div>'+
+      '<div id="dtPaneDaily" class="dt-pane" style="display:none">'+
+        '<div class="dt-note">Log a daily mistake for an agent. Each agent sees anything filed under <b>their name</b> in the <b>Daily</b> tab of their own passport.</div>'+
+        '<div class="dly-form">'+
+          '<div class="dt-daterow"><label>Date&nbsp;</label><input type="date" id="dlyDate"> &nbsp; <label>Agent&nbsp;</label><select id="dlyAgent" class="dt-agsel"></select> &nbsp; <label class="dly-costly"><input type="checkbox" id="dlyCostly"> Costly</label></div>'+
+          '<label class="dly-lab">Detail of mistake</label><textarea id="dlyDetail" class="dly-ta" rows="3" placeholder="What happened…"></textarea>'+
+          '<label class="dly-lab">Comments / feedback (what feedback was given, how was it received)</label><textarea id="dlyFeedback" class="dly-ta" rows="3" placeholder="Feedback given and how it was received…"></textarea>'+
+          '<div style="margin-top:8px"><button class="mb-btn2" id="dlyAdd" type="button">+ Add mistake</button> <span id="dlyMsg" class="dt-daynote"></span></div>'+
+        '</div>'+
+        '<div id="dlySummary" class="dt-daynote" style="margin-top:14px"></div>'+
+        '<div class="dt-scroll"><div id="dlyList"></div></div>'+
       '</div>';
     var dash=document.getElementById("dashboard");dash.parentNode.insertBefore(dt,dash.nextSibling);
     document.getElementById("dtBack").addEventListener("click",showDash);
@@ -2549,6 +2575,36 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     if(tpb)tpb.addEventListener("change",function(e){if(!e.target.classList||!e.target.classList.contains("tp-box"))return;var ag=document.getElementById("emlAgent"),dtl=document.getElementById("emlDate");var id=ag?ag.value:"",date=(dtl&&dtl.value)||todayISO();if(!id)return;var tp={};tpb.querySelectorAll(".tp-box").forEach(function(b){tp[b.getAttribute("data-tp")]=b.checked;});setDay(id,date,{tp:tp});renderTeamPlayer();if(id===activeId())refreshPanel();try{renderTeam();}catch(e2){}});
     document.getElementById("txtAdd").addEventListener("click",function(){addMsg("text");});
     document.getElementById("emlAdd").addEventListener("click",function(){addMsg("email");});
+    document.getElementById("dlyDate").value=todayISO();
+    document.getElementById("dlyAdd").addEventListener("click",addDaily);
+  }
+  function populateDailyAgents(){var sel=document.getElementById("dlyAgent");if(!sel)return;var cur=sel.value;var list=agents();sel.innerHTML='<option value="">— pick agent —</option>'+list.map(function(a){return '<option value="'+escOpt(a.name)+'">'+escOpt(a.name)+'</option>';}).join("");if(cur)sel.value=cur;}
+  function renderDailyList(){var w=document.getElementById("dlyList"),sum=document.getElementById("dlySummary");if(!w)return;w.innerHTML='<div class="qz-empty">Loading…</div>';if(!window.__weDailyManagerList){w.innerHTML='<div class="qz-empty">Connect Supabase to log daily mistakes.</div>';return;}
+    window.__weDailyManagerList(function(arr){
+      if(!arr||!arr.length){w.innerHTML='<div class="qz-empty">No mistakes logged yet.</div>';if(sum)sum.textContent="";return;}
+      var costly=arr.filter(function(r){return r.costly;}).length;
+      if(sum)sum.innerHTML='<b>'+arr.length+'</b> mistake'+(arr.length>1?"s":"")+' logged &middot; <b>'+costly+'</b> marked costly';
+      var h='<table class="dt-grid dly-tbl"><tr><th>Date</th><th>Agent</th><th>Detail of mistake</th><th>Feedback</th><th>Costly</th></tr>';
+      h+=arr.map(function(r){return '<tr><td>'+escOpt(r.date)+'</td><td>'+escOpt(r.agent)+'</td><td class="dly-cell">'+escOpt(r.detail)+'</td><td class="dly-cell">'+escOpt(r.feedback)+'</td><td style="text-align:center;font-weight:800;color:#b5562e">'+(r.costly?'✓':'')+'</td></tr>';}).join("");
+      h+='</table>';w.innerHTML=h;
+    });
+  }
+  function addDaily(){
+    var date=(document.getElementById("dlyDate").value||todayISO());
+    var agent=document.getElementById("dlyAgent").value;
+    var detail=(document.getElementById("dlyDetail").value||"").trim();
+    var feedback=(document.getElementById("dlyFeedback").value||"").trim();
+    var costly=document.getElementById("dlyCostly").checked;
+    var msg=document.getElementById("dlyMsg");
+    if(!agent){if(msg)msg.textContent="Pick an agent first.";return;}
+    if(!detail){if(msg)msg.textContent="Add the mistake detail.";return;}
+    if(!window.__weDailyAdd){if(msg)msg.textContent="Not connected.";return;}
+    if(msg)msg.textContent="Saving…";
+    window.__weDailyAdd(agent,date,detail,feedback,costly,function(ok){
+      if(!ok){if(msg)msg.textContent="Could not save — check your connection.";return;}
+      document.getElementById("dlyDetail").value="";document.getElementById("dlyFeedback").value="";document.getElementById("dlyCostly").checked=false;
+      if(msg)msg.textContent="Saved to "+agent+"’s Daily.";renderDailyList();
+    });
   }
   window.__weTrainerData=function(){
     buildDataTab();
@@ -2559,9 +2615,10 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     showDataSub("text");
   };
   function showDataSub(which){
-    ["calls","text","email"].forEach(function(k){var p=document.getElementById("dtPane"+k.charAt(0).toUpperCase()+k.slice(1));if(p)p.style.display=(k===which)?"":"none";});
+    ["calls","text","email","daily"].forEach(function(k){var p=document.getElementById("dtPane"+k.charAt(0).toUpperCase()+k.slice(1));if(p)p.style.display=(k===which)?"":"none";});
     var dt=document.getElementById("dataTab");if(dt)dt.querySelectorAll(".dt-tab").forEach(function(b){b.classList.toggle("dt-tab-on",b.getAttribute("data-sub")===which);});
     if(which==="calls"){renderDaily();renderGrid();renderDials();}
+    else if(which==="daily"){populateDailyAgents();renderDailyList();}
     else{populateMsgAgents(which);renderMsgLog(which);if(which==="email")renderTeamPlayer();}
   }
   function renderTeamPlayer(){
@@ -2672,6 +2729,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var date=document.getElementById("dtDate").value||todayISO();var w=document.getElementById("dtDailyWrap");var list=agents();
     function rawLab(k){for(var i=0;i<RAW.length;i++)if(RAW[i].k===k)return RAW[i].lab;return k;}
     function pctLab(k){for(var i=0;i<DAYPCT.length;i++)if(DAYPCT[i].k===k)return DAYPCT[i].lab;return k;}
+    function pctFmt(v){var s=String(v==null?"":v).trim();if(s===""||/no\s*score/i.test(s))return s;var num=parseFloat(s);return isNaN(num)?s:(num+"%");}
     var h='<table class="dt-grid dt-wide"><tr class="grp"><th></th><th></th>'+
       DGRID.map(function(g){return '<th colspan="'+g.cols.length+'" class="'+g.cls+'">'+g.grp+'</th>';}).join("")+'</tr>';
     h+='<tr><th>Agent</th><th>Attendance</th>'+
@@ -2684,7 +2742,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         if(col.raw){
           var k=col.raw,val=(e[k]==null?"":e[k]);
           if(k==="zoom"||k==="vc"){
-            return '<td><input class="dd-in dd-score" list="dd-nsopts" data-id="'+a.id+'" data-k="'+k+'" value="'+val+'" inputmode="decimal" autocomplete="off" placeholder="score / No score"></td>';
+            return '<td><input class="dd-in dd-score" list="dd-nsopts" data-id="'+a.id+'" data-k="'+k+'" value="'+pctFmt(val)+'" autocomplete="off" placeholder="score % / No score"></td>';
           }
           return '<td><input class="dd-in" data-id="'+a.id+'" data-k="'+k+'" value="'+val+'" inputmode="decimal"></td>';
         }
@@ -2695,7 +2753,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     });
     h+='</table><datalist id="dd-nsopts"><option value="No score"></option></datalist>';w.innerHTML=h;
     document.getElementById("dtDayNote").textContent=(date===todayISO()?"(today)":"");
-    w.querySelectorAll(".dd-in").forEach(function(i){function onDD(){var id=this.getAttribute("data-id"),k=this.getAttribute("data-k");var p={};p[k]=this.value;setDay(id,date,p);var tr=this.closest("tr");updateRowPct(tr,getDay(id,date));renderGrid();renderTeam();if(id===activeId())refreshPanel();}i.addEventListener("input",onDD);i.addEventListener("change",onDD);});
+    w.querySelectorAll(".dd-in").forEach(function(i){var isScore=i.classList.contains("dd-score");function save(val){var id=i.getAttribute("data-id"),k=i.getAttribute("data-k");var p={};p[k]=val;setDay(id,date,p);var tr=i.closest("tr");updateRowPct(tr,getDay(id,date));renderGrid();renderTeam();if(id===activeId())refreshPanel();}i.addEventListener("input",function(){save(this.value);});i.addEventListener("change",function(){var v=this.value;if(isScore){v=pctFmt(v);this.value=v;}save(v);});});
     w.querySelectorAll(".dd-att").forEach(function(s){s.addEventListener("change",function(){setDay(this.getAttribute("data-id"),date,{att:this.value});});});
   }
   function renderGrid(){
@@ -3169,7 +3227,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function rowToRec(row){function g(){for(var i=0;i<arguments.length;i++){var k=arguments[i];if(row[k]!=null&&row[k]!=="")return row[k];}return "";}
     var det=g("Detail","detail");var fa=g("FiledAt","filedat","filedAt","filed_at");
     return {id:uid(),type:s2t(g("Source","source")),edate:(g("EntryDate","entrydate","entryDate","entry_date")+"").slice(0,10),title:g("Title","title"),detail:det,summary:(det+"").slice(0,90)+((det+"").length>90?"…":""),submitted:(Date.parse(fa)||Date.now())};}
-  function pullFromCloud(){if(!window.sbReady())return;var a=curAgent();api("getEntries",{agent:a}).then(function(res){if(!res||!res.ok||!res.rows)return;var all=load();all[a]=res.rows.map(rowToRec);save(all);renderHistory();}).catch(function(){});}
+  function pullFromCloud(){if(!window.sbReady())return;var a=curAgent();api("getEntries",{agent:a}).then(function(res){if(!res||!res.ok||!res.rows)return;var all=load();all[a]=res.rows.filter(function(r){return !isDaily(r.source||r.Source);}).map(rowToRec);save(all);renderHistory();}).catch(function(){});}
   function addHist(rec){var all=load(),a=curAgent();if(!all[a])all[a]=[];all[a].unshift(rec);save(all);pushToCloud(rec);}
   function collectLogRows(table){var rows=[];if(!table)return rows;Array.prototype.slice.call(table.rows).forEach(function(tr,idx){if(idx===0)return;var date=tr.querySelector('input[type=date]'),note=tr.querySelector('textarea, input[type=text]');var dv=date?date.value.trim():"",nv=note?note.value.trim():"";if(dv||nv)rows.push({date:dv,note:nv});});return rows;}
   function clearFields(container){var els=container.querySelectorAll('input,textarea');var last=null;els.forEach(function(el){if(el.type==="checkbox"){el.checked=false;var li=el.closest("li");if(li)li.classList.remove("checked-off");}else{el.value="";}last=el;});if(last){last.dispatchEvent(new Event("input",{bubbles:true}));last.dispatchEvent(new Event("change",{bubbles:true}));}}
@@ -3240,6 +3298,38 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     wrap.querySelectorAll(".hist-resp-send").forEach(function(b){b.addEventListener("click",function(){respondEntry(this.closest(".hist-card"));});});
   }
   window.__histRefresh=function(){renderHistory();pullFromCloud();};
+  // ---- Daily mistakes log (stored as entries, source "Daily Mistake"; agents read their own via RLS) ----
+  var DSEP="\n\n— Feedback —\n";
+  function isDaily(src){return /^daily mistake/i.test((src||"")+"");}
+  function fmtD(s){var t=Date.parse(s+"T00:00:00");if(isNaN(t))return s;var d=new Date(t);return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
+  function dailyParse(row){function g(){for(var i=0;i<arguments.length;i++){var k=arguments[i];if(row[k]!=null&&row[k]!=="")return row[k];}return "";}
+    var src=g("Source","source"),det=(g("Detail","detail")+""),fa=g("FiledAt","filedat","filedAt","filed_at");var parts=det.split(DSEP);
+    return {agent:g("Agent","agent"),date:(g("EntryDate","entrydate","entryDate","entry_date")+"").slice(0,10),detail:parts[0]||"",feedback:parts.slice(1).join(DSEP)||"",costly:/costly/i.test(src+""),filed:(Date.parse(fa)||Date.now())};}
+  window.__weDailyAdd=function(agent,date,detail,feedback,costly,cb){
+    if(!window.sbReady()){if(cb)cb(false);return;}
+    var src="Daily Mistake"+(costly?" (Costly)":"");
+    window.sbInsert("entries",{agent:agent,source:src,entry_date:date||"",title:"Daily mistake",detail:(detail||"")+(feedback?DSEP+feedback:"")}).then(function(){if(cb)cb(true);}).catch(function(){if(cb)cb(false);});
+  };
+  window.__weDailyManagerList=function(cb){
+    if(!window.sbReady()){if(cb)cb([]);return;}
+    window.sbSelect("entries","source=ilike.Daily*&order=filed_at.desc&limit=1000").then(function(rows){if(cb)cb((rows||[]).map(dailyParse));}).catch(function(){if(cb)cb([]);});
+  };
+  function renderDailyPanel(){
+    var wrap=document.getElementById("dailyBody");if(!wrap)return;var a=curAgent();
+    if(!window.sbReady()){wrap.innerHTML='<div class="qz-empty">No daily entries on file yet.</div>';return;}
+    wrap.innerHTML='<div class="qz-empty">Loading…</div>';
+    window.sbSelect("entries","agent=eq."+encodeURIComponent(a)+"&source=ilike.Daily*&order=filed_at.desc&limit=500").then(function(rows){
+      var arr=(rows||[]).map(dailyParse);
+      if(!arr.length){wrap.innerHTML='<div class="qz-empty">No daily entries on file yet.</div>';return;}
+      wrap.innerHTML=arr.map(function(r){return '<div class="hist-card">'+
+        '<div class="hist-when">'+(r.costly?'<span class="hist-badge b-esc">Costly</span> ':'')+'<b>'+esc(fmtD(r.date))+'</b></div>'+
+        '<div class="hist-sum">'+esc(r.detail)+'</div>'+
+        (r.feedback?'<div class="hist-more">View feedback ▾</div><div class="hist-detail">'+esc(r.feedback)+'</div>':'')+
+      '</div>';}).join("");
+      wrap.querySelectorAll(".hist-more").forEach(function(m){m.addEventListener("click",function(){var c=this.closest(".hist-card");c.classList.toggle("open");this.innerHTML=c.classList.contains("open")?"Hide feedback ▴":"View feedback ▾";});});
+    }).catch(function(){wrap.innerHTML='<div class="qz-empty">Could not load your daily log.</div>';});
+  }
+  window.__weDailyRefresh=renderDailyPanel;
   // ---- Manager comment-notification bell ----
   var SEEN_KEY="we_mgr_comments_seen";
   function seenTs(){var v=parseInt(localStorage.getItem(SEEN_KEY)||"0",10);return isNaN(v)?0:v;}
