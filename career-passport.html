@@ -186,6 +186,7 @@
   ul.chk li{margin:6px 0;font-size:13.5px;line-height:1.4;}
   ul.chk li label{display:flex;align-items:flex-start;gap:8px;cursor:pointer;}
   .chk-box,.xchk{margin-top:2px;width:16px;height:16px;flex:none;accent-color:var(--blue2);cursor:pointer;}
+  .te-in{font-family:inherit;font-size:14px;border:1px solid #cdd6df;border-radius:6px;padding:5px 8px;min-width:120px;background:#fff;color:var(--ink);}
   ul.chk li.checked-off{background:var(--good-bg);border-radius:4px;}
 
   /* toolbar: save status + print + clear, sits under the sticky banner */
@@ -460,6 +461,12 @@
   .dd-in{width:60px;font-family:inherit;font-size:12px;border:1px solid #cdd6df;border-radius:5px;padding:4px 5px;}
   .dd-att{font-family:inherit;font-size:12px;border:1px solid #cdd6df;border-radius:5px;padding:4px 4px;min-width:104px;}
   .dd-score{width:96px;}
+  .tp-block{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:6px 0 12px;background:#f7f9fb;}
+  .tp-cap{font-size:12.5px;color:#556;margin-bottom:7px;}
+  .tp-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .tp-row label{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;}
+  .tp-box{width:16px;height:16px;accent-color:var(--blue2);cursor:pointer;}
+  .tp-pct{margin-left:auto;font-weight:800;color:#1f6b41;}
   .dp{font-weight:800;color:#1f6b41;text-align:center;background:#ecf6f0;white-space:nowrap;}
   .ms-in{font-family:inherit;font-size:13px;border:1px solid #cdd6df;border-radius:5px;padding:5px 6px;text-align:center;}
   .dt-avg{font-weight:700;color:#3d4750;white-space:nowrap;}
@@ -888,6 +895,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   <a class="toc-link" href="#record"><span class="num">8</span>My Record</a>
   <a class="toc-link" href="#skills"><span class="num">9</span>Knowledge Base</a>
   <a class="toc-link" href="#wow"><span class="num">10</span>WOW Call</a>
+  <a class="toc-link" href="#tetrack" id="teNavLink" style="display:none"><span class="num">11</span>Text &amp; Email</a>
   <span class="pp-nav-spacer"></span>
   <button id="coachTab" class="pp-side-btn" type="button">&#9776; Supervisor Log</button>
   <button id="escTab" class="pp-side-btn st-esc" type="button">&#9650; Manager Log</button>
@@ -1947,6 +1955,60 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     </div>
   </div>
 
+  <div class="sec" id="tetrack">
+    <div class="sec-h"><span class="badge">11</span><h2>Text &amp; Email Track <span class="sub">&mdash; for agents who handle the textline &amp; inbox</span></h2></div>
+    <div class="callout">This track runs alongside your Career Passport for the work you do over <b>text and email</b>. Your daily <b>message score</b> &mdash; on&#8209;time, greeting, message, and grammar &mdash; is the gate that moves you up. On&#8209;time means a <b>text within 5 minutes</b> and an <b>email within 15 minutes</b>. Your live Text/Email quality is shown on your <b>Scoreboard</b>.</div>
+
+    <div class="subh">T&amp;E Level 1 &mdash; Responder</div>
+    <table class="spec" style="margin-bottom:12px">
+      <tr><td class="l">Pay</td><td class="r"><input class="te-in" data-fk="te_l1_pay" placeholder="set pay (e.g. $18.00/hr)"></td></tr>
+      <tr><td class="l">Objective</td><td class="r">Handle standard inbound texts &amp; emails accurately and on time.</td></tr>
+      <tr><td class="l">Quality gate</td><td class="r">Message quality <b>&ge;&nbsp;85%</b> &middot; on&#8209;time most of the day &middot; proper greeting, message &amp; grammar on every message.</td></tr>
+    </table>
+    <ul class="chk">
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l1_1"> Respond to standard texts &amp; emails using approved templates</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l1_2"> Proper greeting, clear message, and clean grammar every time</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l1_3"> Meet the on&#8209;time targets (5&nbsp;min texts / 15&nbsp;min emails)</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l1_4"> Log every conversation with the customer&rsquo;s name</label></li>
+    </ul>
+
+    <div class="subh">T&amp;E Level 2 &mdash; Independent</div>
+    <table class="spec" style="margin-bottom:12px">
+      <tr><td class="l">Pay</td><td class="r"><input class="te-in" data-fk="te_l2_pay" placeholder="set pay"></td></tr>
+      <tr><td class="l">Objective</td><td class="r">Handle the full standard range without templates, using good judgment.</td></tr>
+      <tr><td class="l">Quality gate</td><td class="r">Message quality <b>&ge;&nbsp;90%</b> &middot; consistently on time.</td></tr>
+    </table>
+    <ul class="chk">
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l2_1"> Compose correct replies without leaning on templates</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l2_2"> Send attachments when it makes sense (receipts, invoices, service confirmations, bin/placement photos)</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l2_3"> Handle scheduling changes and reschedules over text/email</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l2_4"> Offer the right add&#8209;on in writing when it genuinely fits</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l2_5"> Keep quality high while handling several conversations at once</label></li>
+    </ul>
+
+    <div class="subh">T&amp;E Level 3 &mdash; Specialist</div>
+    <table class="spec" style="margin-bottom:12px">
+      <tr><td class="l">Pay</td><td class="r"><input class="te-in" data-fk="te_l3_pay" placeholder="set pay"></td></tr>
+      <tr><td class="l">Objective</td><td class="r">Own the channel end&#8209;to&#8209;end, including the hard conversations.</td></tr>
+      <tr><td class="l">Quality gate</td><td class="r">Message quality <b>&ge;&nbsp;95%</b> &middot; very low error rate.</td></tr>
+    </table>
+    <ul class="chk">
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l3_1"> De&#8209;escalate upset customers in writing and keep it professional</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l3_2"> Handle payment / COD questions and commercial accounts over text/email</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l3_3"> Catch and fix order errors before they reach dispatch</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l3_4"> Cover both text and email fluidly</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l3_5"> Know when to move a conversation to a phone call</label></li>
+      <li><label><input type="checkbox" class="xchk" data-fk="te_l3_6"> Help build and maintain the template / canned&#8209;response library</label></li>
+      <li class="te-email-only"><label><input type="checkbox" class="xchk" data-fk="te_l3_7"> Helps on phones without being prompted <span style="color:#13427a;font-weight:700">(email)</span></label></li>
+    </ul>
+
+    <div class="subh">Level review &amp; sign-off</div>
+    <table class="price-table">
+      <tr><th>Current Text &amp; Email level</th><th>Manager initials</th><th>Date</th></tr>
+      <tr><td><input class="te-in" data-fk="te_curlevel" placeholder="e.g. T&amp;E Level 2"></td><td><input class="te-in" data-fk="te_signinit" placeholder="Initials"></td><td><input type="date" class="te-in" data-fk="te_signdate"></td></tr>
+    </table>
+  </div>
+
   <footer>Western Elite · Customer Service Career Passport — Manager Master · For Manager Use Only · Entries save automatically in this browser · Version 2.0</footer></div></div>
 <script>
 (function(){
@@ -2015,7 +2077,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   var ACTIVE=null;
   function saveActive(){if(ACTIVE==null)return;setAgentData(ACTIVE,collect());_lastEdit=Date.now();var s=document.getElementById("saveStatus");if(s)s.textContent="Saved "+new Date().toLocaleTimeString();pushPassport();}
-  function selectAgent(id){saveActive();ACTIVE=id;clearFields();var d=agentData(id);if(d)apply(d);var sel=document.getElementById("agentSelect");if(sel)sel.value=id;loadAcks(agName(id),function(m){if(ACTIVE===id)applyAcks(m);});pullPassport(id);if(window.__wePanelRefresh)setTimeout(window.__wePanelRefresh,80);}
+  function selectAgent(id){saveActive();ACTIVE=id;clearFields();var d=agentData(id);if(d)apply(d);var sel=document.getElementById("agentSelect");if(sel)sel.value=id;loadAcks(agName(id),function(m){if(ACTIVE===id)applyAcks(m);});pullPassport(id);try{if(window.__weTETrackVis)window.__weTETrackVis(window.__weTEenabled&&window.__weTEenabled(id),window.__weEmailOn&&window.__weEmailOn(id));}catch(e){}if(window.__wePanelRefresh)setTimeout(window.__wePanelRefresh,80);}
   function byName(a,b){return String((a&&a.name)||"").localeCompare(String((b&&b.name)||""),undefined,{sensitivity:"base"});}
   function refreshSelect(){var sel=document.getElementById("agentSelect");var list=roster().slice().sort(byName);sel.innerHTML="";if(!list.length){var o=document.createElement("option");o.textContent="— no agents yet —";o.value="";sel.appendChild(o);return;}list.forEach(function(r){var o=document.createElement("option");o.value=r.id;o.textContent=r.name;sel.appendChild(o);});}
 
@@ -2125,10 +2187,10 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     });
   }
 
-  document.addEventListener("input",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")&&t.matches&&(t.matches(".field-line,.field-inline,.field-cell,.field-area")||t.id==="cvEmail")){saveActive();if(t.id==="cvName"||t.id==="cvSup"||t.id==="cvHire"||t.id==="cvEmail")renderDash();}});
+  document.addEventListener("input",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")&&t.matches&&(t.matches(".field-line,.field-inline,.field-cell,.field-area,.te-in")||t.id==="cvEmail")){saveActive();if(t.id==="cvName"||t.id==="cvSup"||t.id==="cvHire"||t.id==="cvEmail")renderDash();}});
   document.addEventListener("input",function(e){var t=e.target;if(document.body.classList.contains("liveagent")&&t.classList&&t.classList.contains("emp-sign"))saveAgentAcks();});
   document.addEventListener("change",function(e){var t=e.target;if(document.body.classList.contains("liveagent")&&t.classList&&t.classList.contains("emp-sign")){saveAgentAcks();if(t.type==="checkbox"){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(_e){}}}});
-  document.addEventListener("change",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")){if(t.matches(".chk-box,.xchk")){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);saveActive();}else if(t.matches("select")){saveActive();if(t.id==="cvLevel")renderDash();}}});
+  document.addEventListener("change",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")){if(t.matches(".chk-box,.xchk")){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);saveActive();}else if(t.matches(".te-in")){saveActive();}else if(t.matches("select")){saveActive();if(t.id==="cvLevel")renderDash();}}});
 
   window.addEventListener("load",function(){
     var b;
@@ -2169,8 +2231,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 
 (function(){
-  var PAGES=["overview","newagent","level1","level2","level3","level4","endorsements","record","skills","wow"];
-  var LAB={overview:"Overview",newagent:"New Agent",level1:"Level 1",level2:"Level 2",level3:"Level 3",level4:"Level 4",endorsements:"Endorsements",record:"My Record",skills:"Knowledge Base",wow:"WOW Call"};
+  var PAGES=["overview","newagent","level1","level2","level3","level4","endorsements","record","skills","wow","tetrack"];
+  var LAB={overview:"Overview",newagent:"New Agent",level1:"Level 1",level2:"Level 2",level3:"Level 3",level4:"Level 4",endorsements:"Endorsements",record:"My Record",skills:"Knowledge Base",wow:"WOW Call",tetrack:"Text & Email"};
   function pb(){return document.getElementById("passportBody");}
   function aid(){var s=document.getElementById("agentSelect");return s?s.value:"";}
   function whoName(){var n=document.getElementById("cvName");return (n&&n.value)?n.value:"the agent";}
@@ -2196,12 +2258,17 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function exSet(id,patch){if(!id)return;var o=exAll();o[id]=Object.assign({},o[id]||{},patch);localStorage.setItem("we_extras",JSON.stringify(o));}
 
   function cur(){for(var i=0;i<PAGES.length;i++){var el=document.getElementById(PAGES[i]);if(el&&el.classList.contains("pp-active"))return PAGES[i];}return PAGES[0];}
+  var TE_ON=false;
+  function navPages(){return PAGES.filter(function(p){return !(p==="tetrack"&&!TE_ON);});}
+  function setTETrackVisible(on,emailOn){on=!!on;TE_ON=on;var lnk=document.getElementById("teNavLink");if(lnk)lnk.style.display=on?"":"none";var sec=document.getElementById("tetrack");if(!on&&sec&&sec.classList.contains("pp-active"))showPage("overview",false);var em=!!emailOn;document.querySelectorAll("#tetrack .te-email-only").forEach(function(el){el.style.display=em?"":"none";var cb=el.querySelector(".xchk");if(cb)cb.classList.toggle("retired",!em);});try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}}
+  window.__weTETrackVis=setTETrackVisible;
   function showPage(id,record){
     if(PAGES.indexOf(id)<0)id="overview";
+    if(id==="tetrack"&&!TE_ON)id="overview";
     PAGES.forEach(function(p){var el=document.getElementById(p);if(el)el.classList.toggle("pp-active",p===id);});
     document.querySelectorAll(".pp-nav a.toc-link").forEach(function(a){a.classList.toggle("pp-current",a.getAttribute("href")==="#"+id);});
-    var i=PAGES.indexOf(id),pv=document.getElementById("ppPrev"),nx=document.getElementById("ppNext"),lb=document.getElementById("ppPageLbl");
-    if(pv)pv.disabled=i<=0;if(nx)nx.disabled=i>=PAGES.length-1;if(lb)lb.textContent="Page "+(i+1)+" of "+PAGES.length+"  ·  "+LAB[id];
+    var NP=navPages(),i=NP.indexOf(id),pv=document.getElementById("ppPrev"),nx=document.getElementById("ppNext"),lb=document.getElementById("ppPageLbl");
+    if(pv)pv.disabled=i<=0;if(nx)nx.disabled=i>=NP.length-1;if(lb)lb.textContent="Page "+(i+1)+" of "+NP.length+"  ·  "+LAB[id];
     if(record){var a=aid();if(a)exSet(a,{lastPage:id});}
     if(window.__wePanelRefresh)setTimeout(window.__wePanelRefresh,20);
   }
@@ -2269,8 +2336,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     if(wrap&&!document.getElementById("ppPager")){var pg=document.createElement("div");pg.id="ppPager";pg.className="pp-pager";
       pg.innerHTML='<button id="ppPrev" class="pp-btn" type="button">‹ Previous</button><span id="ppPageLbl"></span><button id="ppNext" class="pp-btn" type="button">Next ›</button>';
       var f=wrap.querySelector("footer");if(f)wrap.insertBefore(pg,f);else wrap.appendChild(pg);
-      document.getElementById("ppPrev").addEventListener("click",function(){var i=PAGES.indexOf(cur());if(i>0)gotoPage(PAGES[i-1]);});
-      document.getElementById("ppNext").addEventListener("click",function(){var i=PAGES.indexOf(cur());if(i<PAGES.length-1)gotoPage(PAGES[i+1]);});
+      document.getElementById("ppPrev").addEventListener("click",function(){var NP=navPages();var i=NP.indexOf(cur());if(i>0)gotoPage(NP[i-1]);});
+      document.getElementById("ppNext").addEventListener("click",function(){var NP=navPages();var i=NP.indexOf(cur());if(i<NP.length-1)gotoPage(NP[i+1]);});
     }
     document.querySelectorAll(".pp-nav a.toc-link").forEach(function(a){a.addEventListener("click",function(e){e.preventDefault();gotoPage(this.getAttribute("href").slice(1));});});
     makeCollapsibles();prepOverview();markEmpSign();
@@ -2319,7 +2386,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 (function(){
   var DEF={ordB:[99.0,99.3,99.5,99.7],calB:[85,90,93,96],pay:[18.00,20.00,22.50,25.50],win:30,
-           gOrder:99.0,gAcct:98.0,gCall:85,goalCall:90,goalOrder:99,goalAcct:98,goalAns:"",goalAvail:"",goalWow:90,goalText:"",goalEmail:""};
+           gOrder:99.0,gAcct:98.0,gCall:85,goalCall:90,goalOrder:99,goalAcct:98,goalAns:"",goalAvail:"",goalWow:90,goalText:"",goalEmail:"",goalTeam:""};
   function dials(){try{var d=JSON.parse(localStorage.getItem("we_dials2"));if(d&&d.ordB)return Object.assign(JSON.parse(JSON.stringify(DEF)),d);}catch(e){}return JSON.parse(JSON.stringify(DEF));}
   function saveDials(d){localStorage.setItem("we_dials2",JSON.stringify(d));pushDials();}
   function exAll(){try{return JSON.parse(localStorage.getItem("we_extras")||"{}");}catch(e){return{};}}
@@ -2383,8 +2450,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     if(key==="acct"){var c=n(d.cod);if(c==null||c<=0)return null;return (c-(n(d.acctErr)||0))/c*100;}
     if(key==="text"){return msgDayPct(d.texts,5);}
     if(key==="email"){return msgDayPct(d.emails,15);}
+    if(key==="teamplay"){return tpDayPct(d.tp);}
     return null;
   }
+  // ---- team player (email): 3 daily checks (morning / mid-day / end of day) → % ----
+  function tpDayPct(tp){if(!tp)return null;var n=0;if(tp.am)n++;if(tp.mid)n++;if(tp.eod)n++;return n/3*100;}
   // ---- text / email per-message scoring (4 points each: on-time, greeting, message, grammar) ----
   function tmin(hhmm){if(!hhmm||typeof hhmm!=="string")return null;var m=hhmm.match(/^(\d{1,2}):(\d{2})/);if(!m)return null;return parseInt(m[1],10)*60+parseInt(m[2],10);}
   function msgOnTime(t,limit){var r=tmin(t.r),p=tmin(t.p);return (r!=null&&p!=null&&p>=r&&(p-r)<=limit);}
@@ -2411,7 +2481,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       {raw:"trip"},{raw:"code"},{raw:"missord"},{raw:"addr"},{raw:"dtw"},{raw:"oentry"},{raw:"mrf"},{raw:"pdriver"}
     ]}
   ];
-  var METRICS=[{k:"call",lab:"Value creator",goal:"goalCall"},{k:"order",lab:"Order accuracy",goal:"goalOrder"},{k:"acct",lab:"Accounting accuracy",goal:"goalAcct"},{k:"answered",lab:"Answered call",goal:"goalAns"},{k:"avail",lab:"Availability",goal:"goalAvail",coached:true},{k:"text",lab:"Text quality",goal:"goalText",te:true},{k:"email",lab:"Email quality",goal:"goalEmail",te:true}];
+  var METRICS=[{k:"call",lab:"Value creator",goal:"goalCall"},{k:"order",lab:"Order accuracy",goal:"goalOrder"},{k:"acct",lab:"Accounting accuracy",goal:"goalAcct"},{k:"answered",lab:"Answered call",goal:"goalAns"},{k:"avail",lab:"Availability",goal:"goalAvail",coached:true},{k:"text",lab:"Text quality",goal:"goalText",te:true},{k:"email",lab:"Email quality",goal:"goalEmail",te:true},{k:"teamplay",lab:"Team player",goal:"goalTeam",email:true}];
   var ATT=["Present","Approved Off","Saturday","Absent","Training"];
 
   function wowAllData(){try{return JSON.parse(localStorage.getItem("we_wow")||"{}");}catch(e){return{};}}function wowAvg(id,days){var o=wowAllData(),arr=o[id]||[];var t=new Date();t.setHours(0,0,0,0);var cut=new Date(t);cut.setDate(t.getDate()-(days-1));var s=0,n=0;arr.forEach(function(r){var dt=new Date((r.date||"")+"T00:00:00");if(!isNaN(dt.getTime())&&dt>=cut&&dt<=t){s+=r.pct;n++;}});return {avg:n?s/n:null,n:n};}
@@ -2453,6 +2523,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       '<div id="dtPaneEmail" class="dt-pane" style="display:none">'+
         '<div class="dt-note">Log each <b>email</b> for the day. Each message scores up to <b>4 points</b>: replied within <b>15 minutes</b>, proper greeting, proper message, correct grammar/spelling. The day % = points earned ÷ (4 × messages).</div>'+
         '<div class="dt-daterow"><label>Agent&nbsp;</label><select id="emlAgent" class="dt-agsel"></select> &nbsp; <label>Date&nbsp;</label><input type="date" id="emlDate"> <button class="mb-btn2" id="emlToday" type="button">Today</button></div>'+
+        '<div id="tpBlock" class="tp-block"><div class="tp-cap"><b>Team player score</b> &mdash; auditor checks each one the agent completed that day. Score = checks done ÷ 3.</div>'+
+          '<div class="tp-row"><label><input type="checkbox" class="tp-box" data-tp="am"> Morning</label>'+
+          '<label><input type="checkbox" class="tp-box" data-tp="mid"> Mid-day</label>'+
+          '<label><input type="checkbox" class="tp-box" data-tp="eod"> End of day</label>'+
+          '<span class="tp-pct" id="tpPct">&mdash;</span></div></div>'+
         '<div class="dt-scroll"><div id="emlLog"></div></div>'+
         '<button class="mb-btn2" id="emlAdd" type="button" style="margin-top:10px">+ Add email</button>'+
         '<div id="emlSummary" class="dt-daynote" style="margin-top:10px"></div>'+
@@ -2465,11 +2540,13 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     dt.querySelectorAll(".dt-tab").forEach(function(b){b.addEventListener("click",function(){showDataSub(this.getAttribute("data-sub"));});});
     document.getElementById("txtDate").value=todayISO();document.getElementById("emlDate").value=todayISO();
     document.getElementById("txtToday").addEventListener("click",function(){document.getElementById("txtDate").value=todayISO();renderMsgLog("text");});
-    document.getElementById("emlToday").addEventListener("click",function(){document.getElementById("emlDate").value=todayISO();renderMsgLog("email");});
+    document.getElementById("emlToday").addEventListener("click",function(){document.getElementById("emlDate").value=todayISO();renderMsgLog("email");renderTeamPlayer();});
     document.getElementById("txtDate").addEventListener("change",function(){renderMsgLog("text");});
-    document.getElementById("emlDate").addEventListener("change",function(){renderMsgLog("email");});
+    document.getElementById("emlDate").addEventListener("change",function(){renderMsgLog("email");renderTeamPlayer();});
     document.getElementById("txtAgent").addEventListener("change",function(){renderMsgLog("text");});
-    document.getElementById("emlAgent").addEventListener("change",function(){renderMsgLog("email");});
+    document.getElementById("emlAgent").addEventListener("change",function(){renderMsgLog("email");renderTeamPlayer();});
+    var tpb=document.getElementById("tpBlock");
+    if(tpb)tpb.addEventListener("change",function(e){if(!e.target.classList||!e.target.classList.contains("tp-box"))return;var ag=document.getElementById("emlAgent"),dtl=document.getElementById("emlDate");var id=ag?ag.value:"",date=(dtl&&dtl.value)||todayISO();if(!id)return;var tp={};tpb.querySelectorAll(".tp-box").forEach(function(b){tp[b.getAttribute("data-tp")]=b.checked;});setDay(id,date,{tp:tp});renderTeamPlayer();if(id===activeId())refreshPanel();try{renderTeam();}catch(e2){}});
     document.getElementById("txtAdd").addEventListener("click",function(){addMsg("text");});
     document.getElementById("emlAdd").addEventListener("click",function(){addMsg("email");});
   }
@@ -2485,7 +2562,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     ["calls","text","email"].forEach(function(k){var p=document.getElementById("dtPane"+k.charAt(0).toUpperCase()+k.slice(1));if(p)p.style.display=(k===which)?"":"none";});
     var dt=document.getElementById("dataTab");if(dt)dt.querySelectorAll(".dt-tab").forEach(function(b){b.classList.toggle("dt-tab-on",b.getAttribute("data-sub")===which);});
     if(which==="calls"){renderDaily();renderGrid();renderDials();}
-    else{populateMsgAgents(which);renderMsgLog(which);}
+    else{populateMsgAgents(which);renderMsgLog(which);if(which==="email")renderTeamPlayer();}
+  }
+  function renderTeamPlayer(){
+    var ag=document.getElementById("emlAgent"),dtl=document.getElementById("emlDate"),block=document.getElementById("tpBlock");if(!ag||!dtl||!block)return;
+    var id=ag.value,date=(dtl.value)||todayISO();var tp=(id?getDay(id,date).tp:null)||{};
+    block.querySelectorAll(".tp-box").forEach(function(b){b.checked=!!tp[b.getAttribute("data-tp")];});
+    var pct=id?tpDayPct(getDay(id,date).tp):null;var el=document.getElementById("tpPct");
+    if(el)el.textContent=(pct==null?"—":("Team player: "+pct.toFixed(0)+"%"));
   }
   function escOpt(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function populateMsgAgents(kind){var selId=kind==="text"?"txtAgent":"emlAgent";var sel=document.getElementById(selId);if(!sel)return;if(window.__weMigrateChannels)window.__weMigrateChannels();var cur=sel.value;var on=kind==="text"?window.__weTextOn:window.__weEmailOn;var list=agents().filter(function(a){return on?on(a.id):true;});if(!list.length){sel.innerHTML='<option value="">— no '+(kind==="text"?"text":"email")+' agent assigned —</option>';return;}sel.innerHTML=list.map(function(a){return '<option value="'+a.id+'">'+escOpt(a.name)+'</option>';}).join("");if(cur&&list.some(function(a){return a.id===cur;}))sel.value=cur;else sel.value=list[0].id;}
@@ -2632,7 +2716,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     function inp(k,idx,val){return '<td><input class="dl-in" data-dk="'+k+'" data-di="'+(idx==null?"":idx)+'" value="'+(val==null?"":val)+'"></td>';}
     var h='<div class="dl-cap">Passport goals (shown to agents)</div><table class="dl-tbl"><tr><th>Value creator</th><th>Order accuracy</th><th>Accounting</th><th>Answered</th><th>Availability</th></tr>';
     h+='<tr>'+inp("goalCall",null,d.goalCall)+inp("goalOrder",null,d.goalOrder)+inp("goalAcct",null,d.goalAcct)+inp("goalAns",null,d.goalAns)+inp("goalAvail",null,d.goalAvail)+'</tr></table>';
-    h+='<div class="dl-cap" style="margin-top:12px">Text &amp; Email goals (only shown for text/email agents)</div><table class="dl-tbl"><tr><th>Text quality</th><th>Email quality</th></tr><tr>'+inp("goalText",null,d.goalText)+inp("goalEmail",null,d.goalEmail)+'</tr></table>';
+    h+='<div class="dl-cap" style="margin-top:12px">Text &amp; Email goals (only shown for text/email agents)</div><table class="dl-tbl"><tr><th>Text quality</th><th>Email quality</th><th>Team player (email)</th></tr><tr>'+inp("goalText",null,d.goalText)+inp("goalEmail",null,d.goalEmail)+inp("goalTeam",null,d.goalTeam)+'</tr></table>';
     h+='<div class="dl-cap" style="margin-top:12px">Placement bands (lowest of the three = level)</div><table class="dl-tbl"><tr><th></th><th>L1</th><th>L2</th><th>L3</th><th>L4</th></tr>';
     h+='<tr><td class="dl">Order accuracy band</td>'+inp("ordB",0,d.ordB[0])+inp("ordB",1,d.ordB[1])+inp("ordB",2,d.ordB[2])+inp("ordB",3,d.ordB[3])+'</tr>';
     h+='<tr><td class="dl">Call score band</td>'+inp("calB",0,d.calB[0])+inp("calB",1,d.calB[1])+inp("calB",2,d.calB[2])+inp("calB",3,d.calB[3])+'</tr>';
@@ -2680,6 +2764,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     document.getElementById("mpPlace").classList.toggle("bad",r.level===0);
     var chanOn={text:window.__weTextOn?window.__weTextOn(id):false,email:window.__weEmailOn?window.__weEmailOn(id):false};
     ["text","email"].forEach(function(k){var tr=document.querySelector('#metricPanel tr[data-m="'+k+'"]');if(tr)tr.style.display=chanOn[k]?"":"none";});
+    var tpTr=document.querySelector('#metricPanel tr[data-m="teamplay"]');if(tpTr)tpTr.style.display=chanOn.email?"":"none";
+    try{if(window.__weTETrackVis)window.__weTETrackVis(chanOn.text||chanOn.email,chanOn.email);}catch(e){}
     try{if(window.__weStashSnapshot)window.__weStashSnapshot(id,__weBuildSnap(id));}catch(e){}
   }
   // Build a self-contained metrics snapshot the AGENT can see (no scoreboard access needed)
@@ -2717,6 +2803,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     if(snap.placement){var lv=document.getElementById("mpLevel");if(lv)lv.textContent=levelLabel(snap.placement.level);var pay=document.getElementById("mpPay");if(pay)pay.textContent=(snap.placement.pay==null?"":("· "+money(snap.placement.pay)+"/hr"));var pl2=document.getElementById("mpPlace");if(pl2)pl2.classList.toggle("bad",snap.placement.level===0);}
     var snapChan={text:(snap.txt!==undefined?!!snap.txt:!!snap.te),email:(snap.eml!==undefined?!!snap.eml:!!snap.te)};
     ["text","email"].forEach(function(k){var tr=mp.querySelector('tr[data-m="'+k+'"]');if(tr)tr.style.display=snapChan[k]?"":"none";});
+    var tpTr=mp.querySelector('tr[data-m="teamplay"]');if(tpTr)tpTr.style.display=snapChan.email?"":"none";
+    try{if(window.__weTETrackVis)window.__weTETrackVis(snapChan.text||snapChan.email,snapChan.email);}catch(e){}
     mp.style.display="";return true;
   };
 
