@@ -544,6 +544,8 @@
   body.hist-open #histPanel{transform:translateX(0);}
   .pp-side-btn.st-hist{background:#3a5a78;}
   .pp-side-btn.st-daily{background:#5a3d78;}
+  body.liveagent #kbNavLink,body.agentview #kbNavLink,body.agentpv #kbNavLink{display:none!important;}
+  body.liveagent #skills,body.agentview #skills,body.agentpv #skills{display:none!important;}
   body.daily-open #dailyPanel{transform:translateX(0);}
   body.hist-open #histTab,body.daily-open #dailyTab{box-shadow:inset 0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.22);}
   .dly-form{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:#f7f9fb;margin-bottom:8px;}
@@ -906,7 +908,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   <a class="toc-link" href="#level4"><span class="num">6</span>Level 4</a>
   <a class="toc-link" href="#endorsements"><span class="num">7</span>Endorsements</a>
   <a class="toc-link" href="#record"><span class="num">8</span>My Record</a>
-  <a class="toc-link" href="#skills"><span class="num">9</span>Knowledge Base</a>
+  <a class="toc-link" href="#skills" id="kbNavLink"><span class="num">9</span>Knowledge Base</a>
   <a class="toc-link" href="#wow"><span class="num">10</span>WOW Call</a>
   <a class="toc-link" href="#tetrack" id="teNavLink" style="display:none"><span class="num">11</span>Text &amp; Email</a>
   <span class="pp-nav-spacer"></span>
@@ -2278,12 +2280,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   function cur(){for(var i=0;i<PAGES.length;i++){var el=document.getElementById(PAGES[i]);if(el&&el.classList.contains("pp-active"))return PAGES[i];}return PAGES[0];}
   var TE_ON=false;
-  function navPages(){return PAGES.filter(function(p){return !(p==="tetrack"&&!TE_ON);});}
+  function isAgentView(){var c=document.body.classList;return c.contains("liveagent")||c.contains("agentview")||c.contains("agentpv");}
+  function navPages(){return PAGES.filter(function(p){if(p==="tetrack"&&!TE_ON)return false;if(p==="skills"&&isAgentView())return false;return true;});}
   function setTETrackVisible(on,emailOn){on=!!on;TE_ON=on;var lnk=document.getElementById("teNavLink");if(lnk)lnk.style.display=on?"":"none";var sec=document.getElementById("tetrack");if(!on&&sec&&sec.classList.contains("pp-active"))showPage("overview",false);var em=!!emailOn;document.querySelectorAll("#tetrack .te-email-only").forEach(function(el){el.style.display=em?"":"none";var cb=el.querySelector(".xchk");if(cb)cb.classList.toggle("retired",!em);});try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}}
   window.__weTETrackVis=setTETrackVisible;
   function showPage(id,record){
     if(PAGES.indexOf(id)<0)id="overview";
     if(id==="tetrack"&&!TE_ON)id="overview";
+    if(id==="skills"&&isAgentView())id="overview";
     PAGES.forEach(function(p){var el=document.getElementById(p);if(el)el.classList.toggle("pp-active",p===id);});
     document.querySelectorAll(".pp-nav a.toc-link").forEach(function(a){a.classList.toggle("pp-current",a.getAttribute("href")==="#"+id);});
     var NP=navPages(),i=NP.indexOf(id),pv=document.getElementById("ppPrev"),nx=document.getElementById("ppNext"),lb=document.getElementById("ppPageLbl");
