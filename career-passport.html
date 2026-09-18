@@ -2812,12 +2812,15 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function cls(avg,goal){if(avg==null||goal==null||goal==="")return "";return avg>=goal?"mp-ok":"mp-bad";}
   var LEVELGATES={1:{call:85,order:98,acct:98},2:{call:90,order:98.5,acct:98.5},3:{call:93,order:99,acct:99},4:{call:95,order:99.5,acct:99.5}};
   function curLevelNum(){
-    // Always the agent's DESIGNATED level (their assigned "Current level"), never the level page being viewed.
+    // Follow the Level page currently open (so agents can look ahead at other levels' gates);
+    // fall back to the agent's assigned "Current level" when not on a Level page.
+    var lv={level1:1,level2:2,level3:3,level4:4};
+    for(var k in lv){var s=document.getElementById(k);if(s&&s.classList.contains("pp-active"))return lv[k];}
     var el=document.getElementById("cvLevel");var t=el?(el.value||""):"";if(/senior/i.test(t))return 4;var m=t.match(/Level\s*([1-4])/i);return m?parseInt(m[1],10):1;
   }
   function levelGate(k){var lg=LEVELGATES[curLevelNum()];return (lg&&lg[k]!=null)?lg[k]:null;}
   function refreshPanel(){
-    if(document.body.classList.contains("liveagent"))return;
+    if(document.body.classList.contains("liveagent")){if(window.__weLastSnap)try{window.__weRenderSnapshot(window.__weLastSnap);}catch(e){}return;}
     buildPanel();var id=activeId();if(!id)return;var d=dials();
     var _lvl=curLevelNum();var _gh=document.getElementById("mpGatesHdr");if(_gh)_gh.innerHTML="Gates"+(_lvl?' <span style="font-weight:600;opacity:.8">&middot; Level '+_lvl+'</span>':"");
     var _lm=monthRange(-1),_tm=monthRange(0);
@@ -2857,7 +2860,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   }
   window.__weBuildSnapshot=__weBuildSnap;
   window.__weRenderScoreboard=function(snap){
-    if(!snap)return false;window.__weRenderSnapshot(snap);
+    if(!snap)return false;window.__weLastSnap=snap;window.__weRenderSnapshot(snap);
     var mp=document.getElementById("metricPanel");if(!mp)return false;
     if(!document.getElementById("sbHead")){var h=document.createElement("div");h.id="sbHead";h.style.cssText="font-weight:800;color:#13427a;font-size:15px;margin:6px 0 8px;";h.textContent="📊 My Scoreboard — your gates and where you stand";mp.parentNode.insertBefore(h,mp);}
     var wrap=document.getElementById("agentDaily");if(wrap&&wrap.parentNode)wrap.parentNode.removeChild(wrap);
@@ -2865,8 +2868,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   };
   window.__weRenderSnapshot=function(snap){
     buildPanel();var mp=document.getElementById("metricPanel");if(!mp||!snap)return false;
-    var _le=document.getElementById("cvLevel"),_lt=_le?(_le.value||""):"",_lm=_lt.match(/Level\s*([1-4])/i);
-    var lvl=/senior/i.test(_lt)?4:(_lm?parseInt(_lm[1],10):(snap.level||1));
+    var lvl=curLevelNum();
     var gh=document.getElementById("mpGatesHdr");if(gh)gh.innerHTML="Gates"+(lvl?' <span style="font-weight:600;opacity:.8">&middot; Level '+lvl+'</span>':"");
     METRICS.forEach(function(m){var mm=snap.metrics&&snap.metrics[m.k];var tr=mp.querySelector('tr[data-m="'+m.k+'"]');if(!tr||!mm)return;var goal=mm.goal;
       if(m.k==="call"||m.k==="order"||m.k==="acct"){var lg=LEVELGATES[lvl];if(lg&&lg[m.k]!=null)goal=lg[m.k];}
