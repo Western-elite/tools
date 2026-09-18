@@ -2865,8 +2865,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   };
   window.__weRenderSnapshot=function(snap){
     buildPanel();var mp=document.getElementById("metricPanel");if(!mp||!snap)return false;
-    var gh=document.getElementById("mpGatesHdr");if(gh)gh.innerHTML="Gates"+(snap.level?' <span style="font-weight:600;opacity:.8">&middot; Level '+snap.level+'</span>':"");
+    var _le=document.getElementById("cvLevel"),_lt=_le?(_le.value||""):"",_lm=_lt.match(/Level\s*([1-4])/i);
+    var lvl=/senior/i.test(_lt)?4:(_lm?parseInt(_lm[1],10):(snap.level||1));
+    var gh=document.getElementById("mpGatesHdr");if(gh)gh.innerHTML="Gates"+(lvl?' <span style="font-weight:600;opacity:.8">&middot; Level '+lvl+'</span>':"");
     METRICS.forEach(function(m){var mm=snap.metrics&&snap.metrics[m.k];var tr=mp.querySelector('tr[data-m="'+m.k+'"]');if(!tr||!mm)return;var goal=mm.goal;
+      if(m.k==="call"||m.k==="order"||m.k==="acct"){var lg=LEVELGATES[lvl];if(lg&&lg[m.k]!=null)goal=lg[m.k];}
       var lC=tr.querySelector(".mp-last"),tC=tr.querySelector(".mp-this"),fC=tr.querySelector(".mp-t5d"),gC=tr.querySelector(".mp-goal");
       if(lC){lC.textContent=fp(mm.last);lC.className="mp-last "+cls(mm.last,goal);}
       if(tC){tC.textContent=fp(mm.thism);tC.className="mp-this "+cls(mm.thism,goal);}
