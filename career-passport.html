@@ -2812,8 +2812,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function cls(avg,goal){if(avg==null||goal==null||goal==="")return "";return avg>=goal?"mp-ok":"mp-bad";}
   var LEVELGATES={1:{call:85,order:98,acct:98},2:{call:90,order:98.5,acct:98.5},3:{call:93,order:99,acct:99},4:{call:95,order:99.5,acct:99.5}};
   function curLevelNum(){
-    var lv={level1:1,level2:2,level3:3,level4:4};
-    for(var k in lv){var s=document.getElementById(k);if(s&&s.classList.contains("pp-active"))return lv[k];}
+    // Always the agent's DESIGNATED level (their assigned "Current level"), never the level page being viewed.
     var el=document.getElementById("cvLevel");var t=el?(el.value||""):"";if(/senior/i.test(t))return 4;var m=t.match(/Level\s*([1-4])/i);return m?parseInt(m[1],10):1;
   }
   function levelGate(k){var lg=LEVELGATES[curLevelNum()];return (lg&&lg[k]!=null)?lg[k]:null;}
