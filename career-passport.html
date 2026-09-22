@@ -2805,8 +2805,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function buildPanel(){
     if(document.getElementById("metricPanel"))return;var wrap=document.querySelector("#passportBody .wrap");if(!wrap)return;
     var p=document.createElement("div");p.id="metricPanel";
-    var rows=METRICS.map(function(m){return '<tr data-m="'+m.k+'"><td class="mp-lab">'+m.lab+'</td><td class="mp-last">—</td><td class="mp-this">—</td><td class="mp-t5d">—</td><td class="mp-goal">—</td></tr>';}).join("");
-    p.innerHTML='<table class="mp-tbl"><tr><th>Metric</th><th>Last month</th><th>This month</th><th>T5D</th><th id="mpGatesHdr">Gates</th></tr>'+rows+'</table><div class="mp-place" id="mpPlace">Current placement: <b id="mpLevel">—</b> <span id="mpPay"></span></div>';
+    var rows=METRICS.map(function(m){return '<tr data-m="'+m.k+'"><td class="mp-lab">'+m.lab+'</td><td class="mp-last">—</td><td class="mp-this">—</td><td class="mp-goal">—</td></tr>';}).join("");
+    p.innerHTML='<table class="mp-tbl"><tr><th>Metric</th><th>Last month</th><th>This month</th><th id="mpGatesHdr">Gates</th></tr>'+rows+'</table><div class="mp-place" id="mpPlace">Current placement: <b id="mpLevel">—</b> <span id="mpPay"></span></div>';
     wrap.insertBefore(p,wrap.firstChild);
   }
   function cls(avg,goal){if(avg==null||goal==null||goal==="")return "";return avg>=goal?"mp-ok":"mp-bad";}
@@ -2827,12 +2827,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     METRICS.forEach(function(m){
       var last=(m.wow?wowAvg(id,30).avg:rangeMetric(id,m.k,_lm.start,_lm.end).avg),
           thism=(m.wow?wowAvg(id,30).avg:rangeMetric(id,m.k,_tm.start,_tm.end).avg),
-          t5=(m.wow?wowAvg(id,5).avg:avgMetric(id,m.k,5).avg),
           goal=(m.k==="call"||m.k==="order"||m.k==="acct")?levelGate(m.k):d[m.goal];
       var tr=document.querySelector('#metricPanel tr[data-m="'+m.k+'"]');if(!tr)return;
-      var lC=tr.querySelector(".mp-last"),tC=tr.querySelector(".mp-this"),fC=tr.querySelector(".mp-t5d"),gC=tr.querySelector(".mp-goal");
-      lC.textContent=fp(last);tC.textContent=fp(thism);fC.textContent=fp(t5);gC.textContent=(goal===""||goal==null)?"—":(goal+"%");
-      lC.className="mp-last "+cls(last,goal);tC.className="mp-this "+cls(thism,goal);fC.className="mp-t5d "+cls(t5,goal);
+      var lC=tr.querySelector(".mp-last"),tC=tr.querySelector(".mp-this"),gC=tr.querySelector(".mp-goal");
+      lC.textContent=fp(last);tC.textContent=fp(thism);gC.textContent=(goal===""||goal==null)?"—":(goal+"%");
+      lC.className="mp-last "+cls(last,goal);tC.className="mp-this "+cls(thism,goal);
     });
     var r=placement(id,d);document.getElementById("mpLevel").textContent=levelLabel(r.level);
     document.getElementById("mpPay").textContent=(r.pay==null?"":("· "+money(r.pay)+"/hr"))+(r.n?("  ·  "+r.n+"-day avg"):"");
@@ -2872,10 +2871,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var gh=document.getElementById("mpGatesHdr");if(gh)gh.innerHTML="Gates"+(lvl?' <span style="font-weight:600;opacity:.8">&middot; Level '+lvl+'</span>':"");
     METRICS.forEach(function(m){var mm=snap.metrics&&snap.metrics[m.k];var tr=mp.querySelector('tr[data-m="'+m.k+'"]');if(!tr||!mm)return;var goal=mm.goal;
       if(m.k==="call"||m.k==="order"||m.k==="acct"){var lg=LEVELGATES[lvl];if(lg&&lg[m.k]!=null)goal=lg[m.k];}
-      var lC=tr.querySelector(".mp-last"),tC=tr.querySelector(".mp-this"),fC=tr.querySelector(".mp-t5d"),gC=tr.querySelector(".mp-goal");
+      var lC=tr.querySelector(".mp-last"),tC=tr.querySelector(".mp-this"),gC=tr.querySelector(".mp-goal");
       if(lC){lC.textContent=fp(mm.last);lC.className="mp-last "+cls(mm.last,goal);}
       if(tC){tC.textContent=fp(mm.thism);tC.className="mp-this "+cls(mm.thism,goal);}
-      if(fC){fC.textContent=fp(mm.t5d);fC.className="mp-t5d "+cls(mm.t5d,goal);}
       if(gC)gC.textContent=(goal==null)?"—":(goal+"%");});
     if(snap.placement){var lv=document.getElementById("mpLevel");if(lv)lv.textContent=levelLabel(snap.placement.level);var pay=document.getElementById("mpPay");if(pay)pay.textContent=(snap.placement.pay==null?"":("· "+money(snap.placement.pay)+"/hr"));var pl2=document.getElementById("mpPlace");if(pl2)pl2.classList.toggle("bad",snap.placement.level===0);}
     var snapChan={text:(snap.txt!==undefined?!!snap.txt:!!snap.te),email:(snap.eml!==undefined?!!snap.eml:!!snap.te)};
