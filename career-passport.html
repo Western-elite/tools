@@ -452,6 +452,13 @@
   #txtLog .ml-all,#emlLog .ml-all{accent-color:#13427a;}
   .mllog .ml-allh{color:#dfe9f5;font-size:10px;}
   .hist-read{display:inline-block;margin-left:8px;font-size:11px;font-weight:800;color:#1f6b41;background:#e7f5ec;border-radius:10px;padding:1px 8px;}
+  .hist-clip{display:inline-block;margin-left:8px;font-size:11px;font-weight:800;color:#13427a;background:#e8eff8;border-radius:10px;padding:1px 8px;}
+  .hist-att{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;}
+  .hist-att-img{display:inline-block;border:1px solid #cdd6df;border-radius:8px;overflow:hidden;line-height:0;}
+  .hist-att-img img{max-width:140px;max-height:140px;display:block;}
+  .hist-att-file{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:#13427a;background:#eef3f9;border:1px solid #cdd6df;border-radius:8px;padding:6px 10px;text-decoration:none;}
+  .hist-att-file:hover{background:#e2ebf6;}
+  .le-file{font-size:12.5px;}
   .dt-grid{width:100%;border-collapse:collapse;font-size:13px;}
   .dt-wide{min-width:1180px;font-size:12px;}
   .dt-grid th{background:var(--blue);color:#fff;text-align:left;padding:8px 8px;font-size:11px;}
@@ -1848,6 +1855,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <div class="log-entry">
         <div class="esc-field"><label>Date</label><input type="date" class="le-date"></div>
         <div class="esc-field"><label>Note</label><textarea class="le-note" rows="5" placeholder="What happened, what you coached on, next step&hellip;"></textarea></div>
+        <div class="esc-field"><label>Attachment <span style="font-weight:400;opacity:.7">(optional)</span></label><input type="file" class="le-file" multiple></div>
         <div class="side-submit">
           <button type="button" class="kb-btn kb-primary" data-logsubmit="supervisor">Submit entry to history</button>
           <div class="side-submit-note">Files this note to History and clears the form for the next entry.</div>
@@ -1863,6 +1871,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         <div class="log-entry">
           <div class="esc-field"><label>Date</label><input type="date" class="le-date"></div>
           <div class="esc-field"><label>Note</label><textarea class="le-note" rows="4" placeholder="1:1 review notes, wins, focus, next target&hellip;"></textarea></div>
+          <div class="esc-field"><label>Attachment <span style="font-weight:400;opacity:.7">(optional)</span></label><input type="file" class="le-file" multiple></div>
           <div class="side-submit">
             <button type="button" class="kb-btn kb-primary" data-logsubmit="manager">Submit 1:1 / note to history</button>
           </div>
@@ -3258,17 +3267,33 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function addHist(rec){var all=load(),a=curAgent();if(!all[a])all[a]=[];all[a].unshift(rec);save(all);pushToCloud(rec);}
   function collectLogRows(table){var rows=[];if(!table)return rows;Array.prototype.slice.call(table.rows).forEach(function(tr,idx){if(idx===0)return;var date=tr.querySelector('input[type=date]'),note=tr.querySelector('textarea, input[type=text]');var dv=date?date.value.trim():"",nv=note?note.value.trim():"";if(dv||nv)rows.push({date:dv,note:nv});});return rows;}
   function clearFields(container){var els=container.querySelectorAll('input,textarea');var last=null;els.forEach(function(el){if(el.type==="checkbox"){el.checked=false;var li=el.closest("li");if(li)li.classList.remove("checked-off");}else{el.value="";}last=el;});if(last){last.dispatchEvent(new Event("input",{bubbles:true}));last.dispatchEvent(new Event("change",{bubbles:true}));}}
+  var ATT_MARKER="\u0001ATT\u0001", ATT_MAX=3*1024*1024;
+  function readAttachments(fileEl,cb){
+    var files=fileEl&&fileEl.files?Array.prototype.slice.call(fileEl.files):[];
+    if(!files.length){cb([]);return;}
+    var total=0;files.forEach(function(f){total+=f.size;});
+    if(total>ATT_MAX){alert("Attachments are too large (max 3 MB total). Please attach smaller files.");cb(null);return;}
+    var out=[],pending=files.length,done=false;
+    files.forEach(function(f){var r=new FileReader();r.onload=function(){out.push({n:f.name,t:f.type||"",d:r.result});if(--pending===0&&!done){done=true;cb(out);}};r.onerror=function(){if(!done){done=true;alert("Could not read an attachment.");cb(null);}};r.readAsDataURL(f);});
+  }
   function submitEntry(type){
     var panelSel=type==="supervisor"?"#coachPanel":"#escPanel";
     var panel=document.querySelector(panelSel);if(!panel)return;
     var dateEl=panel.querySelector(".le-date"),noteEl=panel.querySelector(".le-note");
     var date=dateEl?dateEl.value.trim():"",note=noteEl?noteEl.value.trim():"";
     if(!note){alert("Add a note before submitting.");return;}
+    var form=noteEl?noteEl.closest(".log-entry"):null;
+    var fileEl=form?form.querySelector(".le-file"):panel.querySelector(".le-file");
     var title=type==="supervisor"?"Supervisor note":"Manager 1:1 / note";
-    addHist({id:uid(),type:type,submitted:Date.now(),edate:date,title:title,summary:note.slice(0,90)+(note.length>90?"…":""),detail:(date?"Date: "+date+"\n":"")+note});
-    if(dateEl)dateEl.value="";if(noteEl)noteEl.value="";
-    renderHistory();
-    alert("Filed to History.");
+    readAttachments(fileEl,function(atts){
+      if(atts===null)return;
+      var detail=(date?"Date: "+date+"\n":"")+note;
+      if(atts.length)detail+=ATT_MARKER+JSON.stringify(atts);
+      addHist({id:uid(),type:type,submitted:Date.now(),edate:date,title:title,summary:note.slice(0,90)+(note.length>90?"…":""),detail:detail});
+      if(dateEl)dateEl.value="";if(noteEl)noteEl.value="";if(fileEl)fileEl.value="";
+      renderHistory();
+      alert("Filed to History"+(atts.length?" with "+atts.length+" attachment"+(atts.length>1?"s":""):"")+".");
+    });
   }
   function submitEscalation(){
     var dirField=document.getElementById("escDirField");var dir=(dirField&&dirField.value||"").toLowerCase();
@@ -3318,8 +3343,16 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     wrap.innerHTML=arr.map(function(r){var fd=new Date(r.submitted);var lb=LBL[r.type]||["Log","b-sup"];
       var when=r.edate?('<b>'+fmtDate(r.edate)+'</b> <span class="hist-filed">· filed '+fd.toLocaleDateString()+'</span>'):('Filed '+fd.toLocaleDateString()+" "+fd.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
       var readMark=_readSet[String(r.submitted)]?'<span class="hist-read">✓ Read</span>':'';
+      // split off any attachments stored in the detail
+      var dtl=(r.detail||""),atts=[],mi=dtl.indexOf(ATT_MARKER);
+      if(mi>=0){try{atts=JSON.parse(dtl.slice(mi+ATT_MARKER.length))||[];}catch(e){atts=[];}dtl=dtl.slice(0,mi);}
+      var summary=r.summary;
+      if(mi>=0){var cleanNote=dtl.replace(/^Date:[^\n]*\n/,"").trim();summary=cleanNote.slice(0,90)+(cleanNote.length>90?"…":"");}
+      var attHtml="";
+      if(atts.length){attHtml='<div class="hist-att">'+atts.map(function(a){var isImg=/^image\//.test(a.t||"");return isImg?('<a class="hist-att-img" href="'+a.d+'" download="'+esc(a.n||"attachment")+'" title="'+esc(a.n||"")+'"><img src="'+a.d+'" alt="'+esc(a.n||"")+'"></a>'):('<a class="hist-att-file" href="'+a.d+'" download="'+esc(a.n||"attachment")+'">📎 '+esc(a.n||"attachment")+'</a>');}).join("")+'</div>';}
+      var clip=atts.length?'<span class="hist-clip">📎 '+atts.length+'</span>':'';
       var respond=(r.type!=="response"&&r.type!=="comment")?('<div class="hist-respond"><button class="hist-resp-btn" type="button">↩ Respond</button><div class="hist-resp-form"><textarea class="hist-resp-note" rows="2" placeholder="Add your response (optional)…"></textarea><br><button class="hist-resp-send" type="button">Send response</button></div></div>'):"";
-      return '<div class="hist-card" data-sub="'+esc(String(r.submitted))+'" data-etitle="'+esc(r.title||"")+'" data-edate="'+esc(r.edate||"")+'"><div class="hist-when"><span class="hist-badge '+lb[1]+'">'+lb[0]+'</span>'+when+readMark+'</div><div class="hist-sum"><b>'+esc(r.title||"")+"</b>"+(r.summary?" — "+esc(r.summary):"")+"</div>"+(r.detail?'<div class="hist-more">View detail ▾</div><div class="hist-detail">'+esc(r.detail)+"</div>":"")+respond+"</div>";
+      return '<div class="hist-card" data-sub="'+esc(String(r.submitted))+'" data-etitle="'+esc(r.title||"")+'" data-edate="'+esc(r.edate||"")+'"><div class="hist-when"><span class="hist-badge '+lb[1]+'">'+lb[0]+'</span>'+when+readMark+clip+'</div><div class="hist-sum"><b>'+esc(r.title||"")+"</b>"+(summary?" — "+esc(summary):"")+"</div>"+((dtl||atts.length)?'<div class="hist-more">View detail ▾</div><div class="hist-detail">'+esc(dtl)+attHtml+"</div>":"")+respond+"</div>";
     }).join("");
     wrap.querySelectorAll(".hist-more").forEach(function(m){m.addEventListener("click",function(){var c=this.closest(".hist-card");var opening=!c.classList.contains("open");c.classList.toggle("open");this.innerHTML=c.classList.contains("open")?"Hide detail ▴":"View detail ▾";if(opening&&document.body.classList.contains("liveagent"))markRead(c.getAttribute("data-sub"),c);});});
     wrap.querySelectorAll(".hist-resp-btn").forEach(function(b){b.addEventListener("click",function(){var c=this.closest(".hist-card");c.classList.toggle("responding");if(c.classList.contains("responding")){var n=c.querySelector(".hist-resp-note");if(n)n.focus();}});});
