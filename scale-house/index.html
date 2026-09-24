@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scale House Passport</title>
+<style>
+/* =====================================================================
+   Palette lifted from the Career Passport (career-passport.html) so the
+   two tools read as one family. Source tokens:
+     --blue #13427a  --blue2 #2e74b5  --green #2e8b57  --rust #b5562e
+     --ink  #21282f  --muted #6a747e  --line  #e1e6ec  --bg   #f4f6f8
+     --lightblue #eef4fb  --warn-bg #fdf6e7  --warn-line #c8922a
+     --good-bg #ecf6f0  --red #C00000
+   Light is the default here, same as the Career Passport. The Theme
+   button opts into dark; nothing switches on its own.
+   ===================================================================== */
+:root{
+  --blue:#13427a; --blue2:#2e74b5; --rust:#b5562e; --rust-dark:#8a3d1c;
+  --bg:#f4f6f8; --surface:#ffffff; --surface-2:#f7f9fb; --surface-3:#eef3f7;
+  --line:#e1e6ec; --line-strong:#dbe4ec;
+  --text:#21282f; --muted:#6a747e; --faint:#7a8590;
+  --accent:#13427a; --accent-ink:#ffffff; --accent-soft:#eef4fb; --accent-line:#cfe0f2;
+  --warn:#8a6516; --warn-soft:#fdf6e7; --warn-line:#c8922a;
+  --bad:#C00000; --bad-soft:#fef2f2; --bad-line:#f0c8c8;
+  --ok:#2e8b57; --ok-soft:#ecf6f0;
+  --on-blue:#cfe0f2; --on-blue-dim:#bcd3ef;
+  --radius:12px; --radius-sm:8px;
+  --shadow:0 1px 4px rgba(33,40,47,.05), 0 6px 18px rgba(33,40,47,.04);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#0e141b; --surface:#151d26; --surface-2:#1a232e; --surface-3:#223040;
+  --line:#2a3644; --line-strong:#3a4a5c;
+  --text:#e6ecf3; --muted:#9fadbd; --faint:#7d8b9b;
+  --accent:#5b93d6; --accent-ink:#08121e; --accent-soft:#16283c; --accent-line:#2d4b6d;
+  --blue:#12283f; --blue2:#5b93d6; --rust:#c06a40; --rust-dark:#9a4e28;
+  --warn:#e0b558; --warn-soft:#2b2416; --warn-line:#5a4a26;
+  --bad:#e88; --bad-soft:#2c1818; --bad-line:#5a3030;
+  --ok:#5cbb8a; --ok-soft:#162c22;
+  --on-blue:#cfe0f2; --on-blue-dim:#bcd3ef;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.25);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:var(--sans); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+
+/* ---------- top bar ---------- */
+/* ── BLUE BANNER HEADER — matches the Career Passport ── */
+.topbar{
+  position:sticky; top:0; z-index:30;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:11px 20px;
+  background:var(--blue); color:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+.brand{display:flex; flex-direction:column; min-width:0; line-height:1.2}
+.brand .lockup{
+  font-size:18px; font-weight:800; letter-spacing:2px; color:#fff; white-space:nowrap;
+}
+.brand .lockup span{font-weight:300}
+.brand small{
+  display:block; font-size:9px; letter-spacing:1.5px; color:var(--on-blue-dim);
+  font-weight:400; text-transform:uppercase; margin-top:2px;
+}
+.topbar .htitle{
+  font-size:13px; color:#dce8f6; white-space:nowrap;
+  padding-left:14px; border-left:1px solid rgba(255,255,255,.22);
+}
+.topbar .spacer{flex:1 1 auto}
+.status{
+  font-size:12px; color:var(--on-blue); display:flex; align-items:center; gap:6px;
+  white-space:nowrap;
+}
+.status .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.45)}
+.status.ok .dot{background:#6fd39b}
+.status.busy .dot{background:#f0c86a}
+.status.err .dot{background:#f08e8e}
+
+/* buttons sitting ON the blue banner */
+.topbar .btn{
+  border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.10); color:#fff;
+}
+.topbar .btn:hover{background:rgba(255,255,255,.20)}
+.topbar .btn.ghost{border-color:transparent; background:transparent; color:var(--on-blue)}
+.topbar .btn.ghost:hover{background:rgba(255,255,255,.14); color:#fff}
+.topbar .initials{
+  width:104px; text-align:center; text-transform:uppercase; font-weight:800;
+  letter-spacing:.06em; padding:5px 7px; border-radius:var(--radius-sm);
+  border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.10); color:#fff;
+}
+.topbar .initials::placeholder{color:rgba(255,255,255,.6); font-weight:400; letter-spacing:0}
+.topbar .initials:focus{background:rgba(255,255,255,.2); outline:none; border-color:#fff}
+
+.btn{
+  border:1px solid var(--line-strong); background:var(--surface); color:var(--text);
+  border-radius:var(--radius-sm); padding:6px 11px; font-size:12.5px; font-weight:700;
+  cursor:pointer; white-space:nowrap;
+}
+.btn:hover{background:var(--surface-3)}
+.btn.primary{
+  background:var(--rust); border-color:var(--rust); color:#fff; font-weight:800;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+}
+.btn.primary:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--surface-3); color:var(--text)}
+.btn.sm{padding:4px 9px; font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- layout ---------- */
+.shell{display:flex; align-items:flex-start; gap:0; min-height:calc(100vh - 52px)}
+.roster{
+  width:252px; flex:0 0 252px; border-right:1px solid var(--line);
+  background:var(--surface); position:sticky; top:52px; height:calc(100vh - 52px);
+  display:flex; flex-direction:column;
+}
+.roster-head{padding:12px 12px 8px; border-bottom:1px solid var(--line)}
+.roster-head h2{margin:0 0 8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--blue); font-weight:800}
+.search{
+  width:100%; padding:6px 9px; border:1px solid var(--line-strong);
+  border-radius:var(--radius-sm); background:var(--surface-2);
+}
+.roster-list{overflow:auto; flex:1 1 auto; padding:6px}
+.agent-row{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  padding:7px 9px; border-radius:var(--radius-sm); border:1px solid transparent;
+  background:transparent; cursor:pointer;
+}
+.agent-row:hover{background:var(--surface-3)}
+.agent-row.active{background:var(--accent-soft); border-color:var(--accent-line)}
+.agent-row .nm{flex:1 1 auto; min-width:0; font-weight:600; font-size:14px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.agent-row .sub{display:block; font-weight:400; font-size:11px; color:var(--muted)}
+.lvlchip{
+  flex:0 0 auto; width:24px;height:24px;border-radius:50%; display:grid;place-items:center;
+  font-size:12px; font-weight:800; background:var(--surface-3); color:var(--muted);
+  border:1px solid var(--line);
+}
+.lvlchip.t{background:var(--surface-3)}
+.lvlchip.l1,.lvlchip.l2,.lvlchip.l3{background:var(--blue);color:#fff;border-color:var(--blue)}
+.roster-foot{padding:9px 12px; border-top:1px solid var(--line); display:flex; gap:6px; flex-wrap:wrap}
+
+.main{flex:1 1 auto; min-width:0; padding:18px 22px 72px}
+.wrap{max-width:900px; margin:0 auto}
+
+/* ---------- agent header ---------- */
+/* ── PASSPORT COVER — the Career Passport's blue gradient lockup ── */
+.agent-head{
+  background:linear-gradient(160deg, var(--blue) 0%, #0f3766 100%);
+  color:#fff; border-radius:var(--radius);
+  padding:22px 24px 20px; box-shadow:var(--shadow); margin-bottom:18px;
+}
+.agent-head h1{margin:0 0 3px; font-size:26px; font-weight:800; letter-spacing:.5px; color:#fff}
+.agent-head .meta-line{font-size:13.5px; color:#cfe0f2; margin-bottom:18px}
+.metagrid{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px 16px;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+  border-radius:var(--radius); padding:16px 18px;
+}
+.agent-head .field label{color:var(--on-blue-dim)}
+.agent-head .field input,.agent-head .field select{
+  color:#fff; background:rgba(255,255,255,.08);
+  border:none; border-bottom:1.5px solid rgba(255,255,255,.45); border-radius:0;
+  padding:6px 4px; font-weight:600;
+}
+.agent-head .field input:focus,.agent-head .field select:focus{
+  background:rgba(255,255,255,.16); border-bottom-color:#fff; outline:none;
+}
+.agent-head .field select option{color:var(--text); background:var(--surface)}
+.agent-head .field input::placeholder{color:rgba(255,255,255,.55); font-weight:400}
+
+.field label{display:block; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:3px}
+.field input,.field select,.field textarea{
+  width:100%; padding:6px 9px; border:1px solid var(--line-strong); border-radius:5px;
+  background:var(--surface);
+}
+.field textarea{min-height:70px; resize:vertical}
+
+/* ---------- level nav ---------- */
+.lvlnav{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px}
+.lvlnav button{
+  border:1px solid var(--line-strong); background:var(--surface); border-radius:9px;
+  padding:9px 12px; cursor:pointer; text-align:left; min-width:118px; flex:1 1 118px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.lvlnav button:hover{border-color:var(--blue2)}
+.lvlnav button.active{border-color:var(--blue); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--blue)}
+.lvlnav .t1{display:block; font-size:13px; font-weight:800; color:var(--blue); letter-spacing:.02em}
+.lvlnav .t2{display:block; font-size:11px; color:var(--muted); margin-top:2px}
+.bar{display:block;width:100%;height:4px;border-radius:2px;background:var(--surface-3);margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--blue2);border-radius:2px;transition:width .2s}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); margin-bottom:16px; overflow:hidden;
+}
+.card > header{
+  padding:14px 22px 11px; border-bottom:2px solid var(--accent-soft); background:var(--surface);
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+}
+.card > header h3{
+  margin:0; font-size:16px; font-weight:800; color:var(--blue); letter-spacing:.5px;
+}
+.card > header .lead{font-size:13px; color:var(--muted); width:100%; margin:4px 0 0}
+.card .body{padding:16px 22px}
+/* callout, straight from the Career Passport */
+.rule{
+  margin:0; padding:11px 15px; background:var(--accent-soft);
+  border:0; border-left:4px solid var(--blue2); border-radius:0 8px 8px 0;
+  font-size:14px; line-height:1.5; color:var(--text);
+}
+
+/* ---------- pills ---------- */
+.pill{
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:11px; font-weight:700; letter-spacing:.03em;
+  padding:2px 9px; border-radius:14px; border:1px solid var(--line-strong);
+  background:var(--surface-3); color:var(--muted); white-space:nowrap;
+}
+.pill.wage{background:var(--accent-soft); border-color:var(--accent-line); color:var(--blue)}
+.pill.tbd{background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn)}
+.pill.ok{background:var(--ok-soft); border-color:#bcdfcb; color:#1f6b41}
+.pill.bad{background:var(--bad-soft); border-color:var(--bad-line); color:var(--bad)}
+
+/* ---------- checklist ---------- */
+.items{list-style:none; margin:0; padding:0}
+.items li{border-bottom:1px solid var(--line)}
+.items li:last-child{border-bottom:0}
+.item{display:flex; align-items:flex-start; gap:10px; padding:9px 0}
+.item input[type=checkbox]{
+  width:17px;height:17px; margin:2px 0 0; flex:0 0 auto; accent-color:var(--blue); cursor:pointer;
+}
+.item .txt{flex:1 1 auto; min-width:0}
+.item .lbl{font-size:14.5px}
+.item.done .lbl{color:var(--muted)}
+.item .note{display:block; font-size:12.5px; color:var(--muted); margin-top:2px}
+.sig{display:flex; gap:6px; align-items:center; flex:0 0 auto; flex-wrap:wrap}
+.sig input[type=text]{
+  width:58px; text-align:center; text-transform:uppercase; font-weight:700; font-size:12px;
+  padding:3px 4px; border:1px solid var(--line-strong); border-radius:5px; background:var(--surface-2);
+}
+.sig input[type=date]{
+  font-size:12px; padding:3px 5px; border:1px solid var(--line-strong);
+  border-radius:5px; background:var(--surface-2);
+}
+.sig.hidden{display:none}
+.sublist{list-style:none; margin:2px 0 6px; padding:0 0 0 27px}
+.sublist li{border:0}
+.sublist .item{padding:4px 0}
+.sublist .lbl{font-size:13.5px}
+
+/* ---------- gates ---------- */
+/* table styling copied from the Career Passport's .dash-table */
+.gates{width:100%; border-collapse:collapse; font-size:13px}
+.gates th{
+  background:var(--blue); color:#fff; text-align:left; font-size:11.5px; font-weight:700;
+  padding:8px 10px; letter-spacing:.02em;
+}
+.gates th:first-child{border-radius:6px 0 0 0}
+.gates th:last-child{border-radius:0 6px 0 0}
+.gates td{padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle}
+.gates tr:nth-child(even) td{background:var(--surface-2)}
+.gates input[type=text]{
+  width:76px; padding:5px 7px; border:1px solid var(--line-strong);
+  border-radius:5px; background:var(--surface); text-align:right; font-size:12.5px;
+}
+.gates input[type=date]{font-size:12.5px; border:1px solid var(--line-strong); border-radius:5px; padding:5px 7px; background:var(--surface)}
+.gates .tgt{font-variant-numeric:tabular-nums; font-weight:700; color:var(--blue)}
+.gatewin{font-size:12.5px; color:var(--muted); margin:10px 0 0}
+
+/* ---------- signoff ---------- */
+.signoff{
+  display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;
+  padding:14px 22px; background:var(--surface-2); border-top:2px solid var(--accent-soft);
+}
+.signoff .field{flex:0 0 auto}
+.signoff .field.grow{flex:1 1 220px}
+.signoff .stamp{margin-left:auto; text-align:right; font-size:12px; color:var(--muted)}
+
+/* ---------- coaching log ---------- */
+.logform{display:grid; grid-template-columns:130px 150px 1fr; gap:9px; align-items:end}
+.logform .full{grid-column:1/-1}
+.logrow{padding:11px 0; border-bottom:1px solid var(--line)}
+.logrow:last-child{border-bottom:0}
+.logrow .hd{display:flex; gap:9px; align-items:baseline; flex-wrap:wrap; font-size:12.5px; color:var(--muted)}
+.logrow .hd b{color:var(--text); font-size:14px}
+.logrow p{margin:4px 0 0; font-size:14px; white-space:pre-wrap}
+
+.empty{color:var(--muted); font-size:14px; padding:6px 0}
+.hint{font-size:12.5px; color:var(--muted)}
+.banner{
+  padding:9px 14px; border-radius:var(--radius-sm); font-size:13px;
+  background:var(--warn-soft); border:1px solid var(--warn-line); color:var(--warn);
+  margin-bottom:16px;
+}
+
+/* ---------- gate / login ---------- */
+.gatebox{max-width:340px; margin:14vh auto; text-align:center}
+.gatebox .card{padding:24px}
+
+/* ---------- responsive ---------- */
+@media (max-width:860px){
+  .shell{flex-direction:column}
+  .roster{width:100%; flex:1 1 auto; position:static; height:auto; max-height:290px; border-right:0; border-bottom:1px solid var(--line)}
+  .main{padding:16px}
+  .logform{grid-template-columns:1fr 1fr}
+}
+@media (max-width:520px){
+  .main{padding:14px 16px 60px}
+  .item{flex-wrap:wrap}
+  .sig{padding-left:27px}
+  .logform{grid-template-columns:1fr}
+}
+
+/* ---------- print ---------- */
+@media print{
+  :root{--bg:#fff;--surface:#fff;--surface-2:#fff;--surface-3:#fff;--line:#bbb;--line-strong:#999;
+        --text:#000;--muted:#333;--faint:#555;--accent:#13427a;--blue:#13427a;--blue2:#2e74b5;
+        --accent-soft:#eef4fb;--shadow:none}
+  .topbar,.roster,.lvlnav,.noprint,.roster-foot{display:none !important}
+  .main{padding:0}
+  /* keep the cover readable on paper */
+  .agent-head{background:#13427a !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gates th{background:#13427a !important;color:#fff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .card > header h3{color:#13427a}
+  .wrap{max-width:none}
+  .card{break-inside:avoid; box-shadow:none; border:1px solid #bbb; margin-bottom:12px}
+  body{font-size:11.5px}
+  .item input[type=checkbox]{-webkit-appearance:none;appearance:none;width:12px;height:12px;border:1.2px solid #444;border-radius:2px}
+  .item input[type=checkbox]:checked::after{content:"\2713";display:block;font-size:11px;line-height:11px;text-align:center}
+  .sig input{border:0;border-bottom:1px solid #777;border-radius:0;background:#fff}
+  .sig.hidden{display:flex !important}
+  #printAll{display:block}
+}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script src="config.js"></script>
+<script src="program.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ==================================================================
+   0. helpers
+   ================================================================== */
+var CFG = window.PASSPORT_CONFIG || {};
+var P   = window.PROGRAM;
+
+function h(tag, attrs, kids){
+  var e = document.createElement(tag);
+  if (attrs) for (var k in attrs){
+    var v = attrs[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'html') e.innerHTML = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k.slice(0,2) === 'on') e.addEventListener(k.slice(2), v);
+    else if (k === 'value') e.value = v;
+    else if (k === 'checked') e.checked = !!v;
+    else e.setAttribute(k, v);
+  }
+  (kids || []).forEach(function(c){
+    if (c == null || c === false) return;
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return e;
+}
+function today(){
+  var d = new Date(), p = function(n){ return (n<10?'0':'')+n; };
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function fmtDate(s){
+  if (!s) return '';
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return s;
+  return m[2]+'/'+m[3]+'/'+m[1];
+}
+function money(n){ return '$' + Number(n).toFixed(2); }
+function uid(){ return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function debounce(fn, ms){
+  var t; return function(){ var a=arguments, s=this; clearTimeout(t);
+    t=setTimeout(function(){ fn.apply(s,a); }, ms); };
+}
+function deepGet(o, path, dflt){
+  var cur = o;
+  for (var i=0;i<path.length;i++){ if (cur==null) return dflt; cur = cur[path[i]]; }
+  return cur == null ? dflt : cur;
+}
+
+/* flatten every checkable id inside a level (items + subs + advance) */
+function levelItemIds(lv){
+  var ids = [];
+  (lv.groups||[]).forEach(function(g){
+    (g.items||[]).forEach(function(it){
+      if (it.retired) return;
+      ids.push(it.id);
+      (it.sub||[]).forEach(function(s){ if(!s.retired) ids.push(s.id); });
+    });
+  });
+  (lv.advance||[]).forEach(function(a){ if(!a.retired) ids.push(a.id); });
+  return ids;
+}
+
+/* ==================================================================
+   1. storage layer — Supabase, with local fallback
+   ================================================================== */
+var SB = null, MODE = 'local';
+try{
+  if (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase){
+    SB = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+    MODE = 'supabase';
+  }
+}catch(e){ console.warn('Supabase init failed, falling back to local mode', e); }
+
+var T_AG  = CFG.TABLE_AGENTS    || 'sh_agents';
+var T_PP  = CFG.TABLE_PASSPORTS || 'sh_passports';
+var T_LOG = CFG.TABLE_LOG       || 'sh_coaching_log';
+var LSKEY = 'we.shp.v1';
+
+function lsRead(){
+  try{ return JSON.parse(localStorage.getItem(LSKEY) || '{}'); }catch(e){ return {}; }
+}
+function lsWrite(o){
+  try{ localStorage.setItem(LSKEY, JSON.stringify(o)); }catch(e){}
+}
+
+var Store = {
+  async listAgents(){
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_AG).select('*').eq('archived', false).order('name');
+      if (r.error) throw r.error;
+      return r.data || [];
+    }
+    var db = lsRead();
+    return (db.agents || []).filter(function(a){ return !a.archived; })
+      .sort(function(a,b){ return a.name.localeCompare(b.name); });
+  },
+  async createAgent(name){
+    var row = { name:name, hire_date:null, yard:null, supervisor:null,
+                current_level:'nat', archived:false };
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_AG).insert(row).select().single();
+      if (r.error) throw r.error;
+      return r.data;
+    }
+    var db = lsRead(); db.agents = db.agents || [];
+    row.id = uid(); db.agents.push(row); lsWrite(db);
+    return row;
+  },
+  async updateAgent(id, patch){
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_AG).update(patch).eq('id', id);
+      if (r.error) throw r.error;
+      return;
+    }
+    var db = lsRead();
+    (db.agents||[]).forEach(function(a){ if (a.id === id) Object.assign(a, patch); });
+    lsWrite(db);
+  },
+  async getPassport(id){
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_PP).select('data').eq('agent_id', id).maybeSingle();
+      if (r.error) throw r.error;
+      return (r.data && r.data.data) || {};
+    }
+    return (lsRead().passports || {})[id] || {};
+  },
+  async savePassport(id, data, who){
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_PP).upsert({
+        agent_id:id, data:data, updated_at:new Date().toISOString(), updated_by: who || null
+      }, { onConflict:'agent_id' });
+      if (r.error) throw r.error;
+      return;
+    }
+    var db = lsRead(); db.passports = db.passports || {};
+    db.passports[id] = data; lsWrite(db);
+  },
+  async listLog(id){
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_LOG).select('*').eq('agent_id', id)
+                .order('entry_date', { ascending:false }).limit(200);
+      if (r.error) throw r.error;
+      return r.data || [];
+    }
+    var db = lsRead();
+    return ((db.log || {})[id] || []).slice().sort(function(a,b){
+      return (b.entry_date||'').localeCompare(a.entry_date||''); });
+  },
+  async addLog(id, row){
+    row = Object.assign({ agent_id:id }, row);
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_LOG).insert(row).select().single();
+      if (r.error) throw r.error;
+      return r.data;
+    }
+    var db = lsRead(); db.log = db.log || {}; db.log[id] = db.log[id] || [];
+    row.id = uid(); row.created_at = new Date().toISOString();
+    db.log[id].unshift(row); lsWrite(db);
+    return row;
+  },
+  async deleteLog(id, rowId){
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_LOG).delete().eq('id', rowId);
+      if (r.error) throw r.error;
+      return;
+    }
+    var db = lsRead();
+    if (db.log && db.log[id]) db.log[id] = db.log[id].filter(function(x){ return x.id !== rowId; });
+    lsWrite(db);
+  }
+};
+
+/* ==================================================================
+   2. app state
+   ================================================================== */
+var S = {
+  agents: [],
+  agentId: null,
+  agent: null,
+  pp: null,          // passport data object
+  log: [],
+  tab: 'nat',        // level id | 'endorse' | 'log' | 'program'
+  filter: '',
+  who: (function(){ try{ return localStorage.getItem('we.shp.who') || ''; }catch(e){ return ''; } })(),
+  dirty: false,
+  saving: false,
+  err: null
+};
+
+function blankPassport(){
+  return { meta:{}, items:{}, gates:{}, goals:{}, signoff:{},
+           endorsements:{}, senior:{}, _v:P.version };
+}
+function item(id){ return (S.pp.items[id] = S.pp.items[id] || {}); }
+function gate(id){ return (S.pp.gates[id] = S.pp.gates[id] || {}); }
+
+/* ---- progress ---- */
+function levelProgress(lv){
+  var ids = levelItemIds(lv), done = 0;
+  ids.forEach(function(id){ if (deepGet(S.pp,['items',id,'d'])) done++; });
+  return { done:done, total:ids.length, pct: ids.length ? Math.round(done/ids.length*100) : 0 };
+}
+function endorseProgress(){
+  var ids = P.endorsements.items.filter(function(e){ return !e.tbd; }).map(function(e){ return e.id; });
+  var done = ids.filter(function(id){ return deepGet(S.pp,['endorsements',id,'d']); }).length;
+  return { done:done, total:ids.length, pct: ids.length ? Math.round(done/ids.length*100) : 0 };
+}
+function currentLevelCode(){
+  var lv = P.levels.filter(function(l){ return l.id === (S.agent && S.agent.current_level); })[0];
+  return lv ? lv.code : 'T';
+}
+
+/* ==================================================================
+   3. save pipeline
+   ================================================================== */
+function setStatus(kind, text){
+  var el = document.getElementById('status');
+  if (!el) return;
+  el.className = 'status ' + kind;
+  el.innerHTML = '';
+  el.appendChild(h('span',{class:'dot'}));
+  el.appendChild(document.createTextNode(text));
+}
+
+var flush = debounce(async function(){
+  if (!S.agentId) return;
+  S.saving = true; setStatus('busy', 'Saving…');
+  try{
+    await Store.savePassport(S.agentId, S.pp, S.who);
+    S.dirty = false; S.saving = false;
+    var t = new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+    setStatus('ok', (MODE === 'supabase' ? 'Saved ' : 'Saved locally ') + t);
+  }catch(e){
+    S.saving = false; console.error(e);
+    setStatus('err', 'Save failed — retrying');
+    setTimeout(function(){ touch(); }, 4000);
+  }
+}, 700);
+
+function touch(){ S.dirty = true; setStatus('busy', 'Unsaved…'); flush(); }
+
+/* ==================================================================
+   4. shared UI pieces
+   ================================================================== */
+function pill(cls, text){ return h('span',{class:'pill '+cls, text:text}); }
+
+function field(label, node){
+  return h('div',{class:'field'},[ h('label',{text:label}), node ]);
+}
+
+function textInput(value, oninput, attrs){
+  return h('input', Object.assign({ type:'text', value:value||'',
+    oninput:function(e){ oninput(e.target.value); } }, attrs||{}));
+}
+
+/* one checklist row */
+function itemRow(it, depth){
+  var st = item(it.id);
+  var cb = h('input',{ type:'checkbox', checked:!!st.d,
+    'aria-label': it.label,
+    onchange:function(e){
+      st.d = e.target.checked;
+      if (st.d){ if(!st.on) st.on = today(); if(!st.by && S.who) st.by = S.who; }
+      touch(); renderMain();
+    }});
+
+  var sig = h('div',{class:'sig' + (st.d ? '' : ' hidden')},[
+    h('input',{ type:'text', value:st.by||'', placeholder:'INIT', maxlength:'4',
+      title:'Verified by (initials)',
+      oninput:function(e){ st.by = e.target.value.toUpperCase(); touch(); }}),
+    h('input',{ type:'date', value:st.on||'',
+      title:'Date verified',
+      onchange:function(e){ st.on = e.target.value; touch(); }})
+  ]);
+
+  var txt = h('div',{class:'txt'},[
+    h('span',{class:'lbl'},[ it.label, it.tbd ? ' ' : null, it.tbd ? pill('tbd','TBD') : null ]),
+    it.note ? h('span',{class:'note', text:it.note}) : null
+  ]);
+
+  var row = h('div',{class:'item' + (st.d ? ' done' : '')},[ cb, txt, sig ]);
+  var li = h('li',{},[ row ]);
+
+  if (it.sub && it.sub.length){
+    var ul = h('ul',{class:'sublist'});
+    it.sub.forEach(function(s){ if(!s.retired) ul.appendChild(itemRow(s, (depth||0)+1)); });
+    li.appendChild(ul);
+  }
+  return li;
+}
+
+/* performance gate table */
+function gateTable(gates, windowNote){
+  var tb = h('tbody');
+  gates.forEach(function(g){
+    var st = gate(g.id);
+    var tgt = g.tbd || g.target == null
+      ? pill('tbd','TBD')
+      : h('span',{class:'tgt', text:g.target + (g.unit||'')});
+
+    var verdict = h('td');
+    function judge(){
+      verdict.innerHTML = '';
+      if (g.tbd || g.target == null){
+        var m = h('input',{type:'checkbox', checked:!!st.ok, 'aria-label':'Standard met',
+          onchange:function(e){ st.ok = e.target.checked; touch(); judge(); }});
+        verdict.appendChild(m);
+        verdict.appendChild(document.createTextNode(' met'));
+        return;
+      }
+      var v = parseFloat(String(st.v||'').replace(/[^0-9.\-]/g,''));
+      if (isNaN(v)){ verdict.appendChild(h('span',{class:'hint', text:'—'})); st.ok = null; return; }
+      st.ok = v >= g.target;
+      verdict.appendChild(pill(st.ok ? 'ok' : 'bad', st.ok ? 'Met' : 'Below'));
+    }
+
+    var inp = h('input',{type:'text', value:st.v||'', placeholder:'—',
+      'aria-label': g.label + ' actual',
+      oninput:function(e){ st.v = e.target.value; touch(); judge(); }});
+
+    tb.appendChild(h('tr',{},[
+      h('td',{},[ h('span',{text:g.label}) ]),
+      h('td',{},[ tgt ]),
+      h('td',{},[ (g.tbd || g.target == null) ? h('span',{class:'hint',text:'n/a'}) : inp ]),
+      verdict,
+      h('td',{},[ h('input',{type:'date', value:st.on||'', 'aria-label':'As of date',
+        onchange:function(e){ st.on = e.target.value; touch(); }}) ])
+    ]));
+    judge();
+  });
+
+  return h('div',{},[
+    h('table',{class:'gates'},[
+      h('thead',{},[ h('tr',{},[
+        h('th',{text:'Performance gate'}), h('th',{text:'Standard'}),
+        h('th',{text:'Actual'}), h('th',{text:'Status'}), h('th',{text:'As of'})
+      ])]),
+      tb
+    ]),
+    windowNote ? h('p',{class:'gatewin', text:windowNote}) : null
+  ]);
+}
+
+/* goal + mastered sign-off strip */
+function signoffStrip(levelId){
+  var so = (S.pp.signoff[levelId] = S.pp.signoff[levelId] || {});
+  var pr = null;
+  var lv = P.levels.filter(function(l){ return l.id === levelId; })[0];
+  if (lv) pr = levelProgress(lv);
+
+  return h('div',{class:'signoff'},[
+    h('div',{class:'field grow'},[
+      h('label',{text:'Goal'}),
+      h('input',{type:'text', value:so.goal||'', placeholder:'Agent goal for this level',
+        oninput:function(e){ so.goal = e.target.value; touch(); }})
+    ]),
+    h('div',{class:'field'},[
+      h('label',{text:'Mastered — initials'}),
+      h('input',{type:'text', value:so.by||'', placeholder:'INIT', maxlength:'4',
+        style:'width:78px;text-transform:uppercase;font-weight:700;text-align:center',
+        oninput:function(e){ so.by = e.target.value.toUpperCase(); touch(); }})
+    ]),
+    h('div',{class:'field'},[
+      h('label',{text:'Date'}),
+      h('input',{type:'date', value:so.on||'',
+        onchange:function(e){ so.on = e.target.value; touch(); }})
+    ]),
+    pr ? h('div',{class:'stamp'},[
+      h('div',{text: pr.done + ' of ' + pr.total + ' complete'}),
+      h('div',{text: pr.pct + '%', style:'font-size:19px;font-weight:800;color:var(--blue)'})
+    ]) : null
+  ]);
+}
+
+/* ==================================================================
+   5. panels
+   ================================================================== */
+function levelPanel(lv){
+  var frag = document.createDocumentFragment();
+  var pr = levelProgress(lv);
+
+  var head = h('div',{class:'card'},[
+    h('header',{},[
+      h('h3',{text:lv.name}),
+      pill('wage', money(lv.wage)),
+      pr.pct === 100 ? pill('ok','Complete') : pill('', pr.pct + '%')
+    ]),
+    h('div',{class:'body'},[ h('p',{class:'rule', text:lv.rule}) ])
+  ]);
+  frag.appendChild(head);
+
+  if (lv.gates && lv.gates.length){
+    frag.appendChild(h('div',{class:'card'},[
+      h('header',{},[ h('h3',{text:'Performance gates'}) ]),
+      h('div',{class:'body'},[ gateTable(lv.gates, lv.gateWindow) ])
+    ]));
+  }
+
+  (lv.groups||[]).forEach(function(g){
+    var ul = h('ul',{class:'items'});
+    (g.items||[]).forEach(function(it){ if(!it.retired) ul.appendChild(itemRow(it,0)); });
+    frag.appendChild(h('div',{class:'card'},[
+      h('header',{},[ h('h3',{text:g.title}), g.lead ? h('p',{class:'lead', text:g.lead}) : null ]),
+      h('div',{class:'body'},[ ul ])
+    ]));
+  });
+
+  if (lv.trailing90){
+    frag.appendChild(h('div',{class:'card'},[
+      h('header',{},[ h('h3',{text:lv.trailing90.title}) ]),
+      h('div',{class:'body'},[ gateTable(lv.trailing90.gates, 'Reviewed on a trailing 90-day basis and owned by the agent.') ])
+    ]));
+  }
+
+  if (lv.advance && lv.advance.length){
+    var au = h('ul',{class:'items'});
+    lv.advance.forEach(function(a){ if(!a.retired) au.appendChild(itemRow(a,0)); });
+    frag.appendChild(h('div',{class:'card'},[
+      h('header',{},[ h('h3',{text:'Eligible to move up when'}) ]),
+      h('div',{class:'body'},[ au ]),
+      signoffStrip(lv.id)
+    ]));
+  }
+  return frag;
+}
+
+function endorsePanel(){
+  var frag = document.createDocumentFragment();
+  var eligible = ['l2','l3'].indexOf(S.agent && S.agent.current_level) >= 0;
+
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Endorsements'}) ]),
+    h('div',{class:'body'},[
+      h('p',{class:'rule', text:P.endorsements.eligibility}),
+      !eligible ? h('p',{class:'hint', style:'margin-top:10px',
+        text:'This agent is currently set below Level 2, so endorsements are not yet earnable. You can still record progress.'}) : null
+    ])
+  ]));
+
+  var ul = h('ul',{class:'items'});
+  P.endorsements.items.forEach(function(e){
+    var st = (S.pp.endorsements[e.id] = S.pp.endorsements[e.id] || {});
+    var cb = h('input',{type:'checkbox', checked:!!st.d, 'aria-label':e.label,
+      onchange:function(ev){
+        st.d = ev.target.checked;
+        if (st.d){ if(!st.on) st.on = today(); if(!st.by && S.who) st.by = S.who; }
+        touch(); renderMain();
+      }});
+    var sig = h('div',{class:'sig' + (st.d ? '' : ' hidden')},[
+      h('input',{type:'text', value:st.by||'', placeholder:'INIT', maxlength:'4',
+        oninput:function(ev){ st.by = ev.target.value.toUpperCase(); touch(); }}),
+      h('input',{type:'date', value:st.on||'',
+        onchange:function(ev){ st.on = ev.target.value; touch(); }})
+    ]);
+    ul.appendChild(h('li',{},[ h('div',{class:'item' + (st.d?' done':'')},[
+      cb,
+      h('div',{class:'txt'},[
+        h('span',{class:'lbl'},[
+          e.label, ' ',
+          e.pay != null ? pill('wage','+' + money(e.pay)) : null,
+          e.tbd ? pill('tbd','TBD') : null
+        ]),
+        e.note ? h('span',{class:'note', text:e.note}) : null
+      ]),
+      sig
+    ])]));
+  });
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Earned endorsements'}) ]),
+    h('div',{class:'body'},[ ul ])
+  ]));
+
+  /* senior agent */
+  var qul = h('ul',{class:'items'});
+  P.senior.quarters.forEach(function(q){
+    var st = (S.pp.senior[q.id] = S.pp.senior[q.id] || {});
+    var cb = h('input',{type:'checkbox', checked:!!st.d, 'aria-label':q.label,
+      onchange:function(ev){ st.d = ev.target.checked;
+        if (st.d && !st.on) st.on = today(); touch(); renderMain(); }});
+    var sig = h('div',{class:'sig' + (st.d?'':' hidden')},[
+      h('input',{type:'text', value:st.by||'', placeholder:'INIT', maxlength:'4',
+        oninput:function(ev){ st.by = ev.target.value.toUpperCase(); touch(); }}),
+      h('input',{type:'date', value:st.on||'',
+        onchange:function(ev){ st.on = ev.target.value; touch(); }})
+    ]);
+    qul.appendChild(h('li',{},[ h('div',{class:'item' + (st.d?' done':'')},[
+      cb, h('div',{class:'txt'},[ h('span',{class:'lbl', text:q.label + ' — Level 3 + all endorsements sustained'}) ]), sig
+    ])]));
+  });
+  var qdone = P.senior.quarters.filter(function(q){ return deepGet(S.pp,['senior',q.id,'d']); }).length;
+
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Senior Agent'}), pill('wage','+' + money(P.senior.pay)),
+      qdone === 4 ? pill('ok','Eligible') : pill('', qdone + ' of 4 quarters') ]),
+    h('div',{class:'body'},[ h('p',{class:'rule', text:P.senior.rule}), qul ])
+  ]));
+
+  return frag;
+}
+
+function logPanel(){
+  var frag = document.createDocumentFragment();
+
+  var f = { date: today(), source:'Supervisor', title:'', detail:'' };
+  var dateI = h('input',{type:'date', value:f.date, onchange:function(e){ f.date = e.target.value; }});
+  var srcI  = h('select',{onchange:function(e){ f.source = e.target.value; }},
+    P.coachingSources.map(function(s){ return h('option',{value:s, text:s}); }));
+  var titI  = h('input',{type:'text', placeholder:'Subject — e.g. Cash box variance', oninput:function(e){ f.title = e.target.value; }});
+  var detI  = h('textarea',{placeholder:'What was observed, what was coached, what happens next…',
+    oninput:function(e){ f.detail = e.target.value; }});
+
+  var addBtn = h('button',{class:'btn primary', onclick:async function(){
+    if (!f.title.trim() && !f.detail.trim()){ return; }
+    addBtn.disabled = true;
+    try{
+      await Store.addLog(S.agentId, {
+        entry_date:f.date, source:f.source, title:f.title.trim(),
+        detail:f.detail.trim(), author:S.who || null
+      });
+      S.log = await Store.listLog(S.agentId);
+      renderMain();
+    }catch(e){ console.error(e); alert('Could not save the entry: ' + (e.message||e)); }
+    addBtn.disabled = false;
+  }}, ['Add entry']);
+
+  frag.appendChild(h('div',{class:'card noprint'},[
+    h('header',{},[ h('h3',{text:'Add a coaching entry'}) ]),
+    h('div',{class:'body'},[
+      h('div',{class:'logform'},[
+        field('Date', dateI), field('Source', srcI),
+        field('Subject', titI),
+        h('div',{class:'field full'},[ h('label',{text:'Detail'}), detI ]),
+        h('div',{class:'full'},[ addBtn ])
+      ])
+    ])
+  ]));
+
+  var body = h('div',{class:'body'});
+  if (!S.log.length){
+    body.appendChild(h('p',{class:'empty', text:'No coaching entries yet.'}));
+  } else {
+    S.log.forEach(function(r){
+      body.appendChild(h('div',{class:'logrow'},[
+        h('div',{class:'hd'},[
+          h('b',{text: r.title || '(no subject)'}),
+          h('span',{text: fmtDate(r.entry_date)}),
+          r.source ? pill('', r.source) : null,
+          r.author ? h('span',{text:'by ' + r.author}) : null,
+          h('button',{class:'btn ghost sm noprint', onclick:async function(){
+            if (!confirm('Delete this entry?')) return;
+            await Store.deleteLog(S.agentId, r.id);
+            S.log = await Store.listLog(S.agentId); renderMain();
+          }}, ['Delete'])
+        ]),
+        r.detail ? h('p',{text:r.detail}) : null
+      ]));
+    });
+  }
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Coaching log'}) ]), body
+  ]));
+  return frag;
+}
+
+function programPanel(){
+  var frag = document.createDocumentFragment();
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:P.intro.heading}) ]),
+    h('div',{class:'body'}, P.intro.body.map(function(t){
+      return h('p',{text:t, style:'margin:0 0 11px;font-size:14px;color:var(--muted)'});
+    }))
+  ]));
+
+  var rows = h('tbody');
+  P.levels.forEach(function(lv){
+    rows.appendChild(h('tr',{},[
+      h('td',{},[ h('b',{text:lv.name}) ]),
+      h('td',{},[ pill('wage', money(lv.wage)) ]),
+      h('td',{text:lv.tenure})
+    ]));
+  });
+  P.endorsements.items.filter(function(e){ return e.pay != null; }).forEach(function(e){
+    rows.appendChild(h('tr',{},[
+      h('td',{text:'Endorsement — ' + e.label}),
+      h('td',{},[ pill('wage','+' + money(e.pay)) ]),
+      h('td',{text:'Minimum Level 2'})
+    ]));
+  });
+  rows.appendChild(h('tr',{},[
+    h('td',{},[ h('b',{text:'Senior Agent'}) ]),
+    h('td',{},[ pill('wage','+' + money(P.senior.pay)) ]),
+    h('td',{text:'Level 3 + all endorsements, 4 consecutive quarters'})
+  ]));
+
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Wage ladder'}) ]),
+    h('div',{class:'body'},[ h('table',{class:'gates'},[
+      h('thead',{},[ h('tr',{},[ h('th',{text:'Level'}), h('th',{text:'Rate'}), h('th',{text:'Requirement'}) ])]),
+      rows
+    ])])
+  ]));
+
+  var tbds = [];
+  P.levels.forEach(function(lv){
+    (lv.gates||[]).forEach(function(g){ if (g.tbd) tbds.push(lv.name + ' — gate: ' + g.label); });
+    (lv.groups||[]).forEach(function(gr){ (gr.items||[]).forEach(function(it){
+      if (it.tbd) tbds.push(lv.name + ' — ' + it.label); }); });
+    (lv.advance||[]).forEach(function(a){ if (a.tbd) tbds.push(lv.name + ' — ' + a.label); });
+    if (lv.trailing90) lv.trailing90.gates.forEach(function(g){
+      if (g.tbd) tbds.push(lv.name + ' — 90-day goal: ' + g.label); });
+  });
+  P.endorsements.items.forEach(function(e){ if (e.tbd) tbds.push('Endorsements — ' + e.label); });
+
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Open items still to be defined'}) ]),
+    h('div',{class:'body'},[
+      h('ul',{style:'margin:0;padding-left:18px'}, tbds.map(function(t){
+        return h('li',{text:t, style:'font-size:14px;color:var(--muted);margin-bottom:4px'}); }))
+    ])
+  ]));
+
+  frag.appendChild(h('div',{class:'card'},[
+    h('div',{class:'body'},[ h('p',{class:'hint',
+      text:'Program version ' + P.version + ' · source: ' + P.sourceDoc +
+           ' · storage: ' + (MODE === 'supabase' ? 'Supabase' : 'this browser only') }) ])
+  ]));
+  return frag;
+}
+
+/* ==================================================================
+   6. render
+   ================================================================== */
+function renderRoster(){
+  var list = document.getElementById('rosterList');
+  if (!list) return;
+  list.innerHTML = '';
+  var q = S.filter.toLowerCase();
+  var shown = S.agents.filter(function(a){ return !q || a.name.toLowerCase().indexOf(q) >= 0; });
+  if (!shown.length){
+    list.appendChild(h('p',{class:'empty', style:'padding:8px 9px', text: S.agents.length ? 'No match.' : 'No agents yet — add one below.'}));
+    return;
+  }
+  shown.forEach(function(a){
+    var lv = P.levels.filter(function(l){ return l.id === a.current_level; })[0] || P.levels[0];
+    list.appendChild(h('button',{
+      class:'agent-row' + (a.id === S.agentId ? ' active' : ''),
+      onclick:function(){ selectAgent(a.id); }
+    },[
+      h('span',{class:'lvlchip ' + (lv.id === 'nat' ? 't' : lv.id), text:lv.code}),
+      h('span',{class:'nm'},[ a.name, h('span',{class:'sub', text: lv.short + ' · ' + money(lv.wage)}) ])
+    ]));
+  });
+}
+
+function renderMain(){
+  var main = document.getElementById('main');
+  if (!main) return;
+  main.innerHTML = '';
+  var wrap = h('div',{class:'wrap'});
+  main.appendChild(wrap);
+
+  if (MODE !== 'supabase'){
+    wrap.appendChild(h('div',{class:'banner noprint'},[
+      'Local mode — nothing is shared. Add your Supabase URL and anon key to ',
+      h('code',{text:'config.js'}), ' to sync the team.'
+    ]));
+  }
+
+  if (!S.agent){
+    wrap.appendChild(h('div',{class:'card'},[
+      h('header',{},[ h('h3',{text:'Pick an agent'}) ]),
+      h('div',{class:'body'},[ h('p',{class:'empty',
+        text:'Choose someone from the roster, or add a new agent to start their passport.'}) ])
+    ]));
+    wrap.appendChild(programPanel());
+    return;
+  }
+
+  /* --- agent header --- */
+  var a = S.agent;
+  var lv = P.levels.filter(function(l){ return l.id === a.current_level; })[0] || P.levels[0];
+
+  wrap.appendChild(h('div',{class:'agent-head'},[
+    h('h1',{text:a.name}),
+    h('p',{class:'meta-line'},[
+      lv.name + ' · ' + money(lv.wage) + '/hr',
+      a.hire_date ? ' · hired ' + fmtDate(a.hire_date) : ''
+    ]),
+    h('div',{class:'metagrid'},[
+      field('Current level', h('select',{onchange:function(e){
+        a.current_level = e.target.value;
+        Store.updateAgent(a.id, { current_level:a.current_level });
+        renderRoster(); renderMain();
+      }}, P.levels.map(function(l){
+        return h('option',{value:l.id, text:l.name, selected:(l.id===a.current_level)});
+      }))),
+      field('Hire date', h('input',{type:'date', value:a.hire_date||'', onchange:function(e){
+        a.hire_date = e.target.value || null;
+        Store.updateAgent(a.id, { hire_date:a.hire_date }); renderMain();
+      }})),
+      field('Yard', h('select',{onchange:function(e){
+        a.yard = e.target.value || null; Store.updateAgent(a.id, { yard:a.yard });
+      }}, [h('option',{value:'', text:'—'})].concat(P.yards.map(function(y){
+        return h('option',{value:y, text:y, selected:(y===a.yard)});
+      })))),
+      field('Supervisor', textInput(a.supervisor, function(v){
+        a.supervisor = v; saveAgentSoon();
+      }))
+    ])
+  ]));
+
+  /* --- level nav --- */
+  var nav = h('div',{class:'lvlnav noprint'});
+  P.levels.forEach(function(l){
+    var pr = levelProgress(l);
+    nav.appendChild(h('button',{ class: S.tab === l.id ? 'active' : '',
+      onclick:function(){ S.tab = l.id; renderMain(); }},[
+      h('span',{class:'t1', text:l.short}),
+      h('span',{class:'t2', text: money(l.wage) + ' · ' + pr.done + '/' + pr.total}),
+      h('span',{class:'bar'},[ h('i',{style:'width:' + pr.pct + '%'}) ])
+    ]));
+  });
+  var ep = endorseProgress();
+  nav.appendChild(h('button',{ class: S.tab === 'endorse' ? 'active' : '',
+    onclick:function(){ S.tab = 'endorse'; renderMain(); }},[
+    h('span',{class:'t1', text:'Endorsements'}),
+    h('span',{class:'t2', text:'+pay · ' + ep.done + '/' + ep.total}),
+    h('span',{class:'bar'},[ h('i',{style:'width:' + ep.pct + '%'}) ])
+  ]));
+  nav.appendChild(h('button',{ class: S.tab === 'log' ? 'active' : '',
+    onclick:function(){ S.tab = 'log'; renderMain(); }},[
+    h('span',{class:'t1', text:'Coaching log'}),
+    h('span',{class:'t2', text: S.log.length + ' entr' + (S.log.length===1?'y':'ies')})
+  ]));
+  nav.appendChild(h('button',{ class: S.tab === 'program' ? 'active' : '',
+    onclick:function(){ S.tab = 'program'; renderMain(); }},[
+    h('span',{class:'t1', text:'Program'}),
+    h('span',{class:'t2', text:'rules & wages'})
+  ]));
+  wrap.appendChild(nav);
+
+  /* --- panel --- */
+  if (S.tab === 'endorse')      wrap.appendChild(endorsePanel());
+  else if (S.tab === 'log')     wrap.appendChild(logPanel());
+  else if (S.tab === 'program') wrap.appendChild(programPanel());
+  else {
+    var cur = P.levels.filter(function(l){ return l.id === S.tab; })[0] || P.levels[0];
+    wrap.appendChild(levelPanel(cur));
+  }
+}
+
+var saveAgentSoon = debounce(function(){
+  if (!S.agent) return;
+  Store.updateAgent(S.agent.id, {
+    supervisor:S.agent.supervisor, yard:S.agent.yard,
+    hire_date:S.agent.hire_date, current_level:S.agent.current_level
+  }).catch(function(e){ console.error(e); });
+}, 700);
+
+async function selectAgent(id){
+  S.agentId = id;
+  S.agent = S.agents.filter(function(a){ return a.id === id; })[0] || null;
+  setStatus('busy','Loading…');
+  try{
+    var d = await Store.getPassport(id);
+    S.pp = Object.assign(blankPassport(), d || {});
+    S.pp.items = S.pp.items || {}; S.pp.gates = S.pp.gates || {};
+    S.pp.goals = S.pp.goals || {}; S.pp.signoff = S.pp.signoff || {};
+    S.pp.endorsements = S.pp.endorsements || {}; S.pp.senior = S.pp.senior || {};
+    S.log = await Store.listLog(id);
+    setStatus('ok', MODE === 'supabase' ? 'Synced' : 'Local mode');
+  }catch(e){
+    console.error(e); S.pp = blankPassport(); S.log = [];
+    setStatus('err','Could not load — ' + (e.message || e));
+  }
+  if (!P.levels.filter(function(l){ return l.id === S.tab; })[0]
+      && ['endorse','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
+  renderRoster(); renderMain();
+}
+
+/* ==================================================================
+   7. export
+   ================================================================== */
+function download(name, text, type){
+  var b = new Blob([text], {type: type || 'text/plain;charset=utf-8'});
+  var u = URL.createObjectURL(b);
+  var a = document.createElement('a'); a.href = u; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(u); }, 1000);
+}
+async function exportCsv(){
+  var rows = [['Agent','Level','Wage','Hire date','Yard','Supervisor']
+    .concat(P.levels.map(function(l){ return l.short + ' %'; }))
+    .concat(['Endorsements','Senior quarters'])];
+  for (var i=0;i<S.agents.length;i++){
+    var a = S.agents[i];
+    var d = await Store.getPassport(a.id);
+    var saved = S.pp, savedId = S.agentId;
+    S.pp = Object.assign(blankPassport(), d||{});
+    S.pp.items = S.pp.items||{}; S.pp.endorsements = S.pp.endorsements||{}; S.pp.senior = S.pp.senior||{};
+    var lv = P.levels.filter(function(l){ return l.id===a.current_level; })[0] || P.levels[0];
+    var row = [a.name, lv.name, lv.wage, a.hire_date||'', a.yard||'', a.supervisor||''];
+    P.levels.forEach(function(l){ row.push(levelProgress(l).pct); });
+    row.push(P.endorsements.items.filter(function(e){ return deepGet(S.pp,['endorsements',e.id,'d']); })
+             .map(function(e){ return e.label; }).join('; '));
+    row.push(P.senior.quarters.filter(function(q){ return deepGet(S.pp,['senior',q.id,'d']); }).length);
+    rows.push(row);
+    S.pp = saved; S.agentId = savedId;
+  }
+  var csv = rows.map(function(r){ return r.map(function(c){
+    c = String(c == null ? '' : c);
+    return /[",\n]/.test(c) ? '"' + c.replace(/"/g,'""') + '"' : c;
+  }).join(','); }).join('\n');
+  download('scale-house-passport-' + today() + '.csv', csv, 'text/csv;charset=utf-8');
+}
+
+/* ==================================================================
+   8. shell
+   ================================================================== */
+function buildShell(){
+  var root = document.getElementById('root');
+  root.innerHTML = '';
+
+  var whoInput = h('input',{type:'text', value:S.who, placeholder:'Your initials', maxlength:'4',
+    title:'Your initials — stamped on items you verify',
+    class:'initials',
+    oninput:function(e){
+      S.who = e.target.value.toUpperCase();
+      try{ localStorage.setItem('we.shp.who', S.who); }catch(err){}
+    }});
+
+  var addBtn = h('button',{class:'btn primary sm', onclick:async function(){
+    var n = prompt('New agent name');
+    if (!n || !n.trim()) return;
+    try{
+      var a = await Store.createAgent(n.trim());
+      S.agents = await Store.listAgents();
+      renderRoster(); selectAgent(a.id);
+    }catch(e){ alert('Could not add: ' + (e.message||e)); }
+  }}, ['+ Agent']);
+
+  root.appendChild(h('div',{class:'topbar noprint'},[
+    h('div',{class:'brand'},[
+      h('div',{class:'lockup'},[ 'WESTERN ', h('span',{text:'ELITE'}) ]),
+      h('small',{text:'Agent Level Program'})
+    ]),
+    h('div',{class:'htitle', text:(CFG.TEAM_LABEL || 'Scale House') + ' Passport'}),
+    h('div',{class:'spacer'}),
+    whoInput,
+    h('button',{class:'btn sm', onclick:function(){ window.print(); }}, ['Print']),
+    h('button',{class:'btn sm', onclick:exportCsv}, ['Export CSV']),
+    h('button',{class:'btn ghost sm', title:'Toggle light / dark', onclick:function(){
+      var cur = document.documentElement.getAttribute('data-theme');
+      var next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try{ localStorage.setItem('we.shp.theme', next); }catch(e){}
+    }}, ['Theme']),
+    h('div',{id:'status', class:'status'},[ h('span',{class:'dot'}), 'Starting…' ])
+  ]));
+
+  root.appendChild(h('div',{class:'shell'},[
+    h('aside',{class:'roster noprint'},[
+      h('div',{class:'roster-head'},[
+        h('h2',{text:'Roster'}),
+        h('input',{class:'search', type:'search', placeholder:'Search agents…',
+          oninput:function(e){ S.filter = e.target.value; renderRoster(); }})
+      ]),
+      h('div',{class:'roster-list', id:'rosterList'}),
+      h('div',{class:'roster-foot'},[
+        addBtn,
+        h('button',{class:'btn ghost sm', onclick:async function(){
+          if (!S.agent) return;
+          if (!confirm('Archive ' + S.agent.name + '? Their passport is kept but hidden from the roster.')) return;
+          await Store.updateAgent(S.agent.id, { archived:true });
+          S.agents = await Store.listAgents(); S.agentId = null; S.agent = null;
+          renderRoster(); renderMain();
+        }}, ['Archive'])
+      ])
+    ]),
+    h('main',{class:'main', id:'main'})
+  ]));
+}
+
+function accessGate(onPass){
+  if (!CFG.ACCESS_CODE){ onPass(); return; }
+  var ok = false;
+  try{ ok = sessionStorage.getItem('we.shp.gate') === '1'; }catch(e){}
+  if (ok){ onPass(); return; }
+  var root = document.getElementById('root');
+  var inp = h('input',{type:'password', class:'search', placeholder:'Access code',
+    onkeydown:function(e){ if (e.key === 'Enter') go(); }});
+  function go(){
+    if (inp.value === CFG.ACCESS_CODE){
+      try{ sessionStorage.setItem('we.shp.gate','1'); }catch(e){}
+      onPass();
+    } else { inp.value=''; inp.placeholder = 'Incorrect — try again'; }
+  }
+  root.innerHTML = '';
+  root.appendChild(h('div',{class:'gatebox'},[
+    h('div',{class:'card'},[ h('div',{class:'body'},[
+      h('h3',{text:'Scale House Passport', style:'margin:0 0 12px'}),
+      inp,
+      h('button',{class:'btn primary', style:'margin-top:10px;width:100%', onclick:go}, ['Enter'])
+    ])])
+  ]));
+}
+
+async function boot(){
+  try{
+    var th = localStorage.getItem('we.shp.theme');
+    if (th) document.documentElement.setAttribute('data-theme', th);
+  }catch(e){}
+
+  buildShell();
+  setStatus('busy','Loading roster…');
+  try{
+    S.agents = await Store.listAgents();
+    setStatus(MODE === 'supabase' ? 'ok' : '', MODE === 'supabase' ? 'Connected' : 'Local mode');
+  }catch(e){
+    console.error(e);
+    S.agents = [];
+    setStatus('err','Roster failed — ' + (e.message || e));
+  }
+  renderRoster();
+  renderMain();
+  if (S.agents.length === 1) selectAgent(S.agents[0].id);
+}
+
+window.addEventListener('beforeunload', function(e){
+  if (S.dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+accessGate(boot);
+})();
+</script>
+</body>
+</html>
