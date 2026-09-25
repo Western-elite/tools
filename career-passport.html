@@ -502,6 +502,8 @@
   .dt-grid td{padding:6px 8px;border-bottom:1px solid var(--line);}
   .dt-wide td{padding:4px 6px;}
   .dt-grid tr:nth-child(even) td{background:#f7f9fb;}
+  #dataTab .dt-grid tr.row-active>td{background:#fff4cc!important;}
+  #dataTab .dt-grid tr.row-active>td:first-child{box-shadow:inset 4px 0 0 #f0b400;}
   .dt-grid tr.grp th{text-align:center;font-weight:800;letter-spacing:.04em;}
   .grp .g-call{background:#1c4f86;} .grp .g-ord{background:#155a38;} .grp .g-pct{background:#7a3b1f;}
   .pct-h{background:#7a3b1f!important;}
@@ -3565,6 +3567,27 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     renderHistory();pullFromCloud();
   }
   if(document.readyState==="loading")window.addEventListener("load",init);else setTimeout(init,0);
+})();
+</script>
+<script>
+/* Highlight the data-entry row the manager is currently editing (follows the cursor) */
+(function(){
+  function clear(t){var r=t.querySelectorAll("tr.row-active");for(var i=0;i<r.length;i++)r[i].classList.remove("row-active");}
+  document.addEventListener("focusin",function(e){
+    var t=document.getElementById("dataTab");if(!t)return;
+    var el=e.target;
+    clear(t);
+    if(!el||!el.closest||!t.contains(el))return;
+    if(!(el.matches&&el.matches("input,select,textarea")))return;
+    var tr=el.closest("tr");
+    if(tr&&t.contains(tr))tr.classList.add("row-active");
+  });
+  document.addEventListener("focusout",function(e){
+    var t=document.getElementById("dataTab");if(!t)return;
+    // clear only if focus is leaving the data tab entirely
+    var to=e.relatedTarget;
+    if(!to||!t.contains(to))clear(t);
+  });
 })();
 </script>
 </body>
