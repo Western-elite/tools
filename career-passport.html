@@ -3462,6 +3462,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var oDate=card.getAttribute("data-edate")||"";
     var det="Re: "+oTitle+(oDate?" ("+oDate+")":"")+"\n\n"+txt;
     addHist({id:uid(),type:"response",submitted:Date.now(),edate:oDate||"",title:"Employee response",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:det});
+    if(note){note.value="";note.blur();}
     renderHistory();
   }
   function postComment(){
@@ -3475,29 +3476,36 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   /* ---- Editing: leadership only (supervisor, manager, director); never in agent views ---- */
   var EDIT_TYPES={supervisor:1,coaching:1,manager:1,oneonone:1,escalation:1};
   function canEdit(){var c=document.body.classList;if(c.contains("liveagent")||c.contains("agentview")||c.contains("agentpv"))return false;var r=window.__weRole||"";return r==="supervisor"||r==="manager"||r==="director";}
+  var _editing=null;
+  function sameRec(x,y){if(!x||!y)return false;if(x.id===y.id)return true;if(x.rid!==""&&x.rid!=null&&x.rid===y.rid)return true;return !!(x.fa&&x.fa===y.fa&&x.type===y.type);}
+  function findRec(arr,ref){for(var i=0;i<arr.length;i++){if(sameRec(arr[i],ref))return arr[i];}return null;}
+  /* don't redraw History while a leader is editing or has typed a response */
+  function histBusy(){if(_editing)return true;var w=document.getElementById("histBody");if(!w)return false;var ns=w.querySelectorAll(".hist-resp-note");for(var i=0;i<ns.length;i++){if(ns[i].value.trim()||ns[i]===document.activeElement)return true;}return false;}
   function openEdit(card){
     var id=card.getAttribute("data-id");var all=load(),a=curAgent(),arr=all[a]||[];var rec=null;for(var i=0;i<arr.length;i++){if(arr[i].id===id){rec=arr[i];break;}}
     if(!rec)return;
+    _editing=JSON.parse(JSON.stringify(rec));_editing.agentKey=a;
     var det=rec.detail||"",mi=det.indexOf(ATT_MARKER);var body=mi>=0?det.slice(0,mi):det;body=body.replace(/^Date:[^\n]*\n/,"");
     var f=card.querySelector(".hist-edit-form");
     f.innerHTML='<label class="hist-edit-lab">Date <input type="date" class="hist-edit-date" value="'+esc(rec.edate||"")+'"></label><textarea class="hist-edit-note" rows="6"></textarea><div class="hist-edit-row"><button class="hist-edit-save" type="button">Save changes</button><button class="hist-edit-cancel" type="button">Cancel</button></div>';
     f.querySelector(".hist-edit-note").value=body;
     card.classList.add("editing");card.classList.remove("responding");
-    f.querySelector(".hist-edit-cancel").addEventListener("click",function(){card.classList.remove("editing");});
-    f.querySelector(".hist-edit-save").addEventListener("click",function(){saveEdit(card,rec.id);});
+    f.querySelector(".hist-edit-cancel").addEventListener("click",function(){card.classList.remove("editing");_editing=null;renderHistory();});
+    f.querySelector(".hist-edit-save").addEventListener("click",function(){saveEdit(card);});
     f.querySelector(".hist-edit-note").focus();
   }
-  function saveEdit(card,id){
+  function saveEdit(card){
     if(!canEdit()){alert("Only supervisors and above can edit History entries.");return;}
     var dEl=card.querySelector(".hist-edit-date"),nEl=card.querySelector(".hist-edit-note");
     var edate=dEl?dEl.value.trim():"",note=nEl?nEl.value.trim():"";
     if(!note){alert("The note can't be empty.");return;}
-    var all=load(),a=curAgent(),arr=all[a]||[];var rec=null;for(var i=0;i<arr.length;i++){if(arr[i].id===id){rec=arr[i];break;}}
-    if(!rec)return;
+    var ref=_editing;if(!ref)return;
+    var all=load(),a=ref.agentKey||curAgent();if(!all[a])all[a]=[];var rec=findRec(all[a],ref);
+    if(!rec){rec=JSON.parse(JSON.stringify(ref));delete rec.agentKey;all[a].unshift(rec);}
     var old=rec.detail||"",mi=old.indexOf(ATT_MARKER),attPart=mi>=0?old.slice(mi):"";var hadDate=/^Date:[^\n]*\n/.test(old);
     var detail=((hadDate||(rec.type!=="escalation"&&edate))&&edate?"Date: "+edate+"\n":"")+note+attPart;
     var summary=rec.type==="escalation"?rec.summary:(note.slice(0,90)+(note.length>90?"…":""));
-    rec.edate=edate;rec.detail=detail;rec.summary=summary;save(all);renderHistory();
+    rec.edate=edate;rec.detail=detail;rec.summary=summary;save(all);_editing=null;renderHistory();
     if(!window.sbReady())return;
     var q;if(rec.rid!==""&&rec.rid!=null)q="id=eq."+encodeURIComponent(rec.rid);
     else if(rec.fa)q="agent=eq."+encodeURIComponent(rec.agent||a)+"&source=eq."+encodeURIComponent(rec.src||(T2S[rec.type]||"Manager"))+"&filed_at=eq."+encodeURIComponent(rec.fa);
@@ -3508,6 +3516,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   }
   function renderHistory(){
     var wrap=document.getElementById("histBody");if(!wrap)return;
+    if(histBusy())return;
     function keyOf(r){if(r.edate){var t=Date.parse(r.edate+"T00:00:00");if(!isNaN(t))return t;}return r.submitted||0;}
     var arr=(load()[curAgent()]||[]).slice().sort(function(a,b){return keyOf(b)-keyOf(a);});
     if(!arr.length){wrap.innerHTML='<div class="qz-empty">'+(document.body.classList.contains("liveagent")?"No entries on file yet.":"Nothing on file yet. Submit from the Supervisor Log or Manager Log to file it here.")+'</div>';return;}
@@ -3619,7 +3628,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     document.addEventListener("click",function(e){var t=e.target;if(!t||!t.getAttribute)return;
       var ls=t.getAttribute("data-logsubmit");if(ls){submitEntry(ls);return;}
       var s=t.getAttribute("data-submit");if(s==="escalation")submitEscalation();});
-    var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){setTimeout(function(){renderHistory();pullFromCloud();},60);});
+    var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){_editing=null;setTimeout(function(){renderHistory();pullFromCloud();},60);});
     var cb=document.getElementById("histCommentBtn");if(cb)cb.addEventListener("click",postComment);
     document.addEventListener("click",function(e){if(e.target&&e.target.matches&&e.target.matches(".dash-open"))setTimeout(function(){renderHistory();pullFromCloud();},100);});
     renderHistory();pullFromCloud();
