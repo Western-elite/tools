@@ -160,12 +160,15 @@
   .hidden{display:none!important;}
 
   /* ── ADDED FOR THIS DOCUMENT: interactive fillable fields ── */
-  .field-line,.field-inline,.field-cell{
+  .field-line,.field-inline,.field-cell,.sig-edate{
     font-family:inherit;font-size:13.5px;color:var(--ink);background:#fbfcfd;
     border:none;border-bottom:1px solid #b9c3cd;border-radius:0;padding:3px 4px;outline:none;
   }
   .field-line{display:block;width:100%;margin-top:4px;}
   .field-inline{width:200px;margin:0 14px 4px 6px;}
+  .sig-edate{width:150px;margin:0 14px 4px 6px;color:var(--ink);}
+  .sig-locked{background:#eef6f0!important;color:#1f4d33!important;cursor:not-allowed;}
+  .sig-edate:focus{border-bottom:1.5px solid var(--blue2);background:var(--lightblue);}
   .field-cell{width:100%;min-width:70px;box-sizing:border-box;}
   input[type="date"].field-cell,input[type="date"].field-inline{color:var(--ink);}
   .field-line:focus,.field-inline:focus,.field-cell:focus,.field-area:focus{
@@ -1023,7 +1026,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <div class="fill-field"><label>Level placement under the new standards</label><input type="text" class="field-line" placeholder="e.g. Level 3"></div>
       <div class="fill-field"><label>90-day placement review date</label><input type="date" class="field-line"></div>
       <div class="fill-field"><label>Placement outcome / notes</label><textarea class="field-area" rows="2" placeholder="Confirmed level, or coaching &amp; review plan to reach the level's standard"></textarea></div>
-      <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+      <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd1" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
     </div>
 
     <div class="subh">The career roadmap</div>
@@ -1140,7 +1143,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><th>Goal / development focus</th><th>Target date</th><th>Manager initials</th><th>Mastered date</th></tr>
       <tr><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td></tr>
     </table>
-    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd2" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
 
     <div class="subh">Manager coaching notes</div>
     <div class="fillbox"><div class="fill-field"><label>Strengths demonstrated</label><textarea class="field-area" rows="2"></textarea></div></div>
@@ -1199,7 +1202,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><th>Goal / development focus</th><th>Target date</th><th>Manager initials</th><th>Mastered date</th></tr>
       <tr><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td></tr>
     </table>
-    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd3" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
   </div>
 
   <!-- ═══ 4 · LEVEL LEVEL2 ═══ -->
@@ -1264,7 +1267,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><th>Goal / development focus</th><th>Target date</th><th>Manager initials</th><th>Mastered date</th></tr>
       <tr><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td></tr>
     </table>
-    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd4" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
   </div>
 
   <!-- ═══ 5 · LEVEL LEVEL3 ═══ -->
@@ -1321,7 +1324,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><th>Goal / development focus</th><th>Target date</th><th>Manager initials</th><th>Mastered date</th></tr>
       <tr><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td></tr>
     </table>
-    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd5" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
   </div>
 
   <!-- ═══ 6 · LEVEL LEVEL4 ═══ -->
@@ -1371,7 +1374,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><th>Goal / development focus</th><th>Target date</th><th>Manager initials</th><th>Mastered date</th></tr>
       <tr><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td></tr>
     </table>
-    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd6" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
     <div class="subh">Leadership notes</div>
 <div class="fillbox"><div class="fill-field"><label>Process improvement or team contribution</label><textarea class="field-area" rows="2"></textarea></div></div>
 <div class="fillbox"><div class="fill-field"><label>Mentoring contribution</label><textarea class="field-area" rows="2"></textarea></div></div>
@@ -1450,7 +1453,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       </ul>
 
       <div class="subh">Poster endorsement sign-off</div>
-      <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Posting Lead:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+      <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd7" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Posting Lead:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
       </div></td></tr>
       <tr><td><b>SDR</b></td><td>Able and willing to complete cross-training as a Sales Development Representative (SDR) and fill in when needed.</td><td class="price">+$0.50</td><td class="chkcell"><input type="checkbox" class="chk-box" title="Training completed"> Training<br><input type="checkbox" class="chk-box" title="Manager approval"> Approval</td><td><input type="date" class="field-cell"></td></tr>
     </table>
@@ -1591,7 +1594,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       </ul>
 
       <div class="subh">Scale House endorsement sign-off</div>
-      <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Scale House Lead:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+      <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd8" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Scale House Lead:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
       </div></td></tr>
       <tr><td><b>Dispatch</b></td><td>Able and willing to learn the Dispatcher role and fill in when needed.</td><td class="price">+$0.25</td><td class="chkcell"><input type="checkbox" class="chk-box" title="Training completed"> Training<br><input type="checkbox" class="chk-box" title="Manager approval"> Approval</td><td><input type="date" class="field-cell"></td></tr>
     </table>
@@ -1620,7 +1623,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><th>Goal / development focus</th><th>Target date</th><th>Manager initials</th><th>Mastered date</th></tr>
       <tr><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td></tr>
     </table>
-    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd9" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
   </div>
 
   <!-- ═══ 8 · SKILLS & KNOWLEDGE CHECKLIST ═══ -->
@@ -1704,7 +1707,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <tr><th>Goal / development focus</th><th>Target date</th><th>Manager initials</th><th>Mastered date</th></tr>
       <tr><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td><td><input type="text" class="field-cell"></td><td><input type="date" class="field-cell"></td></tr>
     </table>
-    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
+    <div class="sig-row"><label>Employee Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="sig-edate" data-fk="esd10" title="Date the employee signed"><label>Manager Signature:</label><input type="text" class="field-inline" placeholder="Type full name"><label>Date:</label><input type="date" class="field-inline"></div>
   </div>
 
   
@@ -2254,8 +2257,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function lockAgentFields(){try{if(window.__weMarkEmpSign)window.__weMarkEmpSign();}catch(e){}document.querySelectorAll("#passportBody input,#passportBody select,#passportBody textarea").forEach(function(el){if(el.closest("#histPanel"))return;el.disabled=true;});document.querySelectorAll("#passportBody .emp-sign").forEach(function(el){el.disabled=false;});}
   /* ---- employee acknowledgments (emp-sign fields) persisted per agent ---- */
   function empSignEls(){return Array.prototype.slice.call(document.querySelectorAll("#passportBody .emp-sign"));}
-  function collectAcks(){var o={},f=fields();empSignEls().forEach(function(el){var i=f.indexOf(el);if(i<0)return;o[i]=(el.type==="checkbox")?el.checked:el.value;});return o;}
-  function applyAcks(map){if(!map)return;var f=fields();empSignEls().forEach(function(el){var i=f.indexOf(el);if(i<0)return;var v=map[i];if(v===undefined)return;if(el.type==="checkbox"){el.checked=!!v;var li=el.closest("li");if(li)li.classList.toggle("checked-off",el.checked);}else{el.value=v;}});}
+  function collectAcks(){var o={},f=fields();empSignEls().forEach(function(el){var i=f.indexOf(el);var k=i>=0?i:(el.getAttribute("data-fk")?"fk:"+el.getAttribute("data-fk"):null);if(k===null)return;o[k]=(el.type==="checkbox")?el.checked:el.value;});return o;}
+  function applyAcks(map){if(!map)return;var f=fields();empSignEls().forEach(function(el){var i=f.indexOf(el);var k=i>=0?i:(el.getAttribute("data-fk")?"fk:"+el.getAttribute("data-fk"):null);if(k===null)return;var v=map[k];if(v===undefined)return;if(el.type==="checkbox"){el.checked=!!v;var li=el.closest("li");if(li)li.classList.toggle("checked-off",el.checked);}else{el.value=v;}});}
   var _ackTmr=null;
   function saveAgentAcks(){if(!window.sbReady()||!window.__weAgentName)return;clearTimeout(_ackTmr);_ackTmr=setTimeout(function(){window.sbUpsert("acks",{agent:window.__weAgentName,data:collectAcks(),updated_at:new Date().toISOString()});},1200);}
   function loadAcks(agentName,cb){if(!window.sbReady()||!agentName){if(cb)cb(null);return;}window.sbSelect("acks","agent=eq."+encodeURIComponent(agentName)+"&select=data&limit=1").then(function(rows){cb(rows&&rows[0]?rows[0].data:null);});}
@@ -2273,7 +2276,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       document.body.classList.add("agentview");document.body.classList.add("liveagent");
       window.__weAgentName=rows[0].agent||d.name||"";
       lockAgentFields();makeAgentBar(email);
-      loadAcks(window.__weAgentName,function(m){applyAcks(m);try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}});
+      loadAcks(window.__weAgentName,function(m){applyAcks(m);lockSigned();try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}});
       try{var lede=document.querySelector("#histPanel .coach-lede");if(lede)lede.textContent="Your record — supervisor notes, coaching, and reviews from your manager. You can add a comment any time, or respond to any entry.";}catch(e){}
       try{if(window.__weShowPage)window.__weShowPage("overview",false);}catch(e){}
       try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(e){}
@@ -2285,6 +2288,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   document.addEventListener("input",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")&&t.matches&&(t.matches(".field-line,.field-inline,.field-cell,.field-area,.te-in")||t.id==="cvEmail")){saveActive();if(t.id==="cvName"||t.id==="cvSup"||t.id==="cvHire"||t.id==="cvEmail")renderDash();}});
   document.addEventListener("input",function(e){var t=e.target;if(document.body.classList.contains("liveagent")&&t.classList&&t.classList.contains("emp-sign"))saveAgentAcks();});
+  /* Agent signatures: confirm, auto-date, then lock so they can't be erased or re-dated */
+  function sigDateOf(el){var dl=el&&el.nextElementSibling,di=dl&&dl.nextElementSibling;return (dl&&dl.tagName==="LABEL"&&/^\s*date/i.test(dl.textContent)&&di&&di.tagName==="INPUT"&&di.type==="date")?di:null;}
+  function lockSigned(){if(!document.body.classList.contains("liveagent"))return;empSignEls().forEach(function(el){if(el.type!=="text"||!el.value.trim())return;el.disabled=true;el.classList.add("sig-locked");el.title="Signed — can't be changed";var di=sigDateOf(el);if(di){di.disabled=true;di.classList.add("sig-locked");}});}
+  window.__weLockSigned=lockSigned;
+  document.addEventListener("change",function(e){var t=e.target;if(!document.body.classList.contains("liveagent")||!t.classList||!t.classList.contains("emp-sign")||t.type!=="text")return;var name=t.value.trim();if(!name)return;
+    if(!confirm("Sign as \u201c"+name+"\u201d?\n\nOnce you sign, you can't change your signature or the date.")){t.value="";e.stopImmediatePropagation();return;}
+    var di=sigDateOf(t);if(di&&!di.value){var d=new Date();di.value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+    setTimeout(lockSigned,0);},true);
   document.addEventListener("change",function(e){var t=e.target;if(document.body.classList.contains("liveagent")&&t.classList&&t.classList.contains("emp-sign")){saveAgentAcks();if(t.type==="checkbox"){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);try{if(window.__weRefreshPct)window.__weRefreshPct();}catch(_e){}}}});
   document.addEventListener("change",function(e){var t=e.target;if(t.closest&&t.closest("#passportBody")){if(t.matches(".chk-box,.xchk")){var li=t.closest("li");if(li)li.classList.toggle("checked-off",t.checked);saveActive();}else if(t.matches(".te-in")){saveActive();}else if(t.matches("select")){saveActive();if(t.id==="cvLevel")renderDash();}}});
 
@@ -2341,7 +2352,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       var kids=Array.prototype.slice.call(row.children);
       kids.forEach(function(node,i){
         if(node.tagName==="LABEL"&&/employee/i.test(node.textContent)){
-          for(var j=i+1;j<kids.length;j++){if(kids[j].tagName==="INPUT"){kids[j].classList.add("emp-sign");break;}}
+          for(var j=i+1;j<kids.length;j++){if(kids[j].tagName==="INPUT"){kids[j].classList.add("emp-sign");var dl=kids[j+1],di=kids[j+2];if(dl&&dl.tagName==="LABEL"&&/^\s*date/i.test(dl.textContent)&&di&&di.tagName==="INPUT"&&di.type==="date")di.classList.add("emp-sign");break;}}
         }
       });
     });
