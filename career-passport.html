@@ -2251,7 +2251,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function routeAuthedEmail(email){window.sbSelect("managers","select=email&email=eq."+encodeURIComponent(email)+"&limit=1").then(function(rows){if(rows&&rows.length){document.body.classList.remove("liveagent");document.body.classList.remove("agentview");try{sessionStorage.setItem("we_mgr_ok","1");}catch(e){}showApp("director");}else{enterAgentMode(email);}});}
   function resumeAgentSession(sess){function proceed(tok){window.sbAuthUser(tok).then(function(u){if(u&&u.email){var s=window.sbGetSession()||{};s.email=u.email;window.sbSetSession(s);routeAuthedEmail(u.email);}else{window.sbSignOut();showLogin();}});}
     if(sess.expires_at&&Date.now()>sess.expires_at-60000&&sess.refresh_token){window.sbRefresh(sess.refresh_token).then(function(r){if(r&&r.access_token){window.sbSetSession({access_token:r.access_token,refresh_token:r.refresh_token,expires_at:Date.now()+((r.expires_in||3600)*1000),email:sess.email});proceed(r.access_token);}else{window.sbSignOut();showLogin();}});}else{proceed(sess.access_token);}}
-  function lockAgentFields(){try{if(window.__weMarkEmpSign)window.__weMarkEmpSign();}catch(e){}document.querySelectorAll("#passportBody input,#passportBody select,#passportBody textarea").forEach(function(el){el.disabled=true;});document.querySelectorAll("#passportBody .emp-sign").forEach(function(el){el.disabled=false;});}
+  function lockAgentFields(){try{if(window.__weMarkEmpSign)window.__weMarkEmpSign();}catch(e){}document.querySelectorAll("#passportBody input,#passportBody select,#passportBody textarea").forEach(function(el){if(el.closest("#histPanel"))return;el.disabled=true;});document.querySelectorAll("#passportBody .emp-sign").forEach(function(el){el.disabled=false;});}
   /* ---- employee acknowledgments (emp-sign fields) persisted per agent ---- */
   function empSignEls(){return Array.prototype.slice.call(document.querySelectorAll("#passportBody .emp-sign"));}
   function collectAcks(){var o={},f=fields();empSignEls().forEach(function(el){var i=f.indexOf(el);if(i<0)return;o[i]=(el.type==="checkbox")?el.checked:el.value;});return o;}
@@ -3380,14 +3380,14 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function WEBHOOK(){return (window.WE_WEBHOOK||"").trim();}
   function api(action,data){
     var d=data||{};
-    if(action==="addEntry"){return window.sbInsert("entries",{agent:d.agent,source:d.source,entry_date:d.edate||"",title:d.title||"",detail:d.detail||""}).then(function(){return {ok:true};}).catch(function(){return {ok:false};});}
+    if(action==="addEntry"){return window.sbInsert("entries",{agent:d.agent,source:d.source,entry_date:d.edate||"",title:d.title||"",detail:d.detail||""}).then(function(r){return {ok:!!(r&&r.ok),status:r&&r.status};}).catch(function(){return {ok:false};});}
     if(action==="getEntries"){return window.sbSelect("entries","agent=eq."+encodeURIComponent(d.agent||"")+"&order=filed_at.desc&limit=500").then(function(rows){return {ok:true,rows:rows};});}
     if(action==="getComments"){return window.sbSelect("entries","source=ilike.Employee*&select=agent,source,filed_at&order=filed_at.desc&limit=2000").then(function(rows){return {ok:true,rows:rows};});}
     return Promise.resolve({ok:false});
   }
   var T2S={supervisor:"Supervisor",manager:"Manager",escalation:"Escalation",coaching:"Supervisor",oneonone:"Manager",response:"Employee Response",comment:"Employee Comment"};
   function s2t(s){s=(s||"").toLowerCase();if(s.indexOf("comment")>=0)return "comment";if(s.indexOf("response")>=0||s.indexOf("employee")>=0)return "response";if(s.indexOf("superv")>=0)return "supervisor";if(s.indexOf("escal")>=0)return "escalation";return "manager";}
-  function pushToCloud(rec){if(!window.sbReady())return;try{api("addEntry",{agent:curAgent(),source:(T2S[rec.type]||"Manager"),edate:rec.edate||"",title:rec.title||"",detail:rec.detail||""}).catch(function(){});}catch(e){}}
+  function pushToCloud(rec){if(!window.sbReady())return;try{api("addEntry",{agent:curAgent(),source:(T2S[rec.type]||"Manager"),edate:rec.edate||"",title:rec.title||"",detail:rec.detail||""}).then(function(res){if(!res||!res.ok){alert("Your "+(rec.type==="comment"?"comment":rec.type==="response"?"response":"entry")+" couldn't be saved to the server"+(res&&res.status?" (error "+res.status+")":"")+". Please try again, or let your manager know.");}}).catch(function(){});}catch(e){}}
   function rowToRec(row){function g(){for(var i=0;i<arguments.length;i++){var k=arguments[i];if(row[k]!=null&&row[k]!=="")return row[k];}return "";}
     var det=g("Detail","detail");var fa=g("FiledAt","filedat","filedAt","filed_at");
     return {id:uid(),rid:(row.id!=null?row.id:""),src:g("Source","source"),fa:fa,agent:g("Agent","agent"),type:s2t(g("Source","source")),edate:(g("EntryDate","entrydate","entryDate","entry_date")+"").slice(0,10),title:g("Title","title"),detail:det,summary:(det+"").slice(0,90)+((det+"").length>90?"…":""),submitted:(Date.parse(fa)||Date.now())};}
