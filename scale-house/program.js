@@ -16,7 +16,7 @@ window.PROGRAM = {
   org: 'Western Elite',
   title: 'Scale House Agent Passport',
 
-  yards: ['Apex', 'Henderson', 'MRF', 'Other / TBD'],
+  yards: ['Henderson', 'Wynn', 'Nellis'],
 
   intro: {
     heading: 'Western Elite Scale House Level Program',
