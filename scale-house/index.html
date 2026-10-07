@@ -147,7 +147,17 @@ a{color:var(--accent)}
 }
 .lvlchip.t{background:var(--surface-3)}
 .lvlchip.l1,.lvlchip.l2,.lvlchip.l3{background:var(--blue);color:#fff;border-color:var(--blue)}
+.lvlchip.ov{background:var(--blue2);color:#fff;border-color:var(--blue2);font-size:13px}
+.overview-row{margin-bottom:4px}
+.roster-sep{
+  margin:6px 4px 4px; padding-top:7px; border-top:1px solid var(--line);
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint);
+}
 .roster-foot{padding:9px 12px; border-top:1px solid var(--line); display:flex; gap:6px; flex-wrap:wrap}
+/* team-at-a-glance meter */
+.mini-bar{display:inline-block;width:110px;height:6px;border-radius:3px;background:var(--surface-3);
+  overflow:hidden;vertical-align:middle}
+.mini-bar i{display:block;height:100%;background:var(--blue2);border-radius:3px}
 
 .main{flex:1 1 auto; min-width:0; padding:18px 22px 72px}
 .wrap{max-width:900px; margin:0 auto}
@@ -320,6 +330,13 @@ a{color:var(--accent)}
   .item{flex-wrap:wrap}
   .sig{padding-left:27px}
   .logform{grid-template-columns:1fr}
+  /* the share meter is the first thing to go on a phone */
+  .gates.team th:nth-child(4),.gates.team td:nth-child(4){display:none}
+  .card .body{padding:14px 16px}
+  .card > header{padding:13px 16px 10px}
+}
+@media (max-width:700px){
+  .mini-bar{width:70px}
 }
 
 /* ---------- print ---------- */
@@ -557,7 +574,7 @@ function levelProgress(lv){
   return { done:done, total:ids.length, pct: ids.length ? Math.round(done/ids.length*100) : 0 };
 }
 function endorseProgress(){
-  var ids = P.endorsements.items.filter(function(e){ return !e.tbd; }).map(function(e){ return e.id; });
+  var ids = P.endorsements.items.filter(function(e){ return !e.tbd && !e.retired; }).map(function(e){ return e.id; });
   var done = ids.filter(function(id){ return deepGet(S.pp,['endorsements',id,'d']); }).length;
   return { done:done, total:ids.length, pct: ids.length ? Math.round(done/ids.length*100) : 0 };
 }
@@ -795,6 +812,7 @@ function endorsePanel(){
 
   var ul = h('ul',{class:'items'});
   P.endorsements.items.forEach(function(e){
+    if (e.retired) return;
     var st = (S.pp.endorsements[e.id] = S.pp.endorsements[e.id] || {});
     var cb = h('input',{type:'checkbox', checked:!!st.d, 'aria-label':e.label,
       onchange:function(ev){
@@ -829,6 +847,7 @@ function endorsePanel(){
   /* senior agent */
   var qul = h('ul',{class:'items'});
   P.senior.quarters.forEach(function(q){
+    if (q.retired) return;
     var st = (S.pp.senior[q.id] = S.pp.senior[q.id] || {});
     var cb = h('input',{type:'checkbox', checked:!!st.d, 'aria-label':q.label,
       onchange:function(ev){ st.d = ev.target.checked;
@@ -918,6 +937,49 @@ function logPanel(){
   return frag;
 }
 
+/* team at a glance — only meaningful on the overview, where the whole
+   roster is in hand rather than one agent */
+function teamSummary(){
+  var total = S.agents.length;
+  var rows = h('tbody');
+
+  P.levels.forEach(function(l){
+    var n = S.agents.filter(function(a){ return a.current_level === l.id; }).length;
+    var pctOfTeam = total ? Math.round(n / total * 100) : 0;
+    rows.appendChild(h('tr',{},[
+      h('td',{},[ h('b',{text:l.name}) ]),
+      h('td',{},[ pill('wage', money(l.wage)) ]),
+      h('td',{text: String(n), style:'font-variant-numeric:tabular-nums;font-weight:700'}),
+      h('td',{},[ h('span',{class:'mini-bar'},[ h('i',{style:'width:' + pctOfTeam + '%'}) ]) ])
+    ]));
+  });
+
+  return h('div',{class:'card'},[
+    h('header',{},[
+      h('h3',{text:'Team at a glance'}),
+      pill('', total + (total === 1 ? ' agent' : ' agents'))
+    ]),
+    h('div',{class:'body'},[
+      total
+        ? h('table',{class:'gates team'},[
+            h('thead',{},[ h('tr',{},[
+              h('th',{text:'Level'}), h('th',{text:'Rate'}),
+              h('th',{text:'Agents'}), h('th',{text:'Share of team'})
+            ])]),
+            rows
+          ])
+        : h('p',{class:'empty', text:'No agents on the roster yet. Use + Agent at the bottom left to start someone’s passport.'})
+    ])
+  ]);
+}
+
+function overviewPanel(){
+  var frag = document.createDocumentFragment();
+  frag.appendChild(teamSummary());
+  frag.appendChild(programPanel());
+  return frag;
+}
+
 function programPanel(){
   var frag = document.createDocumentFragment();
   frag.appendChild(h('div',{class:'card'},[
@@ -935,7 +997,7 @@ function programPanel(){
       h('td',{text:lv.tenure})
     ]));
   });
-  P.endorsements.items.filter(function(e){ return e.pay != null; }).forEach(function(e){
+  P.endorsements.items.filter(function(e){ return e.pay != null && !e.retired; }).forEach(function(e){
     rows.appendChild(h('tr',{},[
       h('td',{text:'Endorsement — ' + e.label}),
       h('td',{},[ pill('wage','+' + money(e.pay)) ]),
@@ -965,7 +1027,7 @@ function programPanel(){
     if (lv.trailing90) lv.trailing90.gates.forEach(function(g){
       if (g.tbd) tbds.push(lv.name + ' — 90-day goal: ' + g.label); });
   });
-  P.endorsements.items.forEach(function(e){ if (e.tbd) tbds.push('Endorsements — ' + e.label); });
+  P.endorsements.items.forEach(function(e){ if (e.tbd && !e.retired) tbds.push('Endorsements — ' + e.label); });
 
   frag.appendChild(h('div',{class:'card'},[
     h('header',{},[ h('h3',{text:'Open items still to be defined'}) ]),
@@ -990,10 +1052,25 @@ function renderRoster(){
   var list = document.getElementById('rosterList');
   if (!list) return;
   list.innerHTML = '';
+
+  /* Program overview — always the first row, always reachable */
+  list.appendChild(h('button',{
+    class:'agent-row overview-row' + (S.agentId ? '' : ' active'),
+    onclick:function(){ showOverview(); }
+  },[
+    h('span',{class:'lvlchip ov', text:'≡'}),
+    h('span',{class:'nm'},[ 'Program overview',
+      h('span',{class:'sub', text:'rules, wages & team'}) ])
+  ]));
+
   var q = S.filter.toLowerCase();
   var shown = S.agents.filter(function(a){ return !q || a.name.toLowerCase().indexOf(q) >= 0; });
+
+  list.appendChild(h('div',{class:'roster-sep',
+    text: S.agents.length ? ('Agents · ' + S.agents.length) : 'Agents'}));
+
   if (!shown.length){
-    list.appendChild(h('p',{class:'empty', style:'padding:8px 9px', text: S.agents.length ? 'No match.' : 'No agents yet — add one below.'}));
+    list.appendChild(h('p',{class:'empty', style:'padding:4px 9px', text: S.agents.length ? 'No match.' : 'None yet — add one below.'}));
     return;
   }
   shown.forEach(function(a){
@@ -1023,12 +1100,12 @@ function renderMain(){
   }
 
   if (!S.agent){
-    wrap.appendChild(h('div',{class:'card'},[
-      h('header',{},[ h('h3',{text:'Pick an agent'}) ]),
-      h('div',{class:'body'},[ h('p',{class:'empty',
-        text:'Choose someone from the roster, or add a new agent to start their passport.'}) ])
+    wrap.appendChild(h('div',{class:'agent-head'},[
+      h('h1',{text:(CFG.TEAM_LABEL || 'Scale House') + ' Agent Level Program'}),
+      h('p',{class:'meta-line',
+        text:'Program overview · pick an agent from the roster to open their passport'})
     ]));
-    wrap.appendChild(programPanel());
+    wrap.appendChild(overviewPanel());
     return;
   }
 
@@ -1093,6 +1170,10 @@ function renderMain(){
     h('span',{class:'t1', text:'Program'}),
     h('span',{class:'t2', text:'rules & wages'})
   ]));
+  nav.appendChild(h('button',{ onclick:showOverview, title:'Back to the program overview' },[
+    h('span',{class:'t1', text:'≡ Overview'}),
+    h('span',{class:'t2', text:'whole team'})
+  ]));
   wrap.appendChild(nav);
 
   /* --- panel --- */
@@ -1112,6 +1193,15 @@ var saveAgentSoon = debounce(function(){
     hire_date:S.agent.hire_date, current_level:S.agent.current_level
   }).catch(function(e){ console.error(e); });
 }, 700);
+
+/* return to the program overview without losing anything — the open
+   passport has already autosaved, so this is just a view change */
+function showOverview(){
+  S.agentId = null; S.agent = null; S.pp = null; S.log = [];
+  S.tab = 'nat';
+  setStatus(MODE === 'supabase' ? 'ok' : '', MODE === 'supabase' ? 'Connected' : 'Local mode');
+  renderRoster(); renderMain();
+}
 
 async function selectAgent(id){
   S.agentId = id;
