@@ -3397,8 +3397,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     return Promise.resolve({ok:false});
   }
   var T2S={supervisor:"Supervisor",manager:"Manager",escalation:"Escalation",coaching:"Supervisor",oneonone:"Manager",response:"Employee Response",comment:"Employee Comment"};
-  function s2t(s){s=(s||"").toLowerCase();if(s.indexOf("comment")>=0)return "comment";if(s.indexOf("response")>=0||s.indexOf("employee")>=0)return "response";if(s.indexOf("superv")>=0)return "supervisor";if(s.indexOf("escal")>=0)return "escalation";return "manager";}
-  function pushToCloud(rec){if(!window.sbReady())return;try{api("addEntry",{agent:curAgent(),source:(T2S[rec.type]||"Manager"),edate:rec.edate||"",title:rec.title||"",detail:rec.detail||""}).then(function(res){if(!res||!res.ok){alert("Your "+(rec.type==="comment"?"comment":rec.type==="response"?"response":"entry")+" couldn't be saved to the server"+(res&&res.status?" (error "+res.status+")":"")+". Please try again, or let your manager know.");}}).catch(function(){});}catch(e){}}
+  /* Only an agent signed in with their own email posts as "Employee"; leaders post as their role */
+  function isAgentViewer(){return document.body.classList.contains("liveagent");}
+  function leaderRoleName(){var r=(window.__weRole||"director").toLowerCase();return r.charAt(0).toUpperCase()+r.slice(1);}
+  function s2t(s){s=(s||"").toLowerCase();if(/^(supervisor|manager|director)\s+comment/.test(s))return "lcomment";if(/^(supervisor|manager|director)\s+response/.test(s))return "lresponse";if(s.indexOf("comment")>=0)return "comment";if(s.indexOf("response")>=0||s.indexOf("employee")>=0)return "response";if(s.indexOf("superv")>=0)return "supervisor";if(s.indexOf("escal")>=0)return "escalation";return "manager";}
+  function pushToCloud(rec){if(!window.sbReady())return;try{api("addEntry",{agent:curAgent(),source:(rec.src||T2S[rec.type]||"Manager"),edate:rec.edate||"",title:rec.title||"",detail:rec.detail||""}).then(function(res){if(!res||!res.ok){alert("Your "+(rec.type==="comment"?"comment":rec.type==="response"?"response":"entry")+" couldn't be saved to the server"+(res&&res.status?" (error "+res.status+")":"")+". Please try again, or let your manager know.");}}).catch(function(){});}catch(e){}}
   function rowToRec(row){function g(){for(var i=0;i<arguments.length;i++){var k=arguments[i];if(row[k]!=null&&row[k]!=="")return row[k];}return "";}
     var det=g("Detail","detail");var fa=g("FiledAt","filedat","filedAt","filed_at");
     return {id:uid(),rid:(row.id!=null?row.id:""),src:g("Source","source"),fa:fa,agent:g("Agent","agent"),type:s2t(g("Source","source")),edate:(g("EntryDate","entrydate","entryDate","entry_date")+"").slice(0,10),title:g("Title","title"),detail:det,summary:(det+"").slice(0,90)+((det+"").length>90?"…":""),submitted:(Date.parse(fa)||Date.now())};}
@@ -3472,7 +3475,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var oTitle=card.getAttribute("data-etitle")||"an entry";
     var oDate=card.getAttribute("data-edate")||"";
     var det="Re: "+oTitle+(oDate?" ("+oDate+")":"")+"\n\n"+txt;
-    addHist({id:uid(),type:"response",submitted:Date.now(),edate:oDate||"",title:"Employee response",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:det});
+    if(isAgentViewer())addHist({id:uid(),type:"response",submitted:Date.now(),edate:oDate||"",title:"Employee response",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:det});
+    else{var rn=leaderRoleName();addHist({id:uid(),type:"lresponse",src:rn+" Response",submitted:Date.now(),edate:oDate||"",title:rn+" response",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:det});}
     if(note){note.value="";note.blur();}
     renderHistory();
   }
@@ -3480,7 +3484,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var el=document.getElementById("histCommentNote");var txt=el?el.value.trim():"";
     if(!txt){alert("Type a comment first.");return;}
     var d=new Date();var iso=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-    addHist({id:uid(),type:"comment",submitted:Date.now(),edate:iso,title:"Employee comment",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:txt});
+    if(isAgentViewer())addHist({id:uid(),type:"comment",submitted:Date.now(),edate:iso,title:"Employee comment",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:txt});
+    else{var rn=leaderRoleName();addHist({id:uid(),type:"lcomment",src:rn+" Comment",submitted:Date.now(),edate:iso,title:rn+" comment",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:txt});}
     if(el)el.value="";
     renderHistory();
   }
@@ -3525,15 +3530,17 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       if(!rows||!rows.length){alert("Saved on this device, but the database didn't accept the change (it may need an UPDATE permission on the entries table). It will revert on the next refresh.");}
     });
   }
+  function setCommentBoxLabel(){var lab=document.querySelector("#histPanel .hist-cb-lab"),ta=document.getElementById("histCommentNote");if(!lab)return;if(isAgentViewer()){lab.innerHTML="&#128172; Add a comment";if(ta)ta.placeholder="Add a comment to your history anytime (optional)…";}else{var rn=leaderRoleName();lab.innerHTML="&#128172; Add a "+rn.toLowerCase()+" comment";if(ta)ta.placeholder="Posts as "+rn+" — agents see it in their History…";}}
   function renderHistory(){
-    var wrap=document.getElementById("histBody");if(!wrap)return;
+    var wrap=document.getElementById("histBody");if(!wrap)return;setCommentBoxLabel();
     if(histBusy())return;
     function keyOf(r){if(r.edate){var t=Date.parse(r.edate+"T00:00:00");if(!isNaN(t))return t;}return r.submitted||0;}
     var arr=(load()[curAgent()]||[]).slice().sort(function(a,b){return keyOf(b)-keyOf(a);});
     if(!arr.length){wrap.innerHTML='<div class="qz-empty">'+(document.body.classList.contains("liveagent")?"No entries on file yet.":"Nothing on file yet. Submit from the Supervisor Log or Manager Log to file it here.")+'</div>';return;}
-    var LBL={supervisor:["Supervisor Log","b-sup"],coaching:["Supervisor Log","b-sup"],manager:["Manager Log","b-mgr"],oneonone:["Manager Log","b-mgr"],escalation:["Escalation","b-esc"],response:["Employee response","b-emp"],comment:["Comment","b-emp"]};
+    var LBL={supervisor:["Supervisor Log","b-sup"],coaching:["Supervisor Log","b-sup"],manager:["Manager Log","b-mgr"],oneonone:["Manager Log","b-mgr"],escalation:["Escalation","b-esc"],response:["Employee response","b-emp"],comment:["Employee comment","b-emp"]};
+    function lblFor(r){if(r.type==="lcomment"||r.type==="lresponse"){var who=((r.src||"").split(/\s+/)[0])||"Leader";var cls=/^superv/i.test(who)?"b-sup":"b-mgr";return [who+(r.type==="lcomment"?" comment":" response"),cls];}return LBL[r.type]||["Log","b-sup"];}
     function fmtDate(s){var t=Date.parse(s+"T00:00:00");if(isNaN(t))return s;var d=new Date(t);return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
-    wrap.innerHTML=arr.map(function(r){var fd=new Date(r.submitted);var lb=LBL[r.type]||["Log","b-sup"];
+    wrap.innerHTML=arr.map(function(r){var fd=new Date(r.submitted);var lb=lblFor(r);
       var when=r.edate?('<b>'+fmtDate(r.edate)+'</b> <span class="hist-filed">· filed '+fd.toLocaleDateString()+'</span>'):('Filed '+fd.toLocaleDateString()+" "+fd.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
       var readMark=_readSet[String(r.submitted)]?'<span class="hist-read">✓ Read</span>':'';
       // split off any attachments stored in the detail
@@ -3544,7 +3551,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       var attHtml="";
       if(atts.length){attHtml='<div class="hist-att">'+atts.map(function(a){var isImg=/^image\//.test(a.t||"");return isImg?('<a class="hist-att-img" href="'+a.d+'" download="'+esc(a.n||"attachment")+'" title="'+esc(a.n||"")+'"><img src="'+a.d+'" alt="'+esc(a.n||"")+'"></a>'):('<a class="hist-att-file" href="'+a.d+'" download="'+esc(a.n||"attachment")+'">📎 '+esc(a.n||"attachment")+'</a>');}).join("")+'</div>';}
       var clip=atts.length?'<span class="hist-clip">📎 '+atts.length+'</span>':'';
-      var respond=(r.type!=="response"&&r.type!=="comment")?('<div class="hist-respond"><button class="hist-resp-btn" type="button">↩ Respond</button><div class="hist-resp-form"><textarea class="hist-resp-note" rows="2" placeholder="Add your response (optional)…"></textarea><br><button class="hist-resp-send" type="button">Send response</button></div></div>'):"";
+      var canResp=isAgentViewer()?(r.type!=="response"&&r.type!=="comment"):(r.type!=="lcomment"&&r.type!=="lresponse");
+      var respond=canResp?('<div class="hist-respond"><button class="hist-resp-btn" type="button">↩ Respond</button><div class="hist-resp-form"><textarea class="hist-resp-note" rows="2" placeholder="Add your response (optional)…"></textarea><br><button class="hist-resp-send" type="button">Send response</button></div></div>'):"";
       var editHtml=(canEdit()&&EDIT_TYPES[r.type])?'<button class="hist-edit-btn" type="button">✎ Edit</button><div class="hist-edit-form"></div>':'';
       return '<div class="hist-card" data-id="'+esc(r.id||"")+'" data-sub="'+esc(String(r.submitted))+'" data-etitle="'+esc(r.title||"")+'" data-edate="'+esc(r.edate||"")+'"><div class="hist-when"><span class="hist-badge '+lb[1]+'">'+lb[0]+'</span>'+when+readMark+clip+'</div><div class="hist-sum"><b>'+esc(r.title||"")+"</b>"+(summary?" — "+esc(summary):"")+"</div>"+((dtl||atts.length)?'<div class="hist-more">View detail ▾</div><div class="hist-detail">'+esc(dtl)+attHtml+"</div>":"")+editHtml+respond+"</div>";
     }).join("");
@@ -3670,4 +3678,3 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 </script>
 </body>
 </html>
-
