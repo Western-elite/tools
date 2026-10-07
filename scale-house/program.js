@@ -11,7 +11,7 @@
    ===================================================================== */
 
 window.PROGRAM = {
-  version: '2026.09.23',
+  version: '2026.10.07',
   sourceDoc: 'Scale House Levels Manager — Version 5 (8/2025)',
   org: 'Western Elite',
   title: 'Scale House Agent Passport',
@@ -152,7 +152,7 @@ window.PROGRAM = {
       code: '2',
       name: 'Level 2 — Independent',
       short: 'Level 2',
-      wage: 20.00,
+      wage: 20.50,
       tenure: 'All Level 2 skills required within 1 year of employment',
       rule: 'Level 2 agents accomplish all Level 1 and Level 2 skills with no assistance. All Level 2 skills are required within 1 year of employment.',
       gates: [
@@ -197,7 +197,7 @@ window.PROGRAM = {
       code: '3',
       name: 'Level 3 — Independent',
       short: 'Level 3',
-      wage: 22.50,
+      wage: 23.00,
       tenure: 'Sustained Level 3 performance',
       rule: 'Level 3 agents accomplish all Level 1–2 skills with no assistance and own their own performance results.',
       gates: [
@@ -246,7 +246,6 @@ window.PROGRAM = {
     eligibility: 'To be eligible for endorsements, an agent must be a minimum Level 2 agent.',
     items: [
       { id: 'end.trainer', label: 'Trainer', pay: 0.50, note: 'Learn the new scale house agent training program and be able to train new agents' },
-      { id: 'end.callcenter', label: 'Call Center Agent Training', pay: 0.50, note: 'Cross-trained to take call center agent work' },
       { id: 'end.tbd1', label: 'Additional endorsement', pay: null, tbd: true, note: 'TBD — to be defined' },
       { id: 'end.tbd2', label: 'Additional endorsement', pay: null, tbd: true, note: 'TBD — to be defined' }
     ]
