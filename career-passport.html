@@ -158,6 +158,10 @@
   .contact-name{font-size:13px;font-weight:700;color:var(--blue);}
 
   .hidden{display:none!important;}
+  .dt-sync{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:12px;margin-left:auto;margin-right:10px;white-space:nowrap;}
+  .dt-sync-saved{color:#1f6b41;background:#e7f5ec;}
+  .dt-sync-saving{color:#13427a;background:#e8eff8;}
+  .dt-sync-error{color:#a5341a;background:#fbeee8;}
 
   /* ── ADDED FOR THIS DOCUMENT: interactive fillable fields ── */
   .field-line,.field-inline,.field-cell,.sig-edate{
@@ -913,6 +917,10 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   window.sbInsert=function(t,row){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t,{method:"POST",headers:hdr({Prefer:"return=minimal"}),body:JSON.stringify(row)}).catch(function(){});};
   window.sbSelect=function(t,q){if(!window.sbReady())return Promise.resolve([]);return fetch(base()+"/rest/v1/"+t+"?"+q,{headers:hdr()}).then(function(r){return r.ok?r.json():[];}).then(function(j){return Array.isArray(j)?j:[];}).catch(function(){return [];});};
   window.sbUpdate=function(t,q,patch){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t+"?"+q,{method:"PATCH",headers:hdr({Prefer:"return=representation"}),body:JSON.stringify(patch)}).then(function(r){if(!r.ok)return null;return r.json().catch(function(){return [];});}).catch(function(){return null;});};
+  window.sbSelectStrict=function(t,q){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t+"?"+q,{headers:hdr()}).then(function(r){return r.ok?r.json():null;}).then(function(j){return Array.isArray(j)?j:null;}).catch(function(){return null;});};
+  window.sbUpsertOk=function(t,row){if(!window.sbReady())return Promise.resolve(false);return fetch(base()+"/rest/v1/"+t,{method:"POST",headers:hdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(row)}).then(function(r){return !!(r&&r.ok);}).catch(function(){return false;});};
+  window.sbRpc=function(fn,args){if(!window.sbReady())return Promise.resolve({ok:false,status:0});return fetch(base()+"/rest/v1/rpc/"+fn,{method:"POST",headers:hdr(),body:JSON.stringify(args)}).then(function(r){return r.json().catch(function(){return null;}).then(function(j){return {ok:r.ok,status:r.status,data:j};});}).catch(function(){return {ok:false,status:0};});};
+  window.sbInsertIfMissing=function(t,row){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t,{method:"POST",headers:hdr({Prefer:"resolution=ignore-duplicates,return=minimal"}),body:JSON.stringify(row)}).catch(function(){});};
   window.sbDelete=function(t,q){if(!window.sbReady())return Promise.resolve(null);return fetch(base()+"/rest/v1/"+t+"?"+q,{method:"DELETE",headers:hdr({Prefer:"return=minimal"})}).catch(function(){});};
   /* ---- Supabase Auth (magic-link email login for agents) ---- */
   function ahdr(tok){return {apikey:window.SUPABASE_KEY||"",Authorization:"Bearer "+(tok||window.SUPABASE_KEY||""),"Content-Type":"application/json"};}
@@ -2503,39 +2511,109 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function saveDials(d){localStorage.setItem("we_dials2",JSON.stringify(d));pushDials();}
   function exAll(){try{return JSON.parse(localStorage.getItem("we_extras")||"{}");}catch(e){return{};}}
   function exGet(id){var o=exAll();return o[id]||{};}
-  function exSet(id,patch){if(!id)return;var o=exAll();o[id]=Object.assign({},o[id]||{},patch);localStorage.setItem("we_extras",JSON.stringify(o));pushExtras(id);}
+  function exSet(id,patch){if(!id)return;var o=exAll();o[id]=Object.assign({},o[id]||{},patch);localStorage.setItem("we_extras",JSON.stringify(o));pushExtras(id,Object.keys(patch||{}));}
   function dayAll(){try{return JSON.parse(localStorage.getItem("we_daily")||"{}");}catch(e){return{};}}
   function saveDay(o){localStorage.setItem("we_daily",JSON.stringify(o));}
   function getDay(id,date){var o=dayAll();return (o[id]&&o[id][date])||{};}
-  function setDay(id,date,patch){var o=dayAll();o[id]=o[id]||{};o[id][date]=Object.assign({},o[id][date]||{},patch);saveDay(o);pushDaily(id,date);}
+  function setDay(id,date,patch){var o=dayAll();o[id]=o[id]||{};o[id][date]=Object.assign({},o[id][date]||{},patch);saveDay(o);pushDaily(id,date,Object.keys(patch||{}));}
 
   /* ---- Supabase sync for the daily scoreboard (daily counts + mgr score + dials) ---- */
-  var _pendDay={},_dayTmr=null,_pendEx={},_exTmr=null,_dlTmr=null;
-  function pushDaily(id,date){if(!window.sbReady()||!id||!date)return;_pendDay[id+"|"+date]=1;clearTimeout(_dayTmr);_dayTmr=setTimeout(flushDaily,2000);}
-  function flushDaily(){var keys=Object.keys(_pendDay);_pendDay={};keys.forEach(function(kk){var i=kk.indexOf("|");var id=kk.slice(0,i),date=kk.slice(i+1);window.sbUpsert("scoreboard",{agent_id:id,day:date,data:getDay(id,date),updated_at:new Date().toISOString()});});}
-  function pushExtras(id){if(!window.sbReady()||!id)return;_pendEx[id]=1;clearTimeout(_exTmr);_exTmr=setTimeout(flushExtras,2000);}
-  function flushExtras(){var ids=Object.keys(_pendEx);_pendEx={};ids.forEach(function(id){window.sbUpsert("extras",{agent_id:id,data:exGet(id),updated_at:new Date().toISOString()});});}
-  function pushDials(){if(!window.sbReady())return;clearTimeout(_dlTmr);_dlTmr=setTimeout(function(){window.sbUpsert("dials",{id:1,data:dials(),updated_at:new Date().toISOString()});},1500);}
+  var _dlTmr=null,_dlPending=false;
+  /* Reliable sync: only the fields a person changed are sent, merged onto the latest database copy,
+     so the manager's and supervisor's columns never overwrite each other. Unsent edits survive a
+     reload, refreshes never overwrite them, and failures retry automatically. */
+  var SYNCK="we_sync_pending",_flTmr=null,_flushing=false;
+  var _pend=(function(){try{return JSON.parse(localStorage.getItem(SYNCK)||"{}")||{};}catch(e){return {};}})();
+  function pendSave(){try{localStorage.setItem(SYNCK,JSON.stringify(_pend));}catch(e){}}
+  function setSync(st){var el=document.getElementById("dtSync");if(!el)return;el.className="dt-sync dt-sync-"+st;el.textContent=st==="saving"?"Saving…":st==="error"?"⚠ Couldn't save — retrying…":"✓ All changes saved";}
+  function markPend(key,fields){if(!window.sbReady())return;var e=_pend[key]||{f:{}};(fields||[]).forEach(function(f){e.f[f]=1;});e.t=Date.now()+"_"+Math.random();_pend[key]=e;pendSave();setSync("saving");clearTimeout(_flTmr);_flTmr=setTimeout(flushAll,1200);}
+  function pushDaily(id,date,fields){if(!id||!date)return;markPend("d|"+id+"|"+date,fields);}
+  function pushExtras(id,fields){if(!id)return;markPend("e|"+id,fields);}
+  function overlayPending(key,cloudData,localData){var p=_pend[key];var v=Object.assign({},cloudData||{});if(p){var loc=localData||{};Object.keys(p.f).forEach(function(f){if(f in loc)v[f]=loc[f];else delete v[f];});}return v;}
+  var _rpcMissing=false;
+  function sameVal(a,b){return JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);}
+  function applySynced(kind,id,date,key,t,serverData){
+    var cur=_pend[key];var nowLocal=kind==="d"?getDay(id,date):exGet(id);var fin=Object.assign({},serverData||{});
+    if(cur&&cur.t!==t)Object.keys(cur.f).forEach(function(f){if(f in nowLocal)fin[f]=nowLocal[f];});
+    if(kind==="d"){var o=dayAll();o[id]=o[id]||{};o[id][date]=fin;saveDay(o);}else{var x=exAll();x[id]=fin;localStorage.setItem("we_extras",JSON.stringify(x));}
+    if(cur&&cur.t===t)delete _pend[key];
+    pendSave();
+  }
+  function syncOne(key){
+    var e=_pend[key];if(!e)return Promise.resolve(true);
+    var parts=key.split("|"),kind=parts[0],id=parts[1],date=parts[2],t=e.t,fields=Object.keys(e.f);
+    var table=kind==="d"?"scoreboard":"extras";
+    var local=kind==="d"?getDay(id,date):exGet(id);
+    var patch={};fields.forEach(function(f){patch[f]=(f in local)?local[f]:null;});
+    // Preferred: the database merges the changed fields in one atomic step
+    if(!_rpcMissing){
+      var fn=kind==="d"?"merge_scoreboard":"merge_extras";
+      var args=kind==="d"?{p_agent_id:id,p_day:date,p_patch:patch}:{p_agent_id:id,p_patch:patch};
+      return window.sbRpc(fn,args).then(function(r){
+        if(r.ok){applySynced(kind,id,date,key,t,(r.data&&typeof r.data==="object"&&!Array.isArray(r.data))?r.data:Object.assign({},local));return true;}
+        if(r.status>=400&&r.status<500){_rpcMissing=true;return syncFallback(kind,id,date,key,t,table,patch);}
+        return false;
+      });
+    }
+    return syncFallback(kind,id,date,key,t,table,patch);
+  }
+  // Fallback (merge functions not installed): read, merge, write, then re-read to confirm the edit stuck
+  function syncFallback(kind,id,date,key,t,table,patch){
+    var q="agent_id=eq."+encodeURIComponent(id)+(kind==="d"?"&day=eq."+encodeURIComponent(date):"")+"&select=data&limit=1";
+    return window.sbSelectStrict(table,q).then(function(rows){
+      if(rows===null)return false;
+      var merged=Object.assign({},(rows[0]&&rows[0].data)||{},patch);
+      var row=kind==="d"?{agent_id:id,day:date,data:merged,updated_at:new Date().toISOString()}:{agent_id:id,data:merged,updated_at:new Date().toISOString()};
+      return window.sbUpsertOk(table,row).then(function(ok){
+        if(!ok)return false;
+        return new Promise(function(res){setTimeout(res,700);}).then(function(){return window.sbSelectStrict(table,q);}).then(function(chk){
+          if(chk===null)return false;var got=(chk[0]&&chk[0].data)||{};
+          var stuck=Object.keys(patch).every(function(f){return sameVal(got[f],patch[f]);});
+          if(!stuck)return "retry";
+          applySynced(kind,id,date,key,t,got);return true;
+        });
+      });
+    }).catch(function(){return false;});
+  }
+  function flushAll(){
+    clearTimeout(_flTmr);
+    if(_flushing){_flTmr=setTimeout(flushAll,600);return;}
+    var keys=Object.keys(_pend);if(!keys.length){setSync("saved");return;}
+    if(!window.sbReady())return;
+    _flushing=true;setSync("saving");
+    Promise.all(keys.map(syncOne)).then(function(res){
+      _flushing=false;
+      var failed=res.some(function(ok){return ok===false;}),again=res.some(function(ok){return ok==="retry";});
+      if(failed){setSync("error");_flTmr=setTimeout(flushAll,5000);}
+      else if(again){_flTmr=setTimeout(flushAll,400+Math.floor(Math.random()*800));}
+      else if(Object.keys(_pend).length){_flTmr=setTimeout(flushAll,600);}
+      else setSync("saved");
+    });
+  }
+  window.__weFlushData=flushAll;
+  if(Object.keys(_pend).length)setTimeout(flushAll,1500);
+  window.addEventListener("beforeunload",function(e){if(Object.keys(_pend).length||_dlPending){flushAll();e.preventDefault();e.returnValue="Some Data tab changes are still saving.";return e.returnValue;}});
+  function pushDials(){if(!window.sbReady())return;_dlPending=true;setSync("saving");clearTimeout(_dlTmr);_dlTmr=setTimeout(function sendDials(){window.sbUpsertOk("dials",{id:1,data:dials(),updated_at:new Date().toISOString()}).then(function(ok){if(ok){_dlPending=false;if(!Object.keys(_pend).length)setSync("saved");}else{setSync("error");_dlTmr=setTimeout(sendDials,5000);}});},1200);}
   function pullScoreboard(cb){
     if(!window.sbReady()){if(cb)cb();return;}
     var done=0;function fin(){done++;if(done>=3&&cb)cb();}
     window.sbSelect("scoreboard","select=agent_id,day,data&limit=100000").then(function(rows){
-      if(rows&&rows.length){var o=dayAll();rows.forEach(function(r){if(!r.agent_id||!r.day)return;o[r.agent_id]=o[r.agent_id]||{};o[r.agent_id][r.day]=r.data||{};});saveDay(o);}fin();
+      if(rows&&rows.length){var o=dayAll();rows.forEach(function(r){if(!r.agent_id||!r.day)return;o[r.agent_id]=o[r.agent_id]||{};o[r.agent_id][r.day]=overlayPending("d|"+r.agent_id+"|"+r.day,r.data,o[r.agent_id][r.day]);});saveDay(o);}fin();
     });
     window.sbSelect("extras","select=agent_id,data&limit=100000").then(function(rows){
-      if(rows&&rows.length){var o=exAll();rows.forEach(function(r){if(!r.agent_id)return;o[r.agent_id]=r.data||{};});localStorage.setItem("we_extras",JSON.stringify(o));}fin();
+      if(rows&&rows.length){var o=exAll();rows.forEach(function(r){if(!r.agent_id)return;o[r.agent_id]=overlayPending("e|"+r.agent_id,r.data,o[r.agent_id]);});localStorage.setItem("we_extras",JSON.stringify(o));}fin();
     });
     window.sbSelect("dials","id=eq.1&select=data&limit=1").then(function(rows){
-      if(rows&&rows[0]&&rows[0].data&&rows[0].data.ordB){localStorage.setItem("we_dials2",JSON.stringify(rows[0].data));}fin();
+      if(!_dlPending&&rows&&rows[0]&&rows[0].data&&rows[0].data.ordB){localStorage.setItem("we_dials2",JSON.stringify(rows[0].data));}fin();
     });
   }
   var _backfilled=false;
   function backfillScoreboard(){
     if(!window.sbReady()||_backfilled)return;_backfilled=true;
     var stamp=new Date().toISOString();
-    var d=dayAll();Object.keys(d).forEach(function(id){var days=d[id]||{};Object.keys(days).forEach(function(day){window.sbUpsert("scoreboard",{agent_id:id,day:day,data:days[day],updated_at:stamp});});});
-    var e=exAll();Object.keys(e).forEach(function(id){window.sbUpsert("extras",{agent_id:id,data:e[id],updated_at:stamp});});
-    try{var dl=JSON.parse(localStorage.getItem("we_dials2"));if(dl&&dl.ordB)window.sbUpsert("dials",{id:1,data:dials(),updated_at:stamp});}catch(_e){}
+    var d=dayAll();Object.keys(d).forEach(function(id){var days=d[id]||{};Object.keys(days).forEach(function(day){window.sbInsertIfMissing("scoreboard",{agent_id:id,day:day,data:days[day],updated_at:stamp});});});
+    var e=exAll();Object.keys(e).forEach(function(id){window.sbInsertIfMissing("extras",{agent_id:id,data:e[id],updated_at:stamp});});
+    try{var dl=JSON.parse(localStorage.getItem("we_dials2"));if(dl&&dl.ordB)window.sbInsertIfMissing("dials",{id:1,data:dials(),updated_at:stamp});}catch(_e){}
   }
   window.__weScoreRefresh=function(){
     pullScoreboard(function(){
@@ -2617,7 +2695,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     if(document.getElementById("dataTab"))return;
     var dt=document.createElement("div");dt.id="dataTab";dt.style.display="none";
     dt.innerHTML=''+
-      '<div class="dt-head"><h2>Data tab <span>· manager only · daily scoreboard</span></h2><button id="dtBack" class="mb-btn2" type="button">‹ Back to dashboard</button></div>'+
+      '<div class="dt-head"><h2>Data tab <span>· manager only · daily scoreboard</span></h2><span id="dtSync" class="dt-sync dt-sync-saved">✓ All changes saved</span><button id="dtBack" class="mb-btn2" type="button">‹ Back to dashboard</button></div>'+
       '<div class="dt-subtabs"><button class="dt-tab dt-tab-on" data-sub="calls" type="button">Calls</button><button class="dt-tab" data-sub="text" type="button">Text</button><button class="dt-tab" data-sub="email" type="button">Emails</button><button class="dt-tab" data-sub="daily" type="button">Daily</button></div>'+
       '<div id="dtPaneCalls" class="dt-pane">'+
         '<div class="dt-note">Pick a date and enter each agent’s <b>raw counts</b> for that day — the percentages auto-calculate exactly like the scoreboard.</div>'+
