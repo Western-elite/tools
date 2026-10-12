@@ -3592,16 +3592,19 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function isReplyType(t){return t==="response"||t==="lresponse";}
   /* Group replies under the entry they answer (new replies carry a hidden link; older ones match on "Re: title (date)") */
   function buildThreads(all){
-    var tops=[],byParent={},roots=all.filter(function(r){return !isReplyType(r.type);});
+    var tops=[],byParent={},parentOf={};
     function findParent(r){
       var sp=splitRef(r.detail),ref=sp.ref;
-      if(ref){for(var i=0;i<roots.length;i++){var p=roots[i];if((ref.id!==""&&ref.id!=null&&String(p.rid)===String(ref.id))||(ref.fa&&p.fa===ref.fa)||(ref.lid&&p.id===ref.lid))return p;}}
+      if(ref){for(var i=0;i<all.length;i++){var p=all[i];if(p===r)continue;if((ref.id!==""&&ref.id!=null&&String(p.rid)===String(ref.id))||(ref.fa&&p.fa===ref.fa)||(ref.lid&&p.id===ref.lid))return p;}}
       var m=/^Re: ([\s\S]*?)(?: \((\d{4}-\d{2}-\d{2})\))?\n\n/.exec(sp.text);if(!m)return null;
-      var cands=roots.filter(function(p){return (p.title||"")===m[1]&&(p.edate||"")===(m[2]||"");});if(!cands.length)return null;
+      var cands=all.filter(function(p){return p!==r&&(p.title||"")===m[1]&&(p.edate||"")===(m[2]||"");});if(!cands.length)return null;
       var before=cands.filter(function(p){return (p.submitted||0)<=(r.submitted||0);}).sort(function(a,b){return b.submitted-a.submitted;});
-      return before[0]||cands[0];
+      return before[0]||null;
     }
-    all.forEach(function(r){if(isReplyType(r.type)){var p=findParent(r);if(p){(byParent[p.id]=byParent[p.id]||[]).push(r);return;}}tops.push(r);});
+    all.forEach(function(r){if(isReplyType(r.type)){var p=findParent(r);if(p)parentOf[r.id]=p;}});
+    // a reply to a reply belongs to the same thread: walk up to the original entry
+    function rootOf(r){var cur=r,seen={};while(parentOf[cur.id]&&!seen[cur.id]){seen[cur.id]=1;cur=parentOf[cur.id];}return cur;}
+    all.forEach(function(r){var root=isReplyType(r.type)?rootOf(r):r;if(root!==r){(byParent[root.id]=byParent[root.id]||[]).push(r);}else tops.push(r);});
     Object.keys(byParent).forEach(function(k){byParent[k].sort(function(a,b){return (a.submitted||0)-(b.submitted||0);});});
     return {tops:tops,replies:byParent};
   }
@@ -3683,9 +3686,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       var when=r.edate?('<b>'+fmtDate(r.edate)+'</b> <span class="hist-filed">· filed '+fd.toLocaleDateString()+'</span>'):('Filed '+fd.toLocaleDateString()+" "+fd.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
       var readMark=_readSet[String(r.submitted)]?'<span class="hist-read">✓ Read</span>':'';
       // split off any attachments stored in the detail
-      var dtl=(r.detail||""),atts=[],mi=dtl.indexOf(ATT_MARKER);
+      var dtl=splitRef(r.detail).text,atts=[],mi=dtl.indexOf(ATT_MARKER);
       if(mi>=0){try{atts=JSON.parse(dtl.slice(mi+ATT_MARKER.length))||[];}catch(e){atts=[];}dtl=dtl.slice(0,mi);}
-      var summary=r.summary;
+      var summary=(r.detail&&r.detail.indexOf(REF_MARKER)>=0)?(function(t){t=t.replace(/^Re: [\s\S]*?\n\n/,"");return t.slice(0,90)+(t.length>90?"…":"");})(splitRef(r.detail).text):r.summary;
       if(mi>=0){var cleanNote=dtl.replace(/^Date:[^\n]*\n/,"").trim();summary=cleanNote.slice(0,90)+(cleanNote.length>90?"…":"");}
       var attHtml="";
       if(atts.length){attHtml='<div class="hist-att">'+atts.map(function(a){var isImg=/^image\//.test(a.t||"");return isImg?('<a class="hist-att-img" href="'+a.d+'" download="'+esc(a.n||"attachment")+'" title="'+esc(a.n||"")+'"><img src="'+a.d+'" alt="'+esc(a.n||"")+'"></a>'):('<a class="hist-att-file" href="'+a.d+'" download="'+esc(a.n||"attachment")+'">📎 '+esc(a.n||"attachment")+'</a>');}).join("")+'</div>';}
