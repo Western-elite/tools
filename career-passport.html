@@ -666,6 +666,11 @@
   .hist-badge.b-esc{background:#fbeee8;color:#a5341a;}
   .hist-badge.b-emp{background:#e9f6ee;color:#1f7a44;}
   .hist-respond{margin-top:8px;}
+.hist-thread{margin:9px 0 0 10px;padding-left:10px;border-left:3px solid #dce3ea;display:flex;flex-direction:column;gap:7px;}
+.hist-reply{background:#f7f9fb;border-radius:7px;padding:6px 9px;}
+.hist-reply-h{display:flex;align-items:center;gap:6px;margin-bottom:2px;}
+.hist-reply-h .hist-filed{font-size:11px;}
+.hist-reply-b{font-size:12.5px;color:#3d4750;line-height:1.5;white-space:pre-wrap;}
 .hist-edit-btn{margin-top:8px;margin-right:12px;background:none;border:none;color:var(--blue);font-weight:700;font-size:12px;cursor:pointer;padding:0;}
 .hist-edit-form{display:none;margin-top:8px;}
 .hist-card.editing .hist-edit-form{display:block;}
@@ -3582,12 +3587,32 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     renderHistory();
     alert("Escalation filed to History.");
   }
+  var REF_MARKER="\u0002REF\u0002";
+  function splitRef(detail){var d=detail||"",i=d.indexOf(REF_MARKER),ref=null;if(i>=0){try{ref=JSON.parse(d.slice(i+REF_MARKER.length));}catch(e){ref=null;}d=d.slice(0,i);}return {text:d,ref:ref};}
+  function isReplyType(t){return t==="response"||t==="lresponse";}
+  /* Group replies under the entry they answer (new replies carry a hidden link; older ones match on "Re: title (date)") */
+  function buildThreads(all){
+    var tops=[],byParent={},roots=all.filter(function(r){return !isReplyType(r.type);});
+    function findParent(r){
+      var sp=splitRef(r.detail),ref=sp.ref;
+      if(ref){for(var i=0;i<roots.length;i++){var p=roots[i];if((ref.id!==""&&ref.id!=null&&String(p.rid)===String(ref.id))||(ref.fa&&p.fa===ref.fa)||(ref.lid&&p.id===ref.lid))return p;}}
+      var m=/^Re: ([\s\S]*?)(?: \((\d{4}-\d{2}-\d{2})\))?\n\n/.exec(sp.text);if(!m)return null;
+      var cands=roots.filter(function(p){return (p.title||"")===m[1]&&(p.edate||"")===(m[2]||"");});if(!cands.length)return null;
+      var before=cands.filter(function(p){return (p.submitted||0)<=(r.submitted||0);}).sort(function(a,b){return b.submitted-a.submitted;});
+      return before[0]||cands[0];
+    }
+    all.forEach(function(r){if(isReplyType(r.type)){var p=findParent(r);if(p){(byParent[p.id]=byParent[p.id]||[]).push(r);return;}}tops.push(r);});
+    Object.keys(byParent).forEach(function(k){byParent[k].sort(function(a,b){return (a.submitted||0)-(b.submitted||0);});});
+    return {tops:tops,replies:byParent};
+  }
   function respondEntry(card){
     var note=card.querySelector(".hist-resp-note");var txt=note?note.value.trim():"";
     if(!txt){alert("Type your response first.");return;}
     var oTitle=card.getAttribute("data-etitle")||"an entry";
     var oDate=card.getAttribute("data-edate")||"";
-    var det="Re: "+oTitle+(oDate?" ("+oDate+")":"")+"\n\n"+txt;
+    var par=null,pid=card.getAttribute("data-id"),pl=load()[curAgent()]||[];for(var pi=0;pi<pl.length;pi++){if(pl[pi].id===pid){par=pl[pi];break;}}
+    var ref={id:(par&&par.rid!=null)?par.rid:"",fa:(par&&par.fa)||"",lid:pid||""};
+    var det="Re: "+oTitle+(oDate?" ("+oDate+")":"")+"\n\n"+txt+REF_MARKER+JSON.stringify(ref);
     if(isAgentViewer())addHist({id:uid(),type:"response",submitted:Date.now(),edate:oDate||"",title:"Employee response",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:det});
     else{var rn=leaderRoleName();addHist({id:uid(),type:"lresponse",src:rn+" Response",submitted:Date.now(),edate:oDate||"",title:rn+" response",summary:txt.slice(0,90)+(txt.length>90?"…":""),detail:det});}
     if(note){note.value="";note.blur();}
@@ -3648,7 +3673,8 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var wrap=document.getElementById("histBody");if(!wrap)return;setCommentBoxLabel();
     if(histBusy())return;
     function keyOf(r){if(r.edate){var t=Date.parse(r.edate+"T00:00:00");if(!isNaN(t))return t;}return r.submitted||0;}
-    var arr=(load()[curAgent()]||[]).slice().sort(function(a,b){return keyOf(b)-keyOf(a);});
+    var TH=buildThreads(load()[curAgent()]||[]);
+    var arr=TH.tops.slice().sort(function(a,b){return keyOf(b)-keyOf(a);});
     if(!arr.length){wrap.innerHTML='<div class="qz-empty">'+(document.body.classList.contains("liveagent")?"No entries on file yet.":"Nothing on file yet. Submit from the Supervisor Log or Manager Log to file it here.")+'</div>';return;}
     var LBL={supervisor:["Supervisor Log","b-sup"],coaching:["Supervisor Log","b-sup"],manager:["Manager Log","b-mgr"],oneonone:["Manager Log","b-mgr"],escalation:["Escalation","b-esc"],response:["Employee response","b-emp"],comment:["Employee comment","b-emp"]};
     function lblFor(r){if(r.type==="lcomment"||r.type==="lresponse"){var who=((r.src||"").split(/\s+/)[0])||"Leader";var cls=/^superv/i.test(who)?"b-sup":"b-mgr";return [who+(r.type==="lcomment"?" comment":" response"),cls];}return LBL[r.type]||["Log","b-sup"];}
@@ -3664,10 +3690,12 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       var attHtml="";
       if(atts.length){attHtml='<div class="hist-att">'+atts.map(function(a){var isImg=/^image\//.test(a.t||"");return isImg?('<a class="hist-att-img" href="'+a.d+'" download="'+esc(a.n||"attachment")+'" title="'+esc(a.n||"")+'"><img src="'+a.d+'" alt="'+esc(a.n||"")+'"></a>'):('<a class="hist-att-file" href="'+a.d+'" download="'+esc(a.n||"attachment")+'">📎 '+esc(a.n||"attachment")+'</a>');}).join("")+'</div>';}
       var clip=atts.length?'<span class="hist-clip">📎 '+atts.length+'</span>':'';
-      var canResp=isAgentViewer()?(r.type!=="response"&&r.type!=="comment"):(r.type!=="lcomment"&&r.type!=="lresponse");
-      var respond=canResp?('<div class="hist-respond"><button class="hist-resp-btn" type="button">↩ Respond</button><div class="hist-resp-form"><textarea class="hist-resp-note" rows="2" placeholder="Add your response (optional)…"></textarea><br><button class="hist-resp-send" type="button">Send response</button></div></div>'):"";
+      var reps=TH.replies[r.id]||[];
+      var thread=reps.length?('<div class="hist-thread">'+reps.map(function(x){var xl=lblFor(x),xd=new Date(x.submitted);var body=splitRef(x.detail).text.replace(/^Re: [\s\S]*?\n\n/,"");
+        return '<div class="hist-reply"><div class="hist-reply-h"><span class="hist-badge '+xl[1]+'">'+xl[0]+'</span><span class="hist-filed">'+xd.toLocaleDateString()+' '+xd.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+'</span></div><div class="hist-reply-b">'+esc(body)+'</div></div>';}).join("")+'</div>'):"";
+      var respond='<div class="hist-respond"><button class="hist-resp-btn" type="button">↩ Reply'+(reps.length?' ('+reps.length+')':'')+'</button><div class="hist-resp-form"><textarea class="hist-resp-note" rows="2" placeholder="Write a reply — it stays with this entry…"></textarea><br><button class="hist-resp-send" type="button">Send reply</button></div></div>';
       var editHtml=(canEdit()&&EDIT_TYPES[r.type])?'<button class="hist-edit-btn" type="button">✎ Edit</button><div class="hist-edit-form"></div>':'';
-      return '<div class="hist-card" data-id="'+esc(r.id||"")+'" data-sub="'+esc(String(r.submitted))+'" data-etitle="'+esc(r.title||"")+'" data-edate="'+esc(r.edate||"")+'"><div class="hist-when"><span class="hist-badge '+lb[1]+'">'+lb[0]+'</span>'+when+readMark+clip+'</div><div class="hist-sum"><b>'+esc(r.title||"")+"</b>"+(summary?" — "+esc(summary):"")+"</div>"+((dtl||atts.length)?'<div class="hist-more">View detail ▾</div><div class="hist-detail">'+esc(dtl)+attHtml+"</div>":"")+editHtml+respond+"</div>";
+      return '<div class="hist-card" data-id="'+esc(r.id||"")+'" data-sub="'+esc(String(r.submitted))+'" data-etitle="'+esc(r.title||"")+'" data-edate="'+esc(r.edate||"")+'"><div class="hist-when"><span class="hist-badge '+lb[1]+'">'+lb[0]+'</span>'+when+readMark+clip+'</div><div class="hist-sum"><b>'+esc(r.title||"")+"</b>"+(summary?" — "+esc(summary):"")+"</div>"+((dtl||atts.length)?'<div class="hist-more">View detail ▾</div><div class="hist-detail">'+esc(dtl)+attHtml+"</div>":"")+editHtml+thread+respond+"</div>";
     }).join("");
     wrap.querySelectorAll(".hist-edit-btn").forEach(function(b){b.addEventListener("click",function(){var c=this.closest(".hist-card");if(c.classList.contains("editing"))c.classList.remove("editing");else openEdit(c);});});
     wrap.querySelectorAll(".hist-more").forEach(function(m){m.addEventListener("click",function(){var c=this.closest(".hist-card");var opening=!c.classList.contains("open");c.classList.toggle("open");this.innerHTML=c.classList.contains("open")?"Hide detail ▴":"View detail ▾";if(opening&&document.body.classList.contains("liveagent"))markRead(c.getAttribute("data-sub"),c);});});
