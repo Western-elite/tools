@@ -604,6 +604,9 @@
   .dly-lab{display:block;font-size:12px;font-weight:800;color:#556;margin:10px 0 3px;text-transform:uppercase;letter-spacing:.03em;}
   .dly-ta{width:100%;font-family:inherit;font-size:13px;border:1px solid #cdd6df;border-radius:6px;padding:7px 9px;resize:vertical;box-sizing:border-box;}
   .dly-costly{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#b5562e;}
+  .dly-edit{background:none;border:1px solid #cdd6df;border-radius:6px;color:var(--blue,#13427a);font-weight:700;font-size:12px;padding:3px 8px;cursor:pointer;white-space:nowrap;}
+  .dly-edit:hover{background:#eef3f9;}
+  .dly-editbox{background:#f7f9fb;border:1px solid #cdd6df;border-radius:8px;padding:10px 12px;text-align:left;white-space:normal;}
   .dly-tbl td.dly-cell{white-space:normal;min-width:180px;max-width:320px;vertical-align:top;}
   body.coach-open #coachTab,body.esc-open #escTab,body.hist-open #histTab{box-shadow:inset 0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.22);}
   .side-submit{margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--line,#dce3ea);}
@@ -2756,14 +2759,46 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     document.getElementById("dlyAdd").addEventListener("click",addDaily);
   }
   function populateDailyAgents(){var sel=document.getElementById("dlyAgent");if(!sel)return;var cur=sel.value;var list=agents();sel.innerHTML='<option value="">— pick agent —</option>'+list.map(function(a){return '<option value="'+escOpt(a.name)+'">'+escOpt(a.name)+'</option>';}).join("");if(cur)sel.value=cur;}
-  function renderDailyList(){var w=document.getElementById("dlyList"),sum=document.getElementById("dlySummary");if(!w)return;w.innerHTML='<div class="qz-empty">Loading…</div>';if(!window.__weDailyManagerList){w.innerHTML='<div class="qz-empty">Connect Supabase to log daily mistakes.</div>';return;}
+  function renderDailyList(){var w=document.getElementById("dlyList"),sum=document.getElementById("dlySummary");if(!w)return;if(_dlyEditing&&w.querySelector("tr.dly-editrow"))return;_dlyEditing=false;w.innerHTML='<div class="qz-empty">Loading…</div>';if(!window.__weDailyManagerList){w.innerHTML='<div class="qz-empty">Connect Supabase to log daily mistakes.</div>';return;}
     window.__weDailyManagerList(function(arr){
       if(!arr||!arr.length){w.innerHTML='<div class="qz-empty">No mistakes logged yet.</div>';if(sum)sum.textContent="";return;}
       var costly=arr.filter(function(r){return r.costly;}).length;
       if(sum)sum.innerHTML='<b>'+arr.length+'</b> mistake'+(arr.length>1?"s":"")+' logged &middot; <b>'+costly+'</b> marked costly';
-      var h='<table class="dt-grid dly-tbl"><tr><th>Date</th><th>Agent</th><th>Detail of mistake</th><th>Feedback</th><th>Costly</th></tr>';
-      h+=arr.map(function(r){return '<tr><td>'+escOpt(r.date)+'</td><td>'+escOpt(r.agent)+'</td><td class="dly-cell">'+escOpt(r.detail)+'</td><td class="dly-cell">'+escOpt(r.feedback)+'</td><td style="text-align:center;font-weight:800;color:#b5562e">'+(r.costly?'✓':'')+'</td></tr>';}).join("");
+      _dlyRows=arr;
+      var h='<table class="dt-grid dly-tbl"><tr><th>Date</th><th>Agent</th><th>Detail of mistake</th><th>Feedback</th><th>Costly</th><th></th></tr>';
+      h+=arr.map(function(r,ix){return '<tr data-ix="'+ix+'"><td>'+escOpt(r.date)+'</td><td>'+escOpt(r.agent)+'</td><td class="dly-cell">'+escOpt(r.detail)+'</td><td class="dly-cell">'+escOpt(r.feedback)+'</td><td style="text-align:center;font-weight:800;color:#b5562e">'+(r.costly?'✓':'')+'</td><td style="text-align:center"><button class="dly-edit" type="button">✎ Edit</button></td></tr>';}).join("");
       h+='</table>';w.innerHTML=h;
+      w.querySelectorAll(".dly-edit").forEach(function(b){b.addEventListener("click",function(){openDailyEdit(this.closest("tr"));});});
+    });
+  }
+  var _dlyRows=[],_dlyEditing=false;
+  function openDailyEdit(tr){
+    var w=document.getElementById("dlyList");if(!tr||!w)return;
+    var open=w.querySelector("tr.dly-editrow");if(open){var prev=open.previousElementSibling;open.remove();if(prev)prev.style.display="";}
+    var r=_dlyRows[+tr.getAttribute("data-ix")];if(!r)return;
+    _dlyEditing=true;tr.style.display="none";
+    var ed=document.createElement("tr");ed.className="dly-editrow";
+    ed.innerHTML='<td colspan="6"><div class="dly-editbox"><div class="dt-daterow"><label>Date&nbsp;</label><input type="date" class="dly-e-date"> &nbsp; <b>'+escOpt(r.agent)+'</b> &nbsp; <label class="dly-costly"><input type="checkbox" class="dly-e-costly"> Costly</label></div>'+
+      '<label class="dly-lab">Detail of mistake</label><textarea class="dly-ta dly-e-detail" rows="3"></textarea>'+
+      '<label class="dly-lab">Comments / feedback</label><textarea class="dly-ta dly-e-feedback" rows="3"></textarea>'+
+      '<div style="margin-top:8px"><button class="mb-btn2 dly-e-save" type="button">Save changes</button> <button class="mb-btn2 dly-e-cancel" type="button">Cancel</button> <span class="dt-daynote dly-e-msg"></span></div></div></td>';
+    tr.parentNode.insertBefore(ed,tr.nextSibling);
+    ed.querySelector(".dly-e-date").value=r.date||"";ed.querySelector(".dly-e-costly").checked=!!r.costly;
+    ed.querySelector(".dly-e-detail").value=r.detail||"";ed.querySelector(".dly-e-feedback").value=r.feedback||"";
+    ed.querySelector(".dly-e-detail").focus();
+    ed.querySelector(".dly-e-cancel").addEventListener("click",function(){ed.remove();tr.style.display="";_dlyEditing=false;});
+    ed.querySelector(".dly-e-save").addEventListener("click",function(){
+      var btn=this,msg=ed.querySelector(".dly-e-msg");
+      var date=ed.querySelector(".dly-e-date").value||r.date,detail=ed.querySelector(".dly-e-detail").value.trim(),feedback=ed.querySelector(".dly-e-feedback").value.trim(),costly=ed.querySelector(".dly-e-costly").checked;
+      if(!detail){msg.textContent="The mistake detail can't be empty.";return;}
+      if(!window.__weDailyUpdate){msg.textContent="Not connected.";return;}
+      btn.disabled=true;msg.textContent="Saving…";
+      window.__weDailyUpdate(r,date,detail,feedback,costly,function(ok,err){
+        btn.disabled=false;
+        if(!ok){msg.textContent=err||"Could not save — check your connection.";return;}
+        _dlyEditing=false;renderDailyList();
+        var m=document.getElementById("dlyMsg");if(m)m.textContent="Updated "+r.agent+"’s entry.";
+      });
     });
   }
   function addDaily(){
@@ -3646,11 +3681,20 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function fmtD(s){var t=Date.parse(s+"T00:00:00");if(isNaN(t))return s;var d=new Date(t);return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
   function dailyParse(row){function g(){for(var i=0;i<arguments.length;i++){var k=arguments[i];if(row[k]!=null&&row[k]!=="")return row[k];}return "";}
     var src=g("Source","source"),det=(g("Detail","detail")+""),fa=g("FiledAt","filedat","filedAt","filed_at");var parts=det.split(DSEP);
-    return {agent:g("Agent","agent"),date:(g("EntryDate","entrydate","entryDate","entry_date")+"").slice(0,10),detail:parts[0]||"",feedback:parts.slice(1).join(DSEP)||"",costly:/costly/i.test(src+""),filed:(Date.parse(fa)||Date.now())};}
+    return {agent:g("Agent","agent"),date:(g("EntryDate","entrydate","entryDate","entry_date")+"").slice(0,10),detail:parts[0]||"",feedback:parts.slice(1).join(DSEP)||"",costly:/costly/i.test(src+""),filed:(Date.parse(fa)||Date.now()),rid:(row.id!=null?row.id:""),src:src,fa:fa};}
   window.__weDailyAdd=function(agent,date,detail,feedback,costly,cb){
     if(!window.sbReady()){if(cb)cb(false);return;}
     var src="Daily Mistake"+(costly?" (Costly)":"");
     window.sbInsert("entries",{agent:agent,source:src,entry_date:date||"",title:"Daily mistake",detail:(detail||"")+(feedback?DSEP+feedback:"")}).then(function(){if(cb)cb(true);}).catch(function(){if(cb)cb(false);});
+  };
+  window.__weDailyUpdate=function(r,date,detail,feedback,costly,cb){
+    if(!window.sbReady()){if(cb)cb(false,"Not connected.");return;}
+    var q=(r.rid!==""&&r.rid!=null)?("id=eq."+encodeURIComponent(r.rid)):("agent=eq."+encodeURIComponent(r.agent)+"&source=eq."+encodeURIComponent(r.src)+"&filed_at=eq."+encodeURIComponent(r.fa));
+    var patch={entry_date:date||null,detail:(detail||"")+(feedback?DSEP+feedback:""),source:"Daily Mistake"+(costly?" (Costly)":"")};
+    window.sbUpdate("entries",q,patch).then(function(rows){
+      if(rows&&rows.length){if(cb)cb(true);}
+      else if(cb)cb(false,"The database didn't accept the change. It may need the Daily-edit permission (run daily-edit-policy.sql in Supabase).");
+    });
   };
   window.__weDailyManagerList=function(cb){
     if(!window.sbReady()){if(cb)cb([]);return;}
