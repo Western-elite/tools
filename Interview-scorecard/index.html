@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interview Scorecard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --brand: #1C4C88;
+    --brand-dark: #143866;
+    --brand-tint: #e8eef7;
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1d2430;
+    --muted: #667085;
+    --border: #dde2ea;
+    --green: #1f8a4c;
+    --green-tint: #e5f4ec;
+    --amber: #b7791f;
+    --amber-tint: #fdf3e1;
+    --red: #c0392b;
+    --red-tint: #fbe9e7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif; font-size: 16px; line-height: 1.45; }
+  a { color: var(--brand); text-decoration: none; }
+  header.top { background: var(--brand); color: #fff; padding: 14px 16px; }
+  .top-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .top h1 { margin: 0; font-size: 1.3rem; letter-spacing: .02em; }
+  .top h1 a { color: #fff; }
+  .top label { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .95rem; }
+  .top select { font: inherit; padding: 6px 10px; border-radius: 6px; border: 0; min-width: 150px; }
+  .demo-banner { background: var(--amber-tint); color: #7a5212; text-align: center; padding: 8px 16px; font-size: .9rem; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 18px; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  h2, h3 { margin: 0; }
+  h2 { font-size: 1.4rem; }
+  h3 { font-size: 1.1rem; }
+  .muted { color: var(--muted); }
+  .small { font-size: .88rem; }
+  .btn { display: inline-block; background: var(--brand); color: #fff; border: 0; border-radius: 6px; padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: var(--brand-dark); }
+  .btn.ghost { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+  .btn.ghost:hover { background: var(--brand-tint); }
+  label { display: block; font-weight: 600; font-size: .92rem; }
+  input[type=text], input:not([type]), input[type=date], textarea, select.field { width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 400; }
+  textarea { resize: vertical; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0; }
+  @media (max-width: 700px) { .grid3 { grid-template-columns: 1fr; } }
+
+  .list { padding: 0; }
+  .cand-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); color: var(--text); flex-wrap: wrap; }
+  .cand-row:last-child { border-bottom: 0; }
+  .cand-row:hover { background: var(--brand-tint); }
+  .cand-name { font-weight: 700; font-size: 1.05rem; }
+  .cand-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .score { font-weight: 700; font-size: 1.2rem; color: var(--brand); min-width: 36px; text-align: right; }
+  .empty { padding: 24px; text-align: center; margin: 0; }
+
+  .pill { display: inline-block; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--brand-tint); color: var(--brand); white-space: nowrap; }
+  .pill.warn { background: var(--amber-tint); color: var(--amber); }
+  .badge { display: inline-block; font-size: .8rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+  .badge.hire { background: var(--green-tint); color: var(--green); }
+  .badge.no_hire { background: var(--red-tint); color: var(--red); }
+  .badge.hold { background: var(--amber-tint); color: var(--amber); }
+  .badge.pending { background: #eef0f3; color: var(--muted); }
+
+  .summary { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .summary .big { font-size: 2.4rem; font-weight: 700; color: var(--brand); line-height: 1; text-align: right; }
+  .votes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .vote { font-size: .85rem; font-weight: 600; padding: 3px 10px; border-radius: 6px; }
+  .vote.hire { background: var(--green-tint); color: var(--green); }
+  .vote.maybe { background: var(--amber-tint); color: var(--amber); }
+  .vote.no_hire { background: var(--red-tint); color: var(--red); }
+
+  fieldset.crit { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin: 0 0 12px; }
+  fieldset.crit legend { font-weight: 700; padding: 0 6px; }
+  .crit-num { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: var(--brand); color: #fff; font-size: .8rem; margin-right: 6px; }
+  .question { margin: 2px 0 4px; font-style: italic; }
+  .rating, .rec { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .rating label, .rec label { cursor: pointer; }
+  .rating input, .rec input { position: absolute; opacity: 0; pointer-events: none; }
+  .rating span { display: inline-block; width: 44px; height: 44px; line-height: 42px; text-align: center; border: 1px solid var(--border); border-radius: 8px; font-weight: 700; font-size: 1.05rem; }
+  .rec span { display: inline-block; padding: 10px 18px; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; }
+  .rating input:checked + span, .rec input:checked + span { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .rating input:focus-visible + span, .rec input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .form-foot { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .err-text { color: var(--red); }
+  .ok-text { color: var(--green); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: var(--brand-tint); color: var(--brand); font-weight: 700; }
+  tfoot td { font-weight: 700; background: #fafbfc; }
+  td.avg { font-weight: 700; color: var(--brand); }
+  .comment { border-left: 3px solid var(--brand); padding: 4px 12px; margin: 10px 0; }
+  .comment .who { font-weight: 700; font-size: .9rem; }
+  .notice { background: var(--brand-tint); border-color: #c9d6ea; }
+  .error { background: var(--red-tint); border-color: #f1c4be; color: var(--red); }
+  .decision-form { display: grid; grid-template-columns: 220px 1fr auto; gap: 12px; align-items: end; }
+  @media (max-width: 700px) { .decision-form { grid-template-columns: 1fr; } .summary { grid-template-columns: 1fr; } .summary .big { text-align: left; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <h1><a href="#/" id="appTitle">Interview Scorecard</a></h1>
+    <label>Scoring as
+      <select id="whoSelect"></select>
+    </label>
+  </div>
+</header>
+<div id="demoBanner" class="demo-banner" hidden>Demo mode: data is saved in this browser only. Add your Supabase URL and key in <code>index.html</code> to go live.</div>
+<main id="app"><p class="muted">Loading…</p></main>
+
+<script>
+/* =====================================================================
+   1) CONNECTION — paste your Supabase project URL and anon/publishable key.
+      Leave blank to run in demo mode (data stays in this browser).
+   ===================================================================== */
+const CONFIG = {
+  SUPABASE_URL: '',
+  SUPABASE_ANON_KEY: ''
+};
+
+/* =====================================================================
+   2) DEPARTMENTS — interviewers, positions, and criteria per department.
+      To add a department later, copy the MRF block and change DEPT below.
+      Criterion `key`s are what get saved: keep them stable once you go live.
+      Rewording a label or question is safe; changing a key orphans old scores.
+   ===================================================================== */
+const DEPARTMENTS = {
+  MRF: {
+    title: 'MRF Interview Scorecard',
+    interviewers: ['Director', 'Henderson', 'Wynn', 'Nellis'],
+    finalDecisionBy: 'Director',
+    positions: ['MRF Team Member'],
+    // PLACEHOLDER criteria — replace with the real MRF questions once decided.
+    criteria: [
+      { key: 'safety', label: 'Safety Awareness', short: 'Safety', weight: 2,
+        question: 'Tell me about a time you saw something unsafe at work. What did you do about it?',
+        lookFor: 'Speaks up, follows procedures, takes PPE and lockout/tagout seriously.' },
+      { key: 'reliability', label: 'Reliability & Attendance', short: 'Reliability', weight: 1,
+        question: 'Our shifts start early and run long. How do you make sure you show up on time, every shift?',
+        lookFor: 'A concrete plan for transportation and schedule; steady work history.' },
+      { key: 'physical', label: 'Physical Readiness', short: 'Physical', weight: 1,
+        question: 'This job means standing for long shifts, lifting, and working in the Vegas heat. Tell me about physically demanding work you have done.',
+        lookFor: 'Realistic about the conditions; has done similar work before.' },
+      { key: 'focus', label: 'Focus & Attention to Detail', short: 'Focus', weight: 1,
+        question: 'Sorting on a line is repetitive. How do you stay sharp and accurate doing the same task for hours?',
+        lookFor: 'Specific strategies; takes pride in doing it right.' },
+      { key: 'teamwork', label: 'Teamwork & Communication', short: 'Teamwork', weight: 1,
+        question: 'Tell me about a time you disagreed with a coworker. How did you handle it?',
+        lookFor: 'Stays calm, communicates directly, focuses on the work.' },
+      { key: 'coachability', label: 'Coachability', short: 'Coachable', weight: 1,
+        question: 'Tell me about a time a supervisor corrected you. How did you respond?',
+        lookFor: 'Owns mistakes, does not blame others, applies the feedback.' },
+      { key: 'experience', label: 'Relevant Experience', short: 'Experience', weight: 1,
+        question: 'What warehouse, recycling, production, or equipment experience do you have?',
+        lookFor: 'Line work, forklift or skid steer, material handling. A plus, not required.' }
+    ]
+  }
+};
+const DEPT = 'MRF';
+const CFG = DEPARTMENTS[DEPT];
+
+const SCALE = '1 = Poor · 2 = Below expectations · 3 = Meets · 4 = Strong · 5 = Exceptional';
+const DECISIONS = { hire: 'Hired', hold: 'On hold', no_hire: 'Not hired' };
+const RECS = [['hire', 'Hire'], ['maybe', 'Maybe'], ['no_hire', 'No hire']];
+
+/* ---------------- helpers ---------------- */
+const $app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
+};
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+const today = () => new Date().toLocaleDateString('en-CA');
+const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const fmt = v => v == null ? '—' : v.toFixed(1);
+const decisionBadge = d => d ? `<span class="badge ${d}">${DECISIONS[d]}</span>` : `<span class="badge pending">Pending</span>`;
+
+let me = store.get('we-interviewer-' + DEPT) || '';
+if (!CFG.interviewers.includes(me)) me = '';
+
+/* ---------------- data layer (Supabase or demo) ---------------- */
+const sb = (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY && window.supabase)
+  ? window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY)
+  : null;
+
+const local = {
+  data: (() => {
+    try { return JSON.parse(store.get('we-interview-demo')) || { candidates: [], scores: [] }; }
+    catch (e) { return { candidates: [], scores: [] }; }
+  })(),
+  save() { store.set('we-interview-demo', JSON.stringify(this.data)); }
+};
+
+async function q(promise) { const { data, error } = await promise; if (error) throw error; return data; }
+
+const api = {
+  async listCandidates() {
+    if (sb) return q(sb.from('candidates').select('*').eq('department', DEPT).order('interview_date', { ascending: false }));
+    return local.data.candidates.filter(c => c.department === DEPT).sort((a, b) => b.interview_date.localeCompare(a.interview_date));
+  },
+  async getCandidate(id) {
+    if (sb) return q(sb.from('candidates').select('*').eq('id', id).maybeSingle());
+    return local.data.candidates.find(c => c.id === id) || null;
+  },
+  async addCandidate(row) {
+    row = { ...row, department: DEPT };
+    if (sb) return q(sb.from('candidates').insert(row).select().single());
+    const c = { id: uid(), created_at: new Date().toISOString(), final_decision: null, final_notes: null, ...row };
+    local.data.candidates.push(c); local.save(); return c;
+  },
+  async listScores(ids) {
+    if (!ids.length) return [];
+    if (sb) return q(sb.from('scores').select('*').in('candidate_id', ids));
+    return local.data.scores.filter(s => ids.includes(s.candidate_id));
+  },
+  async saveScore(row) {
+    row = { ...row, updated_at: new Date().toISOString() };
+    if (sb) return q(sb.from('scores').upsert(row, { onConflict: 'candidate_id,interviewer' }));
+    const i = local.data.scores.findIndex(s => s.candidate_id === row.candidate_id && s.interviewer === row.interviewer);
+    if (i >= 0) local.data.scores[i] = { ...local.data.scores[i], ...row };
+    else local.data.scores.push({ id: uid(), created_at: row.updated_at, ...row });
+    local.save();
+  },
+  async setDecision(id, final_decision, final_notes) {
+    const patch = { final_decision: final_decision || null, final_notes, decided_at: final_decision ? new Date().toISOString() : null };
+    if (sb) return q(sb.from('candidates').update(patch).eq('id', id));
+    Object.assign(local.data.candidates.find(c => c.id === id), patch); local.save();
+  }
+};
+
+/* ---------------- scoring math ---------------- */
+// One interviewer's weighted average across the criteria they rated.
+function rowAvg(ratings) {
+  let total = 0, w = 0;
+  for (const c of CFG.criteria) {
+    const r = Number(ratings?.[c.key]);
+    if (r) { total += r * c.weight; w += c.weight; }
+  }
+  return w ? total / w : null;
+}
+// Candidate overall = mean of each interviewer's weighted average.
+function summarize(scores) {
+  const avgs = scores.map(s => rowAvg(s.ratings)).filter(v => v != null);
+  const overall = avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
+  const votes = { hire: 0, maybe: 0, no_hire: 0 };
+  scores.forEach(s => { if (s.recommendation in votes) votes[s.recommendation]++; });
+  return { overall, votes, count: scores.length };
+}
+function critAvg(scores, key) {
+  const v = scores.map(s => Number(s.ratings?.[key])).filter(Boolean);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+const votesHtml = v => `<div class="votes">
+  <span class="vote hire">Hire ${v.hire}</span>
+  <span class="vote maybe">Maybe ${v.maybe}</span>
+  <span class="vote no_hire">No hire ${v.no_hire}</span></div>`;
+
+/* ---------------- views ---------------- */
+async function renderList() {
+  const cands = await api.listCandidates();
+  const scores = await api.listScores(cands.map(c => c.id));
+  const rows = cands.map(c => {
+    const s = scores.filter(x => x.candidate_id === c.id);
+    const sum = summarize(s);
+    const needsMine = me && !s.some(x => x.interviewer === me);
+    return `<a class="cand-row" href="#/c/${c.id}">
+      <div><div class="cand-name">${esc(c.name)}</div>
+        <div class="muted small">${esc(c.position)} · ${fmtDate(c.interview_date)}</div></div>
+      <div class="cand-stats">
+        <span class="pill">${sum.count}/${CFG.interviewers.length} scored</span>
+        ${needsMine ? '<span class="pill warn">Needs your score</span>' : ''}
+        ${decisionBadge(c.final_decision)}
+        <span class="score" title="Average score">${fmt(sum.overall)}</span>
+      </div></a>`;
+  }).join('');
+
+  $app.innerHTML = `
+    <div class="toolbar"><h2>Candidates</h2><a class="btn ghost" href="#/compare">Compare candidates</a></div>
+    <form id="addForm" class="card">
+      <h3>Add a candidate</h3>
+      <div class="grid3">
+        <label>Name<input name="name" required autocomplete="off"></label>
+        <label>Position<input name="position" list="positions" value="${esc(CFG.positions[0])}" required></label>
+        <label>Interview date<input type="date" name="interview_date" value="${today()}" required></label>
+      </div>
+      <datalist id="positions">${CFG.positions.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+      <button class="btn">Add candidate</button>
+    </form>
+    <div class="card list">${rows || '<p class="muted empty">No candidates yet. Add one above.</p>'}</div>`;
+
+  document.getElementById('addForm').onsubmit = async e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const c = await api.addCandidate({
+      name: f.get('name').trim(), position: f.get('position').trim(), interview_date: f.get('interview_date')
+    });
+    location.hash = '#/c/' + c.id;
+  };
+}
+
+async function renderCandidate(id) {
+  const c = await api.getCandidate(id);
+  if (!c) { $app.innerHTML = `<div class="card error">Candidate not found. <a href="#/">Back to list</a></div>`; return; }
+  const scores = await api.listScores([id]);
+  const sum = summarize(scores);
+  const byI = Object.fromEntries(scores.map(s => [s.interviewer, s]));
+  const mine = byI[me];
+  const isDecider = me === CFG.finalDecisionBy;
+
+  const scoreForm = !me
+    ? `<div class="card notice">Pick your name under <b>Scoring as</b> at the top to score this candidate.</div>`
+    : `<form id="scoreForm" class="card">
+        <div class="toolbar"><h3>Your scorecard <span class="muted">· ${esc(me)}</span></h3>
+          ${mine ? '<span class="pill">Already submitted, you can update it</span>' : ''}</div>
+        <p class="muted small">${SCALE}</p>
+        ${CFG.criteria.map((cr, i) => `
+          <fieldset class="crit">
+            <legend><span class="crit-num">${i + 1}</span>${esc(cr.label)}${cr.weight > 1 ? ` <span class="pill">counts ×${cr.weight}</span>` : ''}</legend>
+            <p class="question">“${esc(cr.question)}”</p>
+            ${cr.lookFor ? `<p class="muted small">Look for: ${esc(cr.lookFor)}</p>` : ''}
+            <div class="rating">${[1, 2, 3, 4, 5].map(n => `
+              <label><input type="radio" name="r_${cr.key}" value="${n}" ${Number(mine?.ratings?.[cr.key]) === n ? 'checked' : ''}><span>${n}</span></label>`).join('')}
+            </div>
+          </fieldset>`).join('')}
+        <fieldset class="crit"><legend>Your recommendation</legend>
+          <div class="rec">${RECS.map(([v, l]) => `
+            <label><input type="radio" name="rec" value="${v}" ${mine?.recommendation === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}
+          </div>
+        </fieldset>
+        <label>Comments<textarea name="comments" rows="3" placeholder="Strengths, concerns, anything the team should know">${esc(mine?.comments || '')}</textarea></label>
+        <div class="form-foot"><span id="saveMsg" class="small"></span>
+          <button class="btn">${mine ? 'Update my scores' : 'Submit my scores'}</button></div>
+      </form>`;
+
+  const table = `
+    <div class="card">
+      <div class="toolbar"><h3>All scores</h3><span class="muted small">${sum.count} of ${CFG.interviewers.length} interviewers</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Criterion</th>${CFG.interviewers.map(i => `<th>${esc(i)}</th>`).join('')}<th>Average</th></tr></thead>
+        <tbody>
+          ${CFG.criteria.map(cr => `<tr>
+            <td>${esc(cr.label)}${cr.weight > 1 ? ` <span class="muted small">×${cr.weight}</span>` : ''}</td>
+            ${CFG.interviewers.map(i => `<td>${byI[i]?.ratings?.[cr.key] ?? '—'}</td>`).join('')}
+            <td class="avg">${fmt(critAvg(scores, cr.key))}</td></tr>`).join('')}
+          <tr><td>Recommendation</td>${CFG.interviewers.map(i => {
+            const r = byI[i]?.recommendation;
+            return `<td>${r ? `<span class="vote ${r}">${RECS.find(x => x[0] === r)[1]}</span>` : '—'}</td>`;
+          }).join('')}<td></td></tr>
+        </tbody>
+        <tfoot><tr><td>Weighted average</td>${CFG.interviewers.map(i => `<td>${fmt(byI[i] ? rowAvg(byI[i].ratings) : null)}</td>`).join('')}<td class="avg">${fmt(sum.overall)}</td></tr></tfoot>
+      </table></div>
+      ${scores.filter(s => s.comments).map(s => `
+        <div class="comment"><div class="who">${esc(s.interviewer)}</div><div>${esc(s.comments)}</div></div>`).join('')}
+    </div>`;
+
+  const decision = `
+    <div class="card">
+      <h3>Final decision</h3>
+      ${isDecider ? `
+        <form id="decisionForm" class="decision-form" style="margin-top:12px">
+          <label>Decision
+            <select class="field" name="decision">
+              <option value="">Pending</option>
+              ${Object.entries(DECISIONS).map(([v, l]) => `<option value="${v}" ${c.final_decision === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select></label>
+          <label>Notes<input name="notes" value="${esc(c.final_notes || '')}" placeholder="Start date, conditions, reason"></label>
+          <button class="btn">Save decision</button>
+        </form>`
+      : `<p style="margin:10px 0 0">${decisionBadge(c.final_decision)} ${c.final_notes ? `<span class="muted">· ${esc(c.final_notes)}</span>` : ''}</p>
+         <p class="muted small">The ${esc(CFG.finalDecisionBy)} records the final decision.</p>`}
+    </div>`;
+
+  $app.innerHTML = `
+    <p><a href="#/">← All candidates</a></p>
+    <div class="card summary">
+      <div>
+        <h2>${esc(c.name)}</h2>
+        <div class="muted">${esc(c.position)} · Interviewed ${fmtDate(c.interview_date)}</div>
+        ${votesHtml(sum.votes)}
+      </div>
+      <div><div class="big">${fmt(sum.overall)}</div><div class="muted small" style="text-align:right">avg of 5 · ${decisionBadge(c.final_decision)}</div></div>
+    </div>
+    ${scoreForm}
+    ${table}
+    ${decision}`;
+
+  const sf = document.getElementById('scoreForm');
+  if (sf) sf.onsubmit = async e => {
+    e.preventDefault();
+    const f = new FormData(sf);
+    const ratings = {};
+    const missing = [];
+    CFG.criteria.forEach(cr => { const v = f.get('r_' + cr.key); if (v) ratings[cr.key] = Number(v); else missing.push(cr.short || cr.label); });
+    const rec = f.get('rec');
+    if (!rec) missing.push('Recommendation');
+    const msg = document.getElementById('saveMsg');
+    if (missing.length) { msg.className = 'small err-text'; msg.textContent = 'Still needed: ' + missing.join(', '); return; }
+    msg.className = 'small muted'; msg.textContent = 'Saving…';
+    try {
+      await api.saveScore({ candidate_id: id, interviewer: me, ratings, recommendation: rec, comments: f.get('comments').trim() });
+      await renderCandidate(id);
+      const m2 = document.getElementById('saveMsg');
+      if (m2) { m2.className = 'small ok-text'; m2.textContent = 'Saved.'; }
+    } catch (err) { msg.className = 'small err-text'; msg.textContent = 'Could not save: ' + err.message; }
+  };
+
+  const df = document.getElementById('decisionForm');
+  if (df) df.onsubmit = async e => {
+    e.preventDefault();
+    const f = new FormData(df);
+    await api.setDecision(id, f.get('decision'), f.get('notes').trim());
+    await renderCandidate(id);
+  };
+}
+
+let compareFilter = 'all';
+async function renderCompare() {
+  const cands = await api.listCandidates();
+  const scores = await api.listScores(cands.map(c => c.id));
+  const positions = [...new Set(cands.map(c => c.position))].sort();
+  const shown = cands.filter(c => compareFilter === 'all' || c.position === compareFilter)
+    .map(c => { const s = scores.filter(x => x.candidate_id === c.id); return { c, s, sum: summarize(s) }; })
+    .sort((a, b) => (b.sum.overall ?? -1) - (a.sum.overall ?? -1));
+
+  $app.innerHTML = `
+    <p><a href="#/">← All candidates</a></p>
+    <div class="card">
+      <div class="toolbar"><h2>Compare candidates</h2>
+        <label>Position
+          <select class="field" id="posFilter" style="min-width:200px">
+            <option value="all">All positions</option>
+            ${positions.map(p => `<option value="${esc(p)}" ${compareFilter === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
+          </select></label>
+      </div>
+      <p class="muted small">Sorted by average score. Criterion columns show the average across interviewers.</p>
+      ${shown.length ? `<div class="table-wrap"><table>
+        <thead><tr><th>Candidate</th><th>Interviewed</th>
+          ${CFG.criteria.map(cr => `<th title="${esc(cr.label)}">${esc(cr.short || cr.label)}</th>`).join('')}
+          <th>Overall</th><th>Hire / Maybe / No</th><th>Scored</th><th>Decision</th></tr></thead>
+        <tbody>${shown.map(({ c, s, sum }) => `<tr>
+          <td><a href="#/c/${c.id}"><b>${esc(c.name)}</b></a><div class="muted small">${esc(c.position)}</div></td>
+          <td>${fmtDate(c.interview_date)}</td>
+          ${CFG.criteria.map(cr => `<td>${fmt(critAvg(s, cr.key))}</td>`).join('')}
+          <td class="avg">${fmt(sum.overall)}</td>
+          <td>${sum.votes.hire} / ${sum.votes.maybe} / ${sum.votes.no_hire}</td>
+          <td>${sum.count}/${CFG.interviewers.length}</td>
+          <td>${decisionBadge(c.final_decision)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<p class="muted empty">No candidates to compare yet.</p>'}
+    </div>`;
+
+  document.getElementById('posFilter').onchange = e => { compareFilter = e.target.value; renderCompare(); };
+}
+
+/* ---------------- shell ---------------- */
+async function route() {
+  const h = location.hash.slice(1) || '/';
+  try {
+    if (h.startsWith('/c/')) await renderCandidate(h.slice(3));
+    else if (h === '/compare') await renderCompare();
+    else await renderList();
+  } catch (e) {
+    console.error(e);
+    $app.innerHTML = `<div class="card error">Something went wrong: ${esc(e.message)}</div>`;
+  }
+}
+
+function init() {
+  document.title = CFG.title;
+  document.getElementById('appTitle').textContent = CFG.title;
+  document.getElementById('demoBanner').hidden = !!sb;
+  const sel = document.getElementById('whoSelect');
+  sel.innerHTML = `<option value="">Select your name</option>` +
+    CFG.interviewers.map(i => `<option ${i === me ? 'selected' : ''}>${esc(i)}</option>`).join('');
+  sel.onchange = () => { me = sel.value; store.set('we-interviewer-' + DEPT, me); route(); };
+  window.addEventListener('hashchange', route);
+  route();
+}
+init();
+</script>
+</body>
+</html>
