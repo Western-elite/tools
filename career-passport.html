@@ -596,6 +596,26 @@
   body.hist-open #histPanel{transform:translateX(0);}
   .pp-side-btn.st-hist{background:#3a5a78;}
   .pp-side-btn.st-daily{background:#5a3d78;}
+  .pp-side-btn.st-checkin{background:#2e6b4f;}
+  body.checkin-open #checkinPanel{transform:translateX(0);}
+  body.checkin-open #checkinTab{box-shadow:inset 0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.22);}
+  .ci-follow{margin-top:6px;font-size:12.5px;color:#3d4750;background:#f2f7f4;border-radius:6px;padding:6px 8px;white-space:pre-wrap;}
+  .ci-big{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fbecea;color:#b5562e;border:1px solid #f0cfc7;border-radius:9px;padding:10px 14px;font-size:14px;margin-bottom:8px;}
+  .ci-big.ok{background:#e7f5ec;color:#1f6b41;border-color:#bfe3cc;}
+  .ci-dots{display:flex;gap:6px;}
+  .ci-dot{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;opacity:.55;}
+  .ci-dot.on{background:currentColor;opacity:1;}
+  .ci-stats{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#3d4750;margin-bottom:12px;}
+  .ci-week th span{font-weight:600;opacity:.8;font-size:11px;}
+  .ci-week td{text-align:center;font-weight:800;}
+  .ci-week td.met{background:#e7f5ec;color:#1f6b41;}
+  .ci-week td.miss{background:#fbecea;color:#b5562e;}
+  .ci-week td.fut{color:#9aa4ae;font-weight:600;}
+  .ci-cover{display:flex;flex-wrap:wrap;gap:6px;}
+  .ci-ag{font-size:12.5px;background:#eef3f9;color:#13427a;border-radius:12px;padding:3px 10px;}
+  .ci-ag.stale{background:#fdf3e7;color:#9a5a12;}
+  .ci-chip.done{background:#2e8b57;border-color:#2e8b57;}
+  body.role-supervisor .dt-tab[data-sub="checkins"],body.trainerview .dt-tab[data-sub="checkins"]{display:none!important;}
   body.liveagent #kbNavLink,body.agentview #kbNavLink,body.agentpv #kbNavLink{display:none!important;}
   body.liveagent #skills,body.agentview #skills,body.agentpv #skills{display:none!important;}
   body.daily-open #dailyPanel{transform:translateX(0);}
@@ -992,6 +1012,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   <button id="escTab" class="pp-side-btn st-esc" type="button">&#9650; Manager Log</button>
   <button id="histTab" class="pp-side-btn st-hist" type="button">&#128337; History</button>
   <button id="dailyTab" class="pp-side-btn st-daily" type="button">&#128203; Daily</button>
+  <button id="checkinTab" class="pp-side-btn st-checkin" type="button">&#10004; Check-ins</button>
 </div></nav>
 
 <div class="wrap"><!-- ═══ 1 · OVERVIEW ═══ -->
@@ -2051,6 +2072,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <div class="coach-head"><b>Daily</b><button class="side-close" type="button" aria-label="Close">&times;</button></div>
       <p class="coach-lede">Your daily log &mdash; mistakes and coaching notes filed under your name, newest first. Tap a card to see the feedback.</p>
       <div id="dailyBody"></div>
+    </div>
+    <div id="checkinPanel" class="side-panel">
+      <div class="coach-head"><b>Check-ins</b><button class="side-close" type="button" aria-label="Close">&times;</button></div>
+      <p class="coach-lede">Check-ins with your manager &mdash; what you talked about and any next steps, newest first.</p>
+      <div id="checkinBody"></div>
     </div>
   </div>
 
@@ -3127,6 +3153,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var card=document.getElementById("leadcard-"+c.role);if(!card)return;var body=card.querySelector(".lead-body");
     var editable=(viewerRole==="director");var isLeaderSelf=(viewerRole!=="director"&&viewerRole===c.role);var d=leadData(c.k);var cs=callScoreStatus(c.role);var csOk=cs.total&&cs.scored===cs.total;
     var h='<div class="lead-auto '+(csOk?"ok":"bad")+'"><b>Up to date on call scoring</b><span>'+cs.scored+' / '+cs.total+' agents scored in the last 2 days</span>'+(cs.behind.length?'<div class="lead-behind">Behind: '+cs.behind.map(function(b){return escOpt(b.name)+(b.days==null?" (never)":" ("+b.days+"d)");}).join(", ")+'</div>':'')+'</div>';
+    try{if(window.__weCheckinLeadHtml)h+=window.__weCheckinLeadHtml(c.role);}catch(_e){}
     h+='<div class="lead-sub">Leadership KPIs</div><table class="lead-kpi"><tr><th>KPI</th><th>Target</th><th>Current</th><th>Status</th>'+(editable?'<th></th>':'')+'</tr>';
     (d.kpis||[]).forEach(function(k,i){if(editable){h+='<tr data-i="'+i+'"><td><input class="lk-n" value="'+escOpt(k.n||"")+'"></td><td><input class="lk-t" value="'+escOpt(k.target||"")+'"></td><td><input class="lk-c" value="'+escOpt(k.cur||"")+'"></td><td><select class="lk-s"><option'+(k.status==="On track"?" selected":"")+'>On track</option><option'+(k.status==="Behind"?" selected":"")+'>Behind</option><option'+(k.status==="Done"?" selected":"")+'>Done</option></select></td><td><button class="lk-del" type="button" title="Remove">✕</button></td></tr>';}else{h+='<tr><td>'+escOpt(k.n||"")+'</td><td>'+escOpt(k.target||"")+'</td><td>'+escOpt(k.cur||"")+'</td><td>'+escOpt(k.status||"")+'</td></tr>';}});
     h+='</table>'+(editable?'<button class="mb-btn2 lk-add" type="button" style="margin-top:8px">+ Add KPI</button>':((d.kpis||[]).length?"":'<div class="qz-empty">No KPIs set yet.</div>'));
@@ -3527,7 +3554,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function isReceipt(src){return /^read receipt/i.test((src||"")+"");}
   function pullFromCloud(){if(!window.sbReady())return;var a=curAgent();api("getEntries",{agent:a}).then(function(res){if(!res||!res.ok||!res.rows)return;
     _readSet={};res.rows.forEach(function(r){if(isReceipt(r.source||r.Source)){var ref=((r.detail||r.Detail||"")+"").trim();if(ref)_readSet[ref]=true;}});
-    var all=load();all[a]=res.rows.filter(function(r){var s=r.source||r.Source;return !isDaily(s)&&!isReceipt(s);}).map(rowToRec);save(all);renderHistory();}).catch(function(){});}
+    var all=load();all[a]=res.rows.filter(function(r){var s=r.source||r.Source;return !isDaily(s)&&!isReceipt(s)&&!/^check-in$/i.test((s||"")+"");}).map(rowToRec);save(all);renderHistory();}).catch(function(){});}
   function markRead(sub,cardEl){if(!sub)return;if(_readSet[sub])return;_readSet[sub]=true;
     if(cardEl){var wn=cardEl.querySelector(".hist-when");if(wn&&!wn.querySelector(".hist-read"))wn.insertAdjacentHTML("beforeend",' <span class="hist-read">✓ Read</span>');}
     if(!window.sbReady())return;
@@ -3827,6 +3854,150 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var to=e.relatedTarget;
     if(!to||!t.contains(to))clear(t);
   });
+})();
+</script>
+<script>
+/* ===== Daily check-ins: Manager logs 5 a day; agents see theirs in a Check-ins tab ===== */
+(function(){
+  "use strict";
+  var GOAL=5;                 // required check-ins per workday
+  var WORKDAYS=[1,2,3,4,5];   // Mon–Fri count toward the goal (0=Sun … 6=Sat)
+  var SRC="Check-in",FSEP="\n\n— Follow-up —\n";
+  var _cache={rows:[],at:0},_loading=null;
+  function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  function today(){return iso(new Date());}
+  function role(){return (window.__weRole||"").toLowerCase();}
+  function roleName(){var r=role()||"manager";return r.charAt(0).toUpperCase()+r.slice(1);}
+  function isAgentView(){var c=document.body.classList;return c.contains("liveagent");}
+  function canLog(){return !isAgentView()&&(role()==="manager"||role()==="director");}
+  function fmtD(s){var t=Date.parse(s+"T00:00:00");if(isNaN(t))return s;return new Date(t).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});}
+  function fmtT(fa){var t=Date.parse(fa);if(isNaN(t))return "";return new Date(t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});}
+  function parse(r){var det=(r.detail||"")+"",i=det.indexOf(FSEP);return {id:r.id,agent:r.agent||"",date:((r.entry_date||"")+"").slice(0,10),by:((r.title||"").split("·")[1]||"").trim()||"Manager",notes:i>=0?det.slice(0,i):det,follow:i>=0?det.slice(i+FSEP.length):"",fa:r.filed_at||""};}
+  function counts(c){return /^manager$/i.test(c.by);}   // the KPI counts check-ins logged by the Manager
+  function agentNames(){var s=document.getElementById("agentSelect");if(!s)return[];return Array.prototype.slice.call(s.options).filter(function(o){return o.value&&!/\btest\b/i.test(o.textContent);}).map(function(o){return o.textContent;});}
+  function load(force,cb){
+    if(!window.sbReady||!window.sbReady()){_cache={rows:[],at:Date.now()};if(cb)cb(_cache.rows);return;}
+    if(!force&&_cache.at&&Date.now()-_cache.at<20000){if(cb)cb(_cache.rows);return;}
+    var since=new Date();since.setDate(since.getDate()-60);
+    _loading=window.sbSelect("entries","source=eq."+encodeURIComponent(SRC)+"&entry_date=gte."+iso(since)+"&order=filed_at.desc&limit=3000").then(function(rows){_cache={rows:(rows||[]).map(parse),at:Date.now()};return _cache.rows;});
+    _loading.then(function(r){if(cb)cb(r);});
+  }
+  function add(agent,notes,follow,cb){
+    if(!window.sbReady||!window.sbReady()){cb(false,"Not connected.");return;}
+    window.sbInsert("entries",{agent:agent,source:SRC,entry_date:today(),title:"Check-in · "+roleName(),detail:notes+(follow?FSEP+follow:"")}).then(function(r){
+      if(r&&r.ok){_cache.at=0;cb(true);}else cb(false,"Couldn't save"+(r&&r.status?" (error "+r.status+")":"")+". Please try again.");
+    });
+  }
+  // ---- stats ----
+  function byDay(rows){var m={};rows.filter(counts).forEach(function(c){m[c.date]=(m[c.date]||0)+1;});return m;}
+  function weekDays(){var d=new Date(),dow=d.getDay(),mon=new Date(d);mon.setDate(d.getDate()-((dow+6)%7));var out=[];for(var i=0;i<7;i++){var x=new Date(mon);x.setDate(mon.getDate()+i);out.push(x);}return out;}
+  function monthStats(rows){var m=byDay(rows),d=new Date(),met=0,due=0;for(var day=1;day<=d.getDate();day++){var x=new Date(d.getFullYear(),d.getMonth(),day);if(WORKDAYS.indexOf(x.getDay())<0)continue;var k=iso(x);if(k===today()&&(m[k]||0)<GOAL)continue;due++;if((m[k]||0)>=GOAL)met++;}return {met:met,due:due};}
+  function weekStats(rows){var m=byDay(rows),met=0,due=0;weekDays().forEach(function(x){var k=iso(x);if(WORKDAYS.indexOf(x.getDay())<0||k>today())return;if(k===today()&&(m[k]||0)<GOAL)return;due++;if((m[k]||0)>=GOAL)met++;});return {met:met,due:due};}
+  function todayCount(rows){return rows.filter(function(c){return counts(c)&&c.date===today();}).length;}
+  function dots(n){var h="";for(var i=0;i<GOAL;i++)h+='<span class="ci-dot'+(i<n?" on":"")+'"></span>';return h;}
+
+  // ---- Manager bar chip ----
+  function paintChip(){
+    var mb=document.getElementById("mgrBar");if(!mb||isAgentView())return;
+    var chip=document.getElementById("ciChip");
+    if(role()!=="manager"){if(chip)chip.style.display="none";return;}
+    if(!chip){chip=document.createElement("button");chip.id="ciChip";chip.type="button";chip.className="mb-btn ci-chip";chip.title="Your daily check-ins — click to log one";var ref=mb.querySelector(".mb-spacer");if(ref)mb.insertBefore(chip,ref);else mb.appendChild(chip);chip.addEventListener("click",openDataCheckins);}
+    chip.style.display="";
+    load(false,function(rows){var n=todayCount(rows);chip.innerHTML="✔ Check-ins "+Math.min(n,99)+"/"+GOAL;chip.classList.toggle("done",n>=GOAL);});
+  }
+  function openDataCheckins(){var b=document.getElementById("dataBtn");if(b)b.click();setTimeout(function(){showPane(true);},60);}
+
+  // ---- Data tab sub-tab ----
+  function ensurePane(){
+    var dt=document.getElementById("dataTab");if(!dt||document.getElementById("dtPaneCheckins"))return !!dt;
+    var tabs=dt.querySelector(".dt-subtabs");if(!tabs)return false;
+    var b=document.createElement("button");b.className="dt-tab";b.type="button";b.setAttribute("data-sub","checkins");b.textContent="Check-ins";tabs.appendChild(b);
+    var p=document.createElement("div");p.id="dtPaneCheckins";p.className="dt-pane";p.style.display="none";
+    p.innerHTML='<div class="dt-note">Log each <b>check-in</b> with an agent. The goal is <b>'+GOAL+' check-ins every workday</b> &mdash; pick any agents you like. Each agent sees their check-ins in the <b>Check-ins</b> tab of their own passport.</div>'+
+      '<div class="ci-today" id="ciToday"></div>'+
+      '<div class="dly-form"><div class="dt-daterow"><label>Agent&nbsp;</label><select id="ciAgent" class="dt-agsel"></select> <span class="dt-daynote" id="ciLast"></span></div>'+
+      '<label class="dly-lab">What you discussed</label><textarea id="ciNotes" class="dly-ta" rows="3" placeholder="How they’re doing, wins, questions, anything they need…"></textarea>'+
+      '<label class="dly-lab">Follow-up / next steps <span style="font-weight:600;text-transform:none">(optional)</span></label><textarea id="ciFollow" class="dly-ta" rows="2" placeholder="Anything you or the agent will do next…"></textarea>'+
+      '<div style="margin-top:8px"><button class="mb-btn2" id="ciAdd" type="button">+ Log check-in</button> <span id="ciMsg" class="dt-daynote"></span></div></div>'+
+      '<div class="dt-sub" style="margin-top:18px">This week</div><div id="ciWeek"></div>'+
+      '<div class="dt-sub" style="margin-top:18px">Agent coverage <span>(last check-in, oldest first)</span></div><div id="ciCover"></div>'+
+      '<div class="dt-sub" style="margin-top:18px">Recent check-ins</div><div class="dt-scroll"><div id="ciList"></div></div>';
+    dt.appendChild(p);
+    p.querySelector("#ciAdd").addEventListener("click",submit);
+    p.querySelector("#ciAgent").addEventListener("change",paintLast);
+    return true;
+  }
+  function showPane(on){
+    if(!ensurePane())return;var dt=document.getElementById("dataTab"),p=document.getElementById("dtPaneCheckins");
+    if(on){dt.querySelectorAll(".dt-pane").forEach(function(x){x.style.display=(x===p)?"":"none";});dt.querySelectorAll(".dt-tab").forEach(function(t){t.classList.toggle("dt-tab-on",t.getAttribute("data-sub")==="checkins");});renderPane(true);}
+    else p.style.display="none";
+  }
+  document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("#dataTab .dt-tab");if(!t)return;if(t.getAttribute("data-sub")==="checkins"){e.stopImmediatePropagation();showPane(true);}else showPane(false);},true);
+  function populateAgents(){var sel=document.getElementById("ciAgent");if(!sel)return;var cur=sel.value;var names=agentNames();sel.innerHTML='<option value="">— pick agent —</option>'+names.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join("");if(cur)sel.value=cur;}
+  function paintLast(){var sel=document.getElementById("ciAgent"),el=document.getElementById("ciLast");if(!sel||!el)return;var n=sel.value;if(!n){el.textContent="";return;}var last=_cache.rows.filter(function(c){return c.agent===n;})[0];el.textContent=last?("Last check-in: "+fmtD(last.date)):"No check-ins yet";}
+  function renderPane(force){
+    if(!document.getElementById("dtPaneCheckins"))return;populateAgents();
+    var lg=canLog();["ciAgent","ciNotes","ciFollow","ciAdd"].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=!lg;});
+    var msg=document.getElementById("ciMsg");if(msg&&!lg&&!msg.textContent)msg.textContent="Only the Manager logs check-ins.";
+    load(force,function(rows){
+      var n=todayCount(rows),wk=weekStats(rows),mo=monthStats(rows);
+      document.getElementById("ciToday").innerHTML='<div class="ci-big '+(n>=GOAL?"ok":"")+'"><div><b>Today: '+n+' of '+GOAL+'</b> check-ins'+(n>=GOAL?' &mdash; goal met ✓':' &mdash; '+(GOAL-n)+' to go')+'</div><div class="ci-dots">'+dots(n)+'</div></div>'+
+        '<div class="ci-stats"><span>This week: <b>'+wk.met+' / '+wk.due+'</b> workdays at goal</span><span>This month: <b>'+mo.met+' / '+mo.due+'</b> workdays at goal</span></div>';
+      var m=byDay(rows),h='<table class="dt-grid ci-week"><tr>'+weekDays().map(function(x){return '<th>'+x.toLocaleDateString(undefined,{weekday:"short"})+'<br><span>'+x.toLocaleDateString(undefined,{month:"numeric",day:"numeric"})+'</span></th>';}).join("")+'</tr><tr>'+weekDays().map(function(x){var k=iso(x),c=m[k]||0,work=WORKDAYS.indexOf(x.getDay())>=0,fut=k>today();var cls=fut?"fut":(c>=GOAL?"met":(work&&k<today()?"miss":""));return '<td class="'+cls+'">'+(fut?"—":c+(work?"/"+GOAL:""))+(c>=GOAL?" ✓":"")+'</td>';}).join("")+'</tr></table>';
+      document.getElementById("ciWeek").innerHTML=h;
+      var last={};rows.forEach(function(c){if(!last[c.agent])last[c.agent]=c.date;});
+      var cov=agentNames().map(function(nm){return {n:nm,d:last[nm]||""};}).sort(function(a,b){return (a.d||"0").localeCompare(b.d||"0");});
+      document.getElementById("ciCover").innerHTML='<div class="ci-cover">'+cov.map(function(a){var days=a.d?Math.round((Date.parse(today()+"T00:00:00")-Date.parse(a.d+"T00:00:00"))/864e5):null;return '<span class="ci-ag'+(days==null||days>=7?" stale":"")+'"><b>'+esc(a.n)+'</b> '+(a.d?(days===0?"today":days+"d ago"):"never")+'</span>';}).join("")+'</div>';
+      document.getElementById("ciList").innerHTML=rows.length?('<table class="dt-grid dly-tbl"><tr><th>Date</th><th>Time</th><th>Agent</th><th>Discussed</th><th>Follow-up</th><th>By</th></tr>'+rows.slice(0,150).map(function(c){return '<tr><td>'+esc(fmtD(c.date))+'</td><td>'+esc(fmtT(c.fa))+'</td><td>'+esc(c.agent)+'</td><td class="dly-cell">'+esc(c.notes)+'</td><td class="dly-cell">'+esc(c.follow)+'</td><td>'+esc(c.by)+'</td></tr>';}).join("")+'</table>'):'<div class="qz-empty">No check-ins logged yet.</div>';
+      paintLast();paintChip();
+    });
+  }
+  function submit(){
+    var ag=document.getElementById("ciAgent").value,notes=document.getElementById("ciNotes").value.trim(),follow=document.getElementById("ciFollow").value.trim(),msg=document.getElementById("ciMsg"),btn=document.getElementById("ciAdd");
+    if(!canLog()){msg.textContent="Only the Manager logs check-ins.";return;}
+    if(!ag){msg.textContent="Pick an agent first.";return;}
+    if(!notes){msg.textContent="Add a note about what you discussed.";return;}
+    btn.disabled=true;msg.textContent="Saving…";
+    add(ag,notes,follow,function(ok,err){btn.disabled=false;if(!ok){msg.textContent=err;return;}
+      document.getElementById("ciNotes").value="";document.getElementById("ciFollow").value="";document.getElementById("ciAgent").value="";
+      msg.textContent="Logged check-in with "+ag+".";renderPane(true);try{if(window.__weLeadRefresh)window.__weLeadRefresh();}catch(e){}});
+  }
+
+  // ---- Passport side tab (what the agent — or a leader viewing that agent — sees) ----
+  function curAgentName(){if(isAgentView()&&window.__weAgentName)return window.__weAgentName;var s=document.getElementById("agentSelect");if(s&&s.value){var o=s.options[s.selectedIndex];return (o&&o.text)||s.value;}return "";}
+  function renderPanel(){
+    var w=document.getElementById("checkinBody");if(!w)return;var a=curAgentName();
+    if(!a||!window.sbReady||!window.sbReady()){w.innerHTML='<div class="qz-empty">No check-ins on file yet.</div>';return;}
+    w.innerHTML='<div class="qz-empty">Loading…</div>';
+    window.sbSelect("entries","agent=eq."+encodeURIComponent(a)+"&source=eq."+encodeURIComponent(SRC)+"&order=filed_at.desc&limit=500").then(function(rows){
+      var arr=(rows||[]).map(parse);
+      if(!arr.length){w.innerHTML='<div class="qz-empty">No check-ins on file yet.</div>';return;}
+      w.innerHTML=arr.map(function(c){return '<div class="hist-card"><div class="hist-when"><span class="hist-badge b-mgr">Check-in</span><b>'+esc(fmtD(c.date))+'</b> <span class="hist-filed">· '+esc(fmtT(c.fa))+' with '+esc(c.by)+'</span></div><div class="hist-sum" style="white-space:pre-wrap">'+esc(c.notes)+'</div>'+(c.follow?'<div class="ci-follow"><b>Follow-up:</b> '+esc(c.follow)+'</div>':'')+'</div>';}).join("");
+    }).catch(function(){w.innerHTML='<div class="qz-empty">Could not load check-ins.</div>';});
+  }
+  window.__weCheckinRefresh=renderPanel;
+  function wirePanel(){
+    var t=document.getElementById("checkinTab");if(!t||t.__w)return;t.__w=true;var b=document.body;
+    t.addEventListener("click",function(){var was=b.classList.contains("checkin-open");b.classList.remove("coach-open","esc-open","hist-open","daily-open","checkin-open","panel-open");if(!was){b.classList.add("checkin-open","panel-open");renderPanel();}});
+    ["coachTab","escTab","histTab","dailyTab"].forEach(function(id){var x=document.getElementById(id);if(x)x.addEventListener("click",function(){b.classList.remove("checkin-open");},true);});
+    var cl=document.querySelector("#checkinPanel .side-close");if(cl)cl.addEventListener("click",function(){b.classList.remove("checkin-open","panel-open");});
+    var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){if(b.classList.contains("checkin-open"))setTimeout(renderPanel,80);});
+  }
+
+  // ---- Leadership tab: auto line on the Manager card ----
+  window.__weCheckinLeadHtml=function(cardRole){
+    if(cardRole!=="manager")return "";
+    if(!_cache.at){load(false,function(){try{if(window.__weLeadRefresh)window.__weLeadRefresh();}catch(e){}});return '<div class="lead-auto"><b>Daily check-ins</b><span>Loading…</span></div>';}
+    var rows=_cache.rows,n=todayCount(rows),wk=weekStats(rows),mo=monthStats(rows),ok=(mo.due===0||mo.met===mo.due)&&n>=0;
+    var good=(wk.due===0||wk.met===wk.due);
+    return '<div class="lead-auto '+(good?"ok":"bad")+'"><b>Daily check-ins ('+GOAL+' per workday)</b><span>Today '+n+' / '+GOAL+' · this week '+wk.met+' / '+wk.due+' days at goal · this month '+mo.met+' / '+mo.due+'</span></div>';
+  };
+
+  function init(){wirePanel();paintChip();setInterval(function(){if(document.hidden)return;_cache.at=0;paintChip();var p=document.getElementById("dtPaneCheckins");if(p&&p.style.display!=="none"){var a=document.activeElement;if(!(a&&/ci(Notes|Follow)/.test(a.id||"")))renderPane(true);}},60000);
+    new MutationObserver(function(){if(document.getElementById("dataTab")&&!document.getElementById("dtPaneCheckins"))ensurePane();paintChip();}).observe(document.body,{childList:true});
+    var mb=document.getElementById("mgrBar");if(mb)new MutationObserver(function(){paintChip();}).observe(mb,{attributes:true,attributeFilter:["style"]});}
+  if(document.readyState==="loading")window.addEventListener("load",init);else setTimeout(init,0);
 })();
 </script>
 </body>
