@@ -47,10 +47,9 @@
   .btn.ghost { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
   .btn.ghost:hover { background: var(--brand-tint); }
   label { display: block; font-weight: 600; font-size: .92rem; }
-  input[type=text], input:not([type]), input[type=date], textarea, select.field { width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 400; }
+  input[type=text], input:not([type]), input[type=date], input[type=time], textarea, select.field { width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 400; }
   textarea { resize: vertical; }
-  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0; }
-  @media (max-width: 700px) { .grid3 { grid-template-columns: 1fr; } }
+  .grid-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 12px 0; }
 
   .list { padding: 0; }
   .cand-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); color: var(--text); flex-wrap: wrap; }
@@ -141,6 +140,7 @@ const DEPARTMENTS = {
     interviewers: ['Director', 'Henderson', 'Wynn', 'Nellis'],
     finalDecisionBy: 'Director',
     positions: ['MRF Team Member'],
+    yards: ['Henderson', 'Wynn', 'Nellis'],
     // PLACEHOLDER criteria — replace with the real MRF questions once decided.
     criteria: [
       { key: 'safety', label: 'Safety Awareness', short: 'Safety', weight: 2,
@@ -152,9 +152,6 @@ const DEPARTMENTS = {
       { key: 'physical', label: 'Physical Readiness', short: 'Physical', weight: 1,
         question: 'This job means standing for long shifts, lifting, and working in the Vegas heat. Tell me about physically demanding work you have done.',
         lookFor: 'Realistic about the conditions; has done similar work before.' },
-      { key: 'focus', label: 'Focus & Attention to Detail', short: 'Focus', weight: 1,
-        question: 'Sorting on a line is repetitive. How do you stay sharp and accurate doing the same task for hours?',
-        lookFor: 'Specific strategies; takes pride in doing it right.' },
       { key: 'teamwork', label: 'Teamwork & Communication', short: 'Teamwork', weight: 1,
         question: 'Tell me about a time you disagreed with a coworker. How did you handle it?',
         lookFor: 'Stays calm, communicates directly, focuses on the work.' },
@@ -184,6 +181,12 @@ const store = {
 const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
 const today = () => new Date().toLocaleDateString('en-CA');
 const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const fmtTime = t => {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const when = c => [fmtDate(c.interview_date), fmtTime(c.interview_time)].filter(Boolean).join(' at ');
 const fmt = v => v == null ? '—' : v.toFixed(1);
 const decisionBadge = d => d ? `<span class="badge ${d}">${DECISIONS[d]}</span>` : `<span class="badge pending">Pending</span>`;
 
@@ -207,8 +210,9 @@ async function q(promise) { const { data, error } = await promise; if (error) th
 
 const api = {
   async listCandidates() {
-    if (sb) return q(sb.from('candidates').select('*').eq('department', DEPT).order('interview_date', { ascending: false }));
-    return local.data.candidates.filter(c => c.department === DEPT).sort((a, b) => b.interview_date.localeCompare(a.interview_date));
+    if (sb) return q(sb.from('candidates').select('*').eq('department', DEPT).order('interview_date', { ascending: false }).order('interview_time', { ascending: true, nullsFirst: false }));
+    return local.data.candidates.filter(c => c.department === DEPT)
+      .sort((a, b) => b.interview_date.localeCompare(a.interview_date) || (a.interview_time || '99').localeCompare(b.interview_time || '99'));
   },
   async getCandidate(id) {
     if (sb) return q(sb.from('candidates').select('*').eq('id', id).maybeSingle());
@@ -277,7 +281,7 @@ async function renderList() {
     const needsMine = me && !s.some(x => x.interviewer === me);
     return `<a class="cand-row" href="#/c/${c.id}">
       <div><div class="cand-name">${esc(c.name)}</div>
-        <div class="muted small">${esc(c.position)} · ${fmtDate(c.interview_date)}</div></div>
+        <div class="muted small">${esc(c.position)}${c.yard ? ' · ' + esc(c.yard) + ' yard' : ''} · ${when(c)}</div></div>
       <div class="cand-stats">
         <span class="pill">${sum.count}/${CFG.interviewers.length} scored</span>
         ${needsMine ? '<span class="pill warn">Needs your score</span>' : ''}
@@ -290,10 +294,16 @@ async function renderList() {
     <div class="toolbar"><h2>Candidates</h2><a class="btn ghost" href="#/compare">Compare candidates</a></div>
     <form id="addForm" class="card">
       <h3>Add a candidate</h3>
-      <div class="grid3">
+      <div class="grid-add">
         <label>Name<input name="name" required autocomplete="off"></label>
         <label>Position<input name="position" list="positions" value="${esc(CFG.positions[0])}" required></label>
+        <label>Yard
+          <select class="field" name="yard" required>
+            <option value="">Select yard</option>
+            ${CFG.yards.map(y => `<option>${esc(y)}</option>`).join('')}
+          </select></label>
         <label>Interview date<input type="date" name="interview_date" value="${today()}" required></label>
+        <label>Interview time<input type="time" name="interview_time" step="900" required></label>
       </div>
       <datalist id="positions">${CFG.positions.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
       <button class="btn">Add candidate</button>
@@ -304,7 +314,8 @@ async function renderList() {
     e.preventDefault();
     const f = new FormData(e.target);
     const c = await api.addCandidate({
-      name: f.get('name').trim(), position: f.get('position').trim(), interview_date: f.get('interview_date')
+      name: f.get('name').trim(), position: f.get('position').trim(), yard: f.get('yard'),
+      interview_date: f.get('interview_date'), interview_time: f.get('interview_time')
     });
     location.hash = '#/c/' + c.id;
   };
@@ -387,7 +398,7 @@ async function renderCandidate(id) {
     <div class="card summary">
       <div>
         <h2>${esc(c.name)}</h2>
-        <div class="muted">${esc(c.position)} · Interviewed ${fmtDate(c.interview_date)}</div>
+        <div class="muted">${esc(c.position)}${c.yard ? ' · ' + esc(c.yard) + ' yard' : ''} · Interview ${when(c)}</div>
         ${votesHtml(sum.votes)}
       </div>
       <div><div class="big">${fmt(sum.overall)}</div><div class="muted small" style="text-align:right">avg of 5 · ${decisionBadge(c.final_decision)}</div></div>
@@ -426,11 +437,12 @@ async function renderCandidate(id) {
 }
 
 let compareFilter = 'all';
+let compareYard = 'all';
 async function renderCompare() {
   const cands = await api.listCandidates();
   const scores = await api.listScores(cands.map(c => c.id));
   const positions = [...new Set(cands.map(c => c.position))].sort();
-  const shown = cands.filter(c => compareFilter === 'all' || c.position === compareFilter)
+  const shown = cands.filter(c => (compareFilter === 'all' || c.position === compareFilter) && (compareYard === 'all' || c.yard === compareYard))
     .map(c => { const s = scores.filter(x => x.candidate_id === c.id); return { c, s, sum: summarize(s) }; })
     .sort((a, b) => (b.sum.overall ?? -1) - (a.sum.overall ?? -1));
 
@@ -438,20 +450,28 @@ async function renderCompare() {
     <p><a href="#/">← All candidates</a></p>
     <div class="card">
       <div class="toolbar"><h2>Compare candidates</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <label>Yard
+          <select class="field" id="yardFilter" style="min-width:160px">
+            <option value="all">All yards</option>
+            ${CFG.yards.map(y => `<option ${compareYard === y ? 'selected' : ''}>${esc(y)}</option>`).join('')}
+          </select></label>
         <label>Position
           <select class="field" id="posFilter" style="min-width:200px">
             <option value="all">All positions</option>
             ${positions.map(p => `<option value="${esc(p)}" ${compareFilter === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
           </select></label>
+        </div>
       </div>
       <p class="muted small">Sorted by average score. Criterion columns show the average across interviewers.</p>
       ${shown.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Candidate</th><th>Interviewed</th>
+        <thead><tr><th>Candidate</th><th>Yard</th><th>Interview</th>
           ${CFG.criteria.map(cr => `<th title="${esc(cr.label)}">${esc(cr.short || cr.label)}</th>`).join('')}
           <th>Overall</th><th>Hire / Maybe / No</th><th>Scored</th><th>Decision</th></tr></thead>
         <tbody>${shown.map(({ c, s, sum }) => `<tr>
           <td><a href="#/c/${c.id}"><b>${esc(c.name)}</b></a><div class="muted small">${esc(c.position)}</div></td>
-          <td>${fmtDate(c.interview_date)}</td>
+          <td>${esc(c.yard || '—')}</td>
+          <td>${when(c)}</td>
           ${CFG.criteria.map(cr => `<td>${fmt(critAvg(s, cr.key))}</td>`).join('')}
           <td class="avg">${fmt(sum.overall)}</td>
           <td>${sum.votes.hire} / ${sum.votes.maybe} / ${sum.votes.no_hire}</td>
@@ -461,6 +481,7 @@ async function renderCompare() {
     </div>`;
 
   document.getElementById('posFilter').onchange = e => { compareFilter = e.target.value; renderCompare(); };
+  document.getElementById('yardFilter').onchange = e => { compareYard = e.target.value; renderCompare(); };
 }
 
 /* ---------------- shell ---------------- */
