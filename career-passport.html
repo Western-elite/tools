@@ -614,6 +614,19 @@
   .ci-cover{display:flex;flex-wrap:wrap;gap:6px;}
   .ci-ag{font-size:12.5px;background:#eef3f9;color:#13427a;border-radius:12px;padding:3px 10px;}
   .ci-ag.stale{background:#fdf3e7;color:#9a5a12;}
+  .ci-sel{font-family:inherit;font-size:14px;padding:6px 8px;border:1px solid #cdd6df;border-radius:6px;background:#fff;}
+  .ci-ta{width:100%;box-sizing:border-box;font-family:inherit;font-size:13.5px;border:1px solid #cdd6df;border-radius:6px;padding:7px 9px;resize:vertical;}
+  .ci-who{font-size:13.5px;color:#13427a;margin-bottom:6px;}
+  #ciSection .ci-big{margin-bottom:10px;}
+  #ciSection .ci-stats{margin:4px 0 0;font-size:12.5px;}
+  .ci-subh{font-size:11.5px;font-weight:800;color:#6a747e;text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px;}
+  .ci-rc{border:1px solid var(--line,#dce3ea);border-radius:8px;padding:7px 10px;margin-bottom:6px;background:#fff;}
+  .ci-rc-h{font-size:11.5px;font-weight:700;color:#7a8590;margin-bottom:3px;}
+  .ci-rc-b{font-size:13px;color:#3d4750;white-space:pre-wrap;}
+  .ci-none{font-size:12.5px;color:#7a8590;}
+  .ci-more{margin-top:12px;border:1px solid var(--line,#dce3ea);border-radius:8px;padding:8px 10px;background:#f7f9fb;}
+  .ci-more summary{cursor:pointer;font-weight:700;color:#13427a;font-size:13px;}
+  .ci-more .ci-week{margin-top:8px;font-size:12px;}
   .ci-chip.done{background:#2e8b57;border-color:#2e8b57;}
   body.role-supervisor .dt-tab[data-sub="checkins"],body.trainerview .dt-tab[data-sub="checkins"]{display:none!important;}
   body.liveagent #kbNavLink,body.agentview #kbNavLink,body.agentpv #kbNavLink{display:none!important;}
@@ -3902,70 +3915,74 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var mb=document.getElementById("mgrBar");if(!mb||isAgentView())return;
     var chip=document.getElementById("ciChip");
     if(role()!=="manager"){if(chip)chip.style.display="none";return;}
-    if(!chip){chip=document.createElement("button");chip.id="ciChip";chip.type="button";chip.className="mb-btn ci-chip";chip.title="Your daily check-ins — click to log one";var ref=mb.querySelector(".mb-spacer");if(ref)mb.insertBefore(chip,ref);else mb.appendChild(chip);chip.addEventListener("click",openDataCheckins);}
+    if(!chip){chip=document.createElement("button");chip.id="ciChip";chip.type="button";chip.className="mb-btn ci-chip";chip.title="Your daily check-ins — click to log one in the Manager Log";var ref=mb.querySelector(".mb-spacer");if(ref)mb.insertBefore(chip,ref);else mb.appendChild(chip);chip.addEventListener("click",openDataCheckins);}
     chip.style.display="";
     load(false,function(rows){var n=todayCount(rows);chip.innerHTML="✔ Check-ins "+Math.min(n,99)+"/"+GOAL;chip.classList.toggle("done",n>=GOAL);});
   }
-  function openDataCheckins(){var b=document.getElementById("dataBtn");if(b)b.click();setTimeout(function(){showPane(true);},60);}
+  function openDataCheckins(){
+    var pb=document.getElementById("passportBody");
+    function openLog(){var b=document.body;if(!b.classList.contains("esc-open")){var t=document.getElementById("escTab");if(t)t.click();}renderSection(true);}
+    if(!pb||pb.style.display==="none"){var sel=document.getElementById("agentSelect");var btn=(sel&&sel.value&&document.querySelector('.dash-open[data-id="'+sel.value+'"]'))||document.querySelector(".dash-open");if(btn)btn.click();setTimeout(openLog,250);}
+    else openLog();
+  }
 
-  // ---- Data tab sub-tab ----
-  function ensurePane(){
-    var dt=document.getElementById("dataTab");if(!dt||document.getElementById("dtPaneCheckins"))return !!dt;
-    var tabs=dt.querySelector(".dt-subtabs");if(!tabs)return false;
-    var b=document.createElement("button");b.className="dt-tab";b.type="button";b.setAttribute("data-sub","checkins");b.textContent="Check-ins";tabs.appendChild(b);
-    var p=document.createElement("div");p.id="dtPaneCheckins";p.className="dt-pane";p.style.display="none";
-    p.innerHTML='<div class="dt-note">Log each <b>check-in</b> with an agent. The goal is <b>'+GOAL+' check-ins every workday</b> &mdash; pick any agents you like. Each agent sees their check-ins in the <b>Check-ins</b> tab of their own passport.</div>'+
-      '<div class="ci-today" id="ciToday"></div>'+
-      '<div class="dly-form"><div class="dt-daterow"><label>Type&nbsp;</label><select id="ciType" class="dt-agsel"><option value="Check-in">Check-in</option><option value="1:1">1:1</option></select> <label>Agent&nbsp;</label><select id="ciAgent" class="dt-agsel"></select> <span class="dt-daynote" id="ciLast"></span></div>'+
-      '<label class="dly-lab">What you discussed</label><textarea id="ciNotes" class="dly-ta" rows="3" placeholder="How they’re doing, wins, questions, anything they need…"></textarea>'+
-      '<label class="dly-lab">Follow-up / next steps <span style="font-weight:600;text-transform:none">(optional)</span></label><textarea id="ciFollow" class="dly-ta" rows="2" placeholder="Anything you or the agent will do next…"></textarea>'+
-      '<div style="margin-top:8px"><button class="mb-btn2" id="ciAdd" type="button">+ Log entry</button> <span id="ciMsg" class="dt-daynote"></span></div></div>'+
-      '<div class="dt-sub" style="margin-top:18px">This week</div><div id="ciWeek"></div>'+
-      '<div class="dt-sub" style="margin-top:18px">Agent coverage <span>(last check-in, oldest first)</span></div><div id="ciCover"></div>'+
-      '<div class="dt-sub" style="margin-top:18px">Recent check-ins</div><div class="dt-scroll"><div id="ciList"></div></div>';
-    dt.appendChild(p);
-    p.querySelector("#ciAdd").addEventListener("click",submit);
-    p.querySelector("#ciAgent").addEventListener("change",paintLast);
+  // ---- Check-ins live inside the Manager Log panel, for the agent whose passport is open ----
+  function curAgentName(){if(isAgentView()&&window.__weAgentName)return window.__weAgentName;var s=document.getElementById("agentSelect");if(s&&s.value){var o=s.options[s.selectedIndex];return (o&&o.text)||s.value;}return "";}
+  function ensureSection(){
+    if(document.getElementById("ciSection"))return true;
+    var panel=document.getElementById("escPanel");if(!panel)return false;
+    var first=panel.querySelector(".ml-section");
+    var sec=document.createElement("div");sec.className="ml-section";sec.id="ciSection";
+    sec.innerHTML='<div class="ml-h">Daily check-in</div>'+
+      '<div id="ciToday"></div>'+
+      '<div class="log-entry ci-form">'+
+        '<div class="ci-who" id="ciWho"></div>'+
+        '<div class="esc-field"><label>Type</label><select id="ciType" class="ci-sel"><option value="Check-in">Check-in</option><option value="1:1">1:1</option></select></div>'+
+        '<div class="esc-field"><label>What you discussed</label><textarea id="ciNotes" rows="3" class="ci-ta" placeholder="How they’re doing, wins, questions, anything they need…"></textarea></div>'+
+        '<div class="esc-field"><label>Follow-up / next steps <span style="font-weight:400;opacity:.7">(optional)</span></label><textarea id="ciFollow" rows="2" class="ci-ta" placeholder="Anything you or the agent will do next…"></textarea></div>'+
+        '<div class="side-submit"><button type="button" class="kb-btn kb-primary" id="ciAdd">Log check-in</button><div class="side-submit-note" id="ciMsg">Shows in this agent’s Check-ins tab and counts toward your 5 a day.</div></div>'+
+      '</div>'+
+      '<div class="ci-recent" id="ciRecent"></div>'+
+      '<details class="ci-more"><summary>This week &amp; team coverage</summary><div id="ciWeek"></div><div class="ci-subh">Last check-in by agent (oldest first)</div><div id="ciCover"></div></details>';
+    if(first)panel.insertBefore(sec,first);else panel.appendChild(sec);
+    sec.querySelector("#ciAdd").addEventListener("click",submit);
+    sec.querySelector("#ciType").addEventListener("change",function(){document.getElementById("ciAdd").textContent=this.value==="1:1"?"Log 1:1":"Log check-in";});
+    var lede=panel.querySelector(".coach-lede");if(lede)lede.innerHTML="Daily check-ins, 1:1 reviews and escalations. Submit each entry &mdash; it files to the agent’s passport.";
     return true;
   }
-  function showPane(on){
-    if(!ensurePane())return;var dt=document.getElementById("dataTab"),p=document.getElementById("dtPaneCheckins");
-    if(on){dt.querySelectorAll(".dt-pane").forEach(function(x){x.style.display=(x===p)?"":"none";});dt.querySelectorAll(".dt-tab").forEach(function(t){t.classList.toggle("dt-tab-on",t.getAttribute("data-sub")==="checkins");});renderPane(true);}
-    else p.style.display="none";
-  }
-  document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("#dataTab .dt-tab");if(!t)return;if(t.getAttribute("data-sub")==="checkins"){e.stopImmediatePropagation();showPane(true);}else showPane(false);},true);
-  function populateAgents(){var sel=document.getElementById("ciAgent");if(!sel)return;var cur=sel.value;var names=agentNames();sel.innerHTML='<option value="">— pick agent —</option>'+names.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join("");if(cur)sel.value=cur;}
-  function paintLast(){var sel=document.getElementById("ciAgent"),el=document.getElementById("ciLast");if(!sel||!el)return;var n=sel.value;if(!n){el.textContent="";return;}var last=_cache.rows.filter(function(c){return c.agent===n;})[0];el.textContent=last?("Last check-in: "+fmtD(last.date)):"No check-ins yet";}
-  function renderPane(force){
-    if(!document.getElementById("dtPaneCheckins"))return;populateAgents();
-    var lg=canLog();["ciType","ciAgent","ciNotes","ciFollow","ciAdd"].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=!lg;});
-    var msg=document.getElementById("ciMsg");if(msg&&!lg&&!msg.textContent)msg.textContent="Only the Manager logs check-ins.";
+  function renderSection(force){
+    if(!ensureSection())return;
+    var a=curAgentName(),lg=canLog();
+    document.getElementById("ciWho").innerHTML=a?('Checking in with <b>'+esc(a)+'</b>'):'Open an agent’s passport to log a check-in.';
+    ["ciType","ciNotes","ciFollow","ciAdd"].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=!lg||!a;});
+    if(!lg)document.getElementById("ciMsg").textContent="Only the Manager logs check-ins.";
     load(force,function(rows){
       var n=todayCount(rows),wk=weekStats(rows),mo=monthStats(rows);
-      document.getElementById("ciToday").innerHTML='<div class="ci-big '+(n>=GOAL?"ok":"")+'"><div><b>Today: '+n+' of '+GOAL+'</b> check-ins'+(n>=GOAL?' &mdash; goal met ✓':' &mdash; '+(GOAL-n)+' to go')+'</div><div class="ci-dots">'+dots(n)+'</div></div>'+
-        '<div class="ci-stats"><span>This week: <b>'+wk.met+' / '+wk.due+'</b> workdays at goal</span><span>This month: <b>'+mo.met+' / '+mo.due+'</b> workdays at goal</span></div>';
-      var m=byDay(rows),h='<table class="dt-grid ci-week"><tr>'+weekDays().map(function(x){return '<th>'+x.toLocaleDateString(undefined,{weekday:"short"})+'<br><span>'+x.toLocaleDateString(undefined,{month:"numeric",day:"numeric"})+'</span></th>';}).join("")+'</tr><tr>'+weekDays().map(function(x){var k=iso(x),c=m[k]||0,work=WORKDAYS.indexOf(x.getDay())>=0,fut=k>today();var cls=fut?"fut":(c>=GOAL?"met":(work&&k<today()?"miss":""));return '<td class="'+cls+'">'+(fut?"—":c+(work?"/"+GOAL:""))+(c>=GOAL?" ✓":"")+'</td>';}).join("")+'</tr></table>';
-      document.getElementById("ciWeek").innerHTML=h;
+      document.getElementById("ciToday").innerHTML='<div class="ci-big '+(n>=GOAL?"ok":"")+'"><div><b>Today: '+n+' of '+GOAL+'</b>'+(n>=GOAL?' &mdash; goal met ✓':' &mdash; '+(GOAL-n)+' to go')+'<div class="ci-stats"><span>Week <b>'+wk.met+'/'+wk.due+'</b> days</span><span>Month <b>'+mo.met+'/'+mo.due+'</b> days</span></div></div><div class="ci-dots">'+dots(n)+'</div></div>';
+      var mine=rows.filter(function(c){return c.agent===a;});
+      document.getElementById("ciRecent").innerHTML=a?('<div class="ci-subh">Recent with '+esc(a)+'</div>'+(mine.length?mine.slice(0,4).map(function(c){return '<div class="ci-rc"><div class="ci-rc-h"><span class="hist-badge b-mgr">'+esc(c.type)+'</span> '+esc(fmtD(c.date))+' · '+esc(fmtT(c.fa))+'</div><div class="ci-rc-b">'+esc(c.notes)+(c.follow?'<div class="ci-follow"><b>Follow-up:</b> '+esc(c.follow)+'</div>':'')+'</div></div>';}).join(""):'<div class="ci-none">No check-ins with '+esc(a)+' in the last 60 days.</div>')):"";
+      var m=byDay(rows);
+      document.getElementById("ciWeek").innerHTML='<table class="dt-grid ci-week"><tr>'+weekDays().map(function(x){return '<th>'+x.toLocaleDateString(undefined,{weekday:"short"})+'<br><span>'+x.toLocaleDateString(undefined,{month:"numeric",day:"numeric"})+'</span></th>';}).join("")+'</tr><tr>'+weekDays().map(function(x){var k=iso(x),c=m[k]||0,work=WORKDAYS.indexOf(x.getDay())>=0,fut=k>today();var cls=fut?"fut":(c>=GOAL?"met":(work&&k<today()?"miss":""));return '<td class="'+cls+'">'+(fut?"—":c+(work?"/"+GOAL:""))+'</td>';}).join("")+'</tr></table>';
       var last={};rows.forEach(function(c){if(!last[c.agent])last[c.agent]=c.date;});
-      var cov=agentNames().map(function(nm){return {n:nm,d:last[nm]||""};}).sort(function(a,b){return (a.d||"0").localeCompare(b.d||"0");});
-      document.getElementById("ciCover").innerHTML='<div class="ci-cover">'+cov.map(function(a){var days=a.d?Math.round((Date.parse(today()+"T00:00:00")-Date.parse(a.d+"T00:00:00"))/864e5):null;return '<span class="ci-ag'+(days==null||days>=7?" stale":"")+'"><b>'+esc(a.n)+'</b> '+(a.d?(days===0?"today":days+"d ago"):"never")+'</span>';}).join("")+'</div>';
-      document.getElementById("ciList").innerHTML=rows.length?('<table class="dt-grid dly-tbl"><tr><th>Date</th><th>Time</th><th>Type</th><th>Agent</th><th>Discussed</th><th>Follow-up</th><th>By</th></tr>'+rows.slice(0,150).map(function(c){return '<tr><td>'+esc(fmtD(c.date))+'</td><td>'+esc(fmtT(c.fa))+'</td><td>'+esc(c.type)+'</td><td>'+esc(c.agent)+'</td><td class="dly-cell">'+esc(c.notes)+'</td><td class="dly-cell">'+esc(c.follow)+'</td><td>'+esc(c.by)+'</td></tr>';}).join("")+'</table>'):'<div class="qz-empty">No check-ins logged yet.</div>';
-      paintLast();paintChip();
+      var cov=agentNames().map(function(nm){return {n:nm,d:last[nm]||""};}).sort(function(x,y){return (x.d||"0").localeCompare(y.d||"0");});
+      document.getElementById("ciCover").innerHTML='<div class="ci-cover">'+cov.map(function(x){var days=x.d?Math.round((Date.parse(today()+"T00:00:00")-Date.parse(x.d+"T00:00:00"))/864e5):null;return '<span class="ci-ag'+(days==null||days>=7?" stale":"")+'"><b>'+esc(x.n)+'</b> '+(x.d?(days===0?"today":days+"d ago"):"never")+'</span>';}).join("")+'</div>';
+      paintChip();
     });
   }
   function submit(){
-    var ag=document.getElementById("ciAgent").value,tp=document.getElementById("ciType").value==="1:1"?"1:1":"Check-in",notes=document.getElementById("ciNotes").value.trim(),follow=document.getElementById("ciFollow").value.trim(),msg=document.getElementById("ciMsg"),btn=document.getElementById("ciAdd");
+    var ag=curAgentName(),tp=document.getElementById("ciType").value==="1:1"?"1:1":"Check-in",notes=document.getElementById("ciNotes").value.trim(),follow=document.getElementById("ciFollow").value.trim(),msg=document.getElementById("ciMsg"),btn=document.getElementById("ciAdd");
     if(!canLog()){msg.textContent="Only the Manager logs check-ins.";return;}
-    if(!ag){msg.textContent="Pick an agent first.";return;}
+    if(!ag){msg.textContent="Open an agent’s passport first.";return;}
     if(!notes){msg.textContent="Add a note about what you discussed.";return;}
     btn.disabled=true;msg.textContent="Saving…";
     add(ag,tp,notes,follow,function(ok,err){btn.disabled=false;if(!ok){msg.textContent=err;return;}
-      document.getElementById("ciNotes").value="";document.getElementById("ciFollow").value="";document.getElementById("ciAgent").value="";
-      msg.textContent="Logged "+tp+" with "+ag+".";renderPane(true);try{if(window.__weLeadRefresh)window.__weLeadRefresh();}catch(e){}});
+      document.getElementById("ciNotes").value="";document.getElementById("ciFollow").value="";
+      msg.textContent="Logged "+tp+" with "+ag+".";renderSection(true);try{if(window.__weLeadRefresh)window.__weLeadRefresh();}catch(e){}
+      if(document.body.classList.contains("checkin-open")&&window.__weCheckinRefresh)window.__weCheckinRefresh();});
   }
+  window.__weCheckinSection=renderSection;
 
   // ---- Passport side tab (what the agent — or a leader viewing that agent — sees) ----
-  function curAgentName(){if(isAgentView()&&window.__weAgentName)return window.__weAgentName;var s=document.getElementById("agentSelect");if(s&&s.value){var o=s.options[s.selectedIndex];return (o&&o.text)||s.value;}return "";}
   function renderPanel(){
     var w=document.getElementById("checkinBody");if(!w)return;var a=curAgentName();
     if(!a||!window.sbReady||!window.sbReady()){w.innerHTML='<div class="qz-empty">No check-ins on file yet.</div>';return;}
@@ -3994,8 +4011,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     return '<div class="lead-auto '+(good?"ok":"bad")+'"><b>Daily check-ins ('+GOAL+' per workday)</b><span>Today '+n+' / '+GOAL+' · this week '+wk.met+' / '+wk.due+' days at goal · this month '+mo.met+' / '+mo.due+'</span></div>';
   };
 
-  function init(){wirePanel();paintChip();setInterval(function(){if(document.hidden)return;_cache.at=0;paintChip();var p=document.getElementById("dtPaneCheckins");if(p&&p.style.display!=="none"){var a=document.activeElement;if(!(a&&/ci(Notes|Follow)/.test(a.id||"")))renderPane(true);}},60000);
-    new MutationObserver(function(){if(document.getElementById("dataTab")&&!document.getElementById("dtPaneCheckins"))ensurePane();paintChip();}).observe(document.body,{childList:true});
+  function init(){wirePanel();ensureSection();paintChip();
+    var et=document.getElementById("escTab");if(et)et.addEventListener("click",function(){setTimeout(function(){if(document.body.classList.contains("esc-open"))renderSection(false);},30);});
+    var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){setTimeout(function(){if(document.body.classList.contains("esc-open"))renderSection(false);},90);});
+    document.addEventListener("click",function(e){if(e.target&&e.target.matches&&e.target.matches(".dash-open"))setTimeout(function(){if(document.body.classList.contains("esc-open"))renderSection(false);},150);});
+    setInterval(function(){if(document.hidden)return;_cache.at=0;paintChip();if(document.body.classList.contains("esc-open")){var a=document.activeElement;if(!(a&&/ci(Notes|Follow|Type)/.test(a.id||"")))renderSection(true);}},60000);
     var mb=document.getElementById("mgrBar");if(mb)new MutationObserver(function(){paintChip();}).observe(mb,{attributes:true,attributeFilter:["style"]});}
   if(document.readyState==="loading")window.addEventListener("load",init);else setTimeout(init,0);
 })();
