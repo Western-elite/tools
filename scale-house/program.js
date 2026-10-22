@@ -169,8 +169,8 @@ window.PROGRAM = {
           title: 'What You Own',
           lead: 'Demonstrated at an advanced level for a minimum of 60 days:',
           items: [
-            { id: 'l2.own.cv.safety', label: 'Safety First — follow yard and scale house safety rules, report hazards and unsafe loads, and stop a transaction that is not safe' },
-            { id: 'l2.own.cv.beam', label: 'Be a beam player — back up teammates and other yards, share information, and cover the radio / Teams chat for each other' },
+            { id: 'l2.own.cv.safety', label: 'Safety First — follow yard and scale house safety rules, report hazards and unsafe loads' },
+            { id: 'l2.own.cv.beam', label: 'Be a team player — back up teammates and other yards, share information, and cover the radio / Teams chat for each other' },
             { id: 'l2.own.cv.wow', label: 'Deliver WOW — greet every customer, explain tickets and charges clearly, and turn problems into good experiences' },
             { id: 'l2.own.cv.results', label: 'Deliver Results — hit your accuracy, attendance and customer service gates and own your numbers' },
             { id: 'l2.own.typeii', label: 'Type II / crusher knowledge', note: 'Send pictures and ticket info for rejected loads' },
