@@ -669,7 +669,7 @@ function gateTable(gates, windowNote){
     var st = gate(g.id);
     var tgt = g.tbd || g.target == null
       ? pill('tbd','TBD')
-      : h('span',{class:'tgt', text:g.target + (g.unit||'')});
+      : h('span',{class:'tgt', text:(g.max ? '\u2264 ' : '') + g.target + (g.unit||'')});
 
     var verdict = h('td');
     function judge(){
@@ -683,7 +683,7 @@ function gateTable(gates, windowNote){
       }
       var v = parseFloat(String(st.v||'').replace(/[^0-9.\-]/g,''));
       if (isNaN(v)){ verdict.appendChild(h('span',{class:'hint', text:'—'})); st.ok = null; return; }
-      st.ok = v >= g.target;
+      st.ok = g.max ? v <= g.target : v >= g.target;
       verdict.appendChild(pill(st.ok ? 'ok' : 'bad', st.ok ? 'Met' : 'Below'));
     }
 

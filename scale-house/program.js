@@ -108,11 +108,10 @@ window.PROGRAM = {
       tenure: 'Must advance to Level 2 within 6 months of hire date',
       rule: 'Agents cannot live in Level 1. An agent must advance to Level 2 within 6 months of hire date or employment is in review.',
       gates: [
-        { id: 'l1.g.acct', label: 'Accounting accuracy', target: 98, unit: '%' },
-        { id: 'l1.g.ticket', label: 'Ticket accuracy', target: 98, unit: '%' },
-        { id: 'l1.g.attendance', label: 'Time / attendance', target: null, unit: '', tbd: true },
-        { id: 'l1.g.posting', label: 'Posting accuracy', target: 98, unit: '%' },
-        { id: 'l1.g.cashbox', label: 'Cash box accuracy', target: 95, unit: '%' },
+        { id: 'l1.g.acct', label: 'Accounting accuracy', target: 99, unit: '%' },
+        { id: 'l1.g.ticket', label: 'Ticket accuracy', target: 99, unit: '%' },
+        { id: 'l1.g.attendance', label: 'Time / attendance', target: 2.5, unit: '', max: true },
+        { id: 'l1.g.cashbox', label: 'Cash box accuracy', target: 93, unit: '%' },
         { id: 'l1.g.cs', label: 'Customer service scores', target: 85, unit: '%' }
       ],
       gateWindow: 'Held across a full 60-day review window',
@@ -156,10 +155,9 @@ window.PROGRAM = {
       tenure: 'All Level 2 skills required within 1 year of employment',
       rule: 'Level 2 agents accomplish all Level 1 and Level 2 skills with no assistance. All Level 2 skills are required within 1 year of employment.',
       gates: [
-        { id: 'l2.g.acct', label: 'Accounting accuracy', target: 98, unit: '%' },
-        { id: 'l2.g.ticket', label: 'Ticket accuracy', target: 98, unit: '%' },
-        { id: 'l2.g.attendance', label: 'Time / attendance', target: null, unit: '', tbd: true },
-        { id: 'l2.g.posting', label: 'Posting accuracy', target: 99, unit: '%' },
+        { id: 'l2.g.acct', label: 'Accounting accuracy', target: 99.5, unit: '%' },
+        { id: 'l2.g.ticket', label: 'Ticket accuracy', target: 99.5, unit: '%' },
+        { id: 'l2.g.attendance', label: 'Time / attendance', target: 2, unit: '', max: true },
         { id: 'l2.g.cashbox', label: 'Cash box accuracy', target: 95, unit: '%' },
         { id: 'l2.g.cs', label: 'Customer service scores', target: 90, unit: '%' }
       ],
@@ -201,12 +199,11 @@ window.PROGRAM = {
       tenure: 'Sustained Level 3 performance',
       rule: 'Level 3 agents accomplish all Level 1–2 skills with no assistance and own their own performance results.',
       gates: [
-        { id: 'l3.g.acct', label: 'Accounting accuracy', target: 98, unit: '%' },
-        { id: 'l3.g.ticket', label: 'Ticket accuracy', target: 98, unit: '%' },
-        { id: 'l3.g.attendance', label: 'Time / attendance', target: null, unit: '', tbd: true },
-        { id: 'l3.g.posting', label: 'Posting accuracy', target: 99, unit: '%' },
-        { id: 'l3.g.cashbox', label: 'Cash box accuracy', target: 95, unit: '%' },
-        { id: 'l3.g.cs', label: 'Customer service scores', target: 90, unit: '%' }
+        { id: 'l3.g.acct', label: 'Accounting accuracy', target: 99.8, unit: '%' },
+        { id: 'l3.g.ticket', label: 'Ticket accuracy', target: 99.8, unit: '%' },
+        { id: 'l3.g.attendance', label: 'Time / attendance', target: 1.5, unit: '', max: true },
+        { id: 'l3.g.cashbox', label: 'Cash box accuracy', target: 97, unit: '%' },
+        { id: 'l3.g.cs', label: 'Customer service scores', target: 95, unit: '%' }
       ],
       gateWindow: 'Demonstrated at an advanced level for a minimum of 60 days',
       groups: [
@@ -225,10 +222,9 @@ window.PROGRAM = {
         title: 'Trailing 90-day performance goals — self-managed',
         gates: [
           { id: 'l3.t90.cod', label: 'Missed CODs', target: 98, unit: '%' },
-          { id: 'l3.t90.attendance', label: 'Time and attendance', target: null, unit: '', tbd: true },
-          { id: 'l3.t90.ticket', label: 'Ticket accuracy', target: 98, unit: '%' },
-          { id: 'l3.t90.posting', label: 'Posting accuracy', target: 99, unit: '%' },
-          { id: 'l3.t90.cashbox', label: 'Cash box accuracy', target: 95, unit: '%' },
+          { id: 'l3.t90.attendance', label: 'Time and attendance', target: 1.5, unit: '', max: true },
+          { id: 'l3.t90.ticket', label: 'Ticket accuracy', target: 99.8, unit: '%' },
+          { id: 'l3.t90.cashbox', label: 'Cash box accuracy', target: 97, unit: '%' },
           { id: 'l3.t90.cs', label: 'Customer service scores', target: 95, unit: '%' }
         ]
       },
