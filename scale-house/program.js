@@ -10,6 +10,8 @@
    deleting it. To add an item, append a new id.
    ===================================================================== */
 
+var ATT_INFO = 'Attendance is scored as points lost (lower is better). Unapproved early out: 0.25. Tardy: 0.5. Day-of call out: 1. Call out with no coverage: 0.5. No call no show: 2.';
+
 window.PROGRAM = {
   version: '2026.10.07',
   sourceDoc: 'Scale House Levels Manager — Version 5 (8/2025)',
@@ -110,9 +112,9 @@ window.PROGRAM = {
       gates: [
         { id: 'l1.g.acct', label: 'Accounting accuracy', target: 99, unit: '%' },
         { id: 'l1.g.ticket', label: 'Ticket accuracy', target: 99, unit: '%' },
-        { id: 'l1.g.attendance', label: 'Time / attendance', target: 2.5, unit: '', max: true },
         { id: 'l1.g.cashbox', label: 'Cash box accuracy', target: 93, unit: '%' },
-        { id: 'l1.g.cs', label: 'Customer service scores', target: 85, unit: '%' }
+        { id: 'l1.g.cs', label: 'Customer service scores', target: 85, unit: '%' },
+        { id: 'l1.g.attendance', label: 'Time / attendance', target: 2.5, unit: '', max: true, info: ATT_INFO }
       ],
       gateWindow: 'Held across a full 60-day review window',
       groups: [
@@ -133,14 +135,14 @@ window.PROGRAM = {
           id: 'l1.cs',
           title: 'Customer Service',
           items: [
-            { id: 'l1.cs.training', label: 'Complete the Scale House Customer Service Training', tbd: true, note: 'TBD — training program still to be built' },
+            { id: 'l1.cs.training', label: 'Complete and pass the Scale House Customer Service Training (required for Level 2)', tbd: true, note: 'TBD — training program still to be built' },
             { id: 'l1.cs.escalated', label: 'Handle escalated interactions' }
           ]
         }
       ],
       advance: [
         { id: 'l1.adv.unaided', label: 'Performs all Level 1 skills without help' },
-        { id: 'l1.adv.cert', label: 'Holds the Customer Service Training certificate', tbd: true },
+        { id: 'l1.adv.cert', label: 'Passes the Scale House Customer Service Training program (required to become a Level 2 agent)', tbd: true },
         { id: 'l1.adv.gates', label: 'Held every performance gate across a full 60-day review window' }
       ]
     },
@@ -157,9 +159,9 @@ window.PROGRAM = {
       gates: [
         { id: 'l2.g.acct', label: 'Accounting accuracy', target: 99.5, unit: '%' },
         { id: 'l2.g.ticket', label: 'Ticket accuracy', target: 99.5, unit: '%' },
-        { id: 'l2.g.attendance', label: 'Time / attendance', target: 2, unit: '', max: true },
         { id: 'l2.g.cashbox', label: 'Cash box accuracy', target: 95, unit: '%' },
-        { id: 'l2.g.cs', label: 'Customer service scores', target: 90, unit: '%' }
+        { id: 'l2.g.cs', label: 'Customer service scores', target: 90, unit: '%' },
+        { id: 'l2.g.attendance', label: 'Time / attendance', target: 2, unit: '', max: true, info: ATT_INFO }
       ],
       gateWindow: 'Sustained at the Level 2 bar across the 3-month window',
       groups: [
@@ -168,6 +170,10 @@ window.PROGRAM = {
           title: 'What You Own',
           lead: 'Demonstrated at an advanced level for a minimum of 60 days:',
           items: [
+            { id: 'l2.own.cv.safety', label: 'Safety First — follow yard and scale house safety rules, report hazards and unsafe loads, and stop a transaction that is not safe' },
+            { id: 'l2.own.cv.beam', label: 'Be a beam player — back up teammates and other yards, share information, and cover the radio / Teams chat for each other' },
+            { id: 'l2.own.cv.wow', label: 'Deliver WOW — greet every customer, explain tickets and charges clearly, and turn problems into good experiences' },
+            { id: 'l2.own.cv.results', label: 'Deliver Results — hit your accuracy, attendance and customer service gates and own your numbers' },
             { id: 'l2.own.typeii', label: 'Type II / crusher knowledge', note: 'Send pictures and ticket info for rejected loads' },
             { id: 'l2.own.yardage', label: 'Measure customer trailers and loads and find yardage' },
             { id: 'l2.own.mrf', label: 'MRF knowledge' },
@@ -201,9 +207,9 @@ window.PROGRAM = {
       gates: [
         { id: 'l3.g.acct', label: 'Accounting accuracy', target: 99.8, unit: '%' },
         { id: 'l3.g.ticket', label: 'Ticket accuracy', target: 99.8, unit: '%' },
-        { id: 'l3.g.attendance', label: 'Time / attendance', target: 1.5, unit: '', max: true },
         { id: 'l3.g.cashbox', label: 'Cash box accuracy', target: 97, unit: '%' },
-        { id: 'l3.g.cs', label: 'Customer service scores', target: 95, unit: '%' }
+        { id: 'l3.g.cs', label: 'Customer service scores', target: 95, unit: '%' },
+        { id: 'l3.g.attendance', label: 'Time / attendance', target: 1.5, unit: '', max: true, info: ATT_INFO }
       ],
       gateWindow: 'Demonstrated at an advanced level for a minimum of 60 days',
       groups: [
@@ -222,10 +228,10 @@ window.PROGRAM = {
         title: 'Trailing 90-day performance goals — self-managed',
         gates: [
           { id: 'l3.t90.cod', label: 'Missed CODs', target: 98, unit: '%' },
-          { id: 'l3.t90.attendance', label: 'Time and attendance', target: 1.5, unit: '', max: true },
           { id: 'l3.t90.ticket', label: 'Ticket accuracy', target: 99.8, unit: '%' },
           { id: 'l3.t90.cashbox', label: 'Cash box accuracy', target: 97, unit: '%' },
-          { id: 'l3.t90.cs', label: 'Customer service scores', target: 95, unit: '%' }
+          { id: 'l3.t90.cs', label: 'Customer service scores', target: 95, unit: '%' },
+          { id: 'l3.t90.attendance', label: 'Time and attendance', target: 1.5, unit: '', max: true, info: ATT_INFO }
         ]
       },
       advance: [
@@ -254,7 +260,7 @@ window.PROGRAM = {
     id: 'senior',
     label: 'Senior Agent',
     pay: 1.00,
-    rule: 'An agent is eligible for a $1.00 wage increase after sustaining Level 3 and all endorsements for 4 consecutive quarters.',
+    rule: 'An agent must hold Level 3 for at least one year to become a Senior Agent, and is then eligible for a $1.00 wage increase after sustaining Level 3 and all endorsements for 4 consecutive quarters. Additional requirements to come.',
     quarters: [
       { id: 'senior.q1', label: 'Quarter 1' },
       { id: 'senior.q2', label: 'Quarter 2' },

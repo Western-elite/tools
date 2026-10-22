@@ -692,7 +692,9 @@ function gateTable(gates, windowNote){
       oninput:function(e){ st.v = e.target.value; touch(); judge(); }});
 
     tb.appendChild(h('tr',{},[
-      h('td',{},[ h('span',{text:g.label}) ]),
+      h('td',{},[ g.info
+        ? h('span',{text:g.label + ' \u24D8', title:g.info, tabindex:'0', style:'cursor:help;border-bottom:1px dotted currentColor'})
+        : h('span',{text:g.label}) ]),
       h('td',{},[ tgt ]),
       h('td',{},[ (g.tbd || g.target == null) ? h('span',{class:'hint',text:'n/a'}) : inp ]),
       verdict,
