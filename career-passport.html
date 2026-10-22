@@ -446,8 +446,8 @@
   .dt-daynote{color:var(--muted);font-size:12px;}
   .dt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
   body.trainerview .dt-tab[data-sub="calls"],body.trainerview #dtPaneCalls,body.trainerview #dtBack,body.trainerview #mgrBar,body.trainerview #dashboard,body.trainerview #passportBody,body.trainerview #ppHint,body.trainerview #teamMetrics{display:none!important;}
-  /* role: Manager owns Text, Email & Value Creator — hide Daily, dials, roster setup */
-  body.role-manager .dt-tab[data-sub="daily"],body.role-manager #dtPaneDaily,body.role-manager .dt-dials,body.role-manager #addBtn,body.role-manager #renameBtn,body.role-manager #delBtn,body.role-manager #exportBtn,body.role-manager #chgPwBtn,body.role-manager #previewAgentBtn{display:none!important;}
+  /* role: Manager sees Calls, Text, Email & Daily — hide dials, roster setup */
+  body.role-manager .dt-dials,body.role-manager #addBtn,body.role-manager #renameBtn,body.role-manager #delBtn,body.role-manager #exportBtn,body.role-manager #chgPwBtn,body.role-manager #previewAgentBtn{display:none!important;}
   /* role: Supervisor owns everything else — hide Text & Email entry */
   body.role-supervisor .dt-tab[data-sub="text"],body.role-supervisor .dt-tab[data-sub="email"],body.role-supervisor #dtPaneText,body.role-supervisor #dtPaneEmail{display:none!important;}
   body.trainerview .dt-head h2 span{color:#8aa6c9;}
@@ -2992,9 +2992,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     function rawLab(k){for(var i=0;i<RAW.length;i++)if(RAW[i].k===k)return RAW[i].lab;return k;}
     function pctLab(k){for(var i=0;i<DAYPCT.length;i++)if(DAYPCT[i].k===k)return DAYPCT[i].lab;return k;}
     function pctFmt(v){var s=String(v==null?"":v).trim();if(s===""||/no\s*score/i.test(s))return s;var num=parseFloat(s);return isNaN(num)?s:(num+"%");}
-    // role-based column filter: Manager owns V.Creator (vc); Supervisor owns everything else (incl. Zoom)
+    // role-based column filter: Manager and Director see every column; Supervisor sees everything except V.Creator (vc)
     var _role=window.__weRole||"";
-    function colAllowed(col){var isVCraw=(col.raw==="vc");if(_role==="manager")return isVCraw||col.pct==="call";if(_role==="supervisor")return !isVCraw;return true;}
+    function colAllowed(col){var isVCraw=(col.raw==="vc");if(_role==="manager")return true;if(_role==="supervisor")return !isVCraw;return true;}
     var DG=DGRID.map(function(g){return {grp:g.grp,cls:g.cls,cols:g.cols.filter(colAllowed)};}).filter(function(g){return g.cols.length;});
     var h='<table class="dt-grid dt-wide"><tr class="grp"><th></th><th></th>'+
       DG.map(function(g){return '<th colspan="'+g.cols.length+'" class="'+g.cls+'">'+g.grp+'</th>';}).join("")+'</tr>';
