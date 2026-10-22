@@ -142,7 +142,6 @@ window.PROGRAM = {
       ],
       advance: [
         { id: 'l1.adv.unaided', label: 'Performs all Level 1 skills without help' },
-        { id: 'l1.adv.cert', label: 'Passes the Scale House Customer Service Training program (required to become a Level 2 agent)', tbd: true },
         { id: 'l1.adv.gates', label: 'Held every performance gate across a full 60-day review window' }
       ]
     },
@@ -261,6 +260,9 @@ window.PROGRAM = {
     label: 'Senior Agent',
     pay: 1.00,
     rule: 'An agent must hold Level 3 for at least one year to become a Senior Agent, and is then eligible for a $1.00 wage increase after sustaining Level 3 and all endorsements for 4 consecutive quarters. Additional requirements to come.',
+    requirements: [
+      { id: 'senior.l3year', label: 'Has been a Level 3 agent for at least 1 year', note: 'More requirements to come' }
+    ],
     quarters: [
       { id: 'senior.q1', label: 'Quarter 1' },
       { id: 'senior.q2', label: 'Quarter 2' },

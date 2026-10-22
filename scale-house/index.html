@@ -552,7 +552,7 @@ var S = {
   agent: null,
   pp: null,          // passport data object
   log: [],
-  tab: 'nat',        // level id | 'endorse' | 'log' | 'program'
+  tab: 'nat',        // level id | 'senior' | 'endorse' | 'log' | 'program'
   filter: '',
   who: (function(){ try{ return localStorage.getItem('we.shp.who') || ''; }catch(e){ return ''; } })(),
   dirty: false,
@@ -799,6 +799,52 @@ function levelPanel(lv){
   return frag;
 }
 
+function seniorPanel(){
+  var frag = document.createDocumentFragment();
+  var rul = h('ul',{class:'items'});
+  P.senior.requirements.forEach(function(r){
+    var st = (S.pp.senior[r.id] = S.pp.senior[r.id] || {});
+    var cb = h('input',{type:'checkbox', checked:!!st.d, 'aria-label':r.label,
+      onchange:function(ev){ st.d = ev.target.checked;
+        if (st.d && !st.on) st.on = today(); touch(); renderMain(); }});
+    var sig = h('div',{class:'sig' + (st.d?'':' hidden')},[
+      h('input',{type:'text', value:st.by||'', placeholder:'INIT', maxlength:'4',
+        oninput:function(ev){ st.by = ev.target.value.toUpperCase(); touch(); }}),
+      h('input',{type:'date', value:st.on||'',
+        onchange:function(ev){ st.on = ev.target.value; touch(); }})
+    ]);
+    rul.appendChild(h('li',{},[ h('div',{class:'item' + (st.d?' done':'')},[
+      cb, h('div',{class:'txt'},[ h('span',{class:'lbl', text:r.label}), r.note ? h('span',{class:'note', text:r.note}) : null ]), sig
+    ])]));
+  });
+  var qul = h('ul',{class:'items'});
+  P.senior.quarters.forEach(function(q){
+    if (q.retired) return;
+    var st = (S.pp.senior[q.id] = S.pp.senior[q.id] || {});
+    var cb = h('input',{type:'checkbox', checked:!!st.d, 'aria-label':q.label,
+      onchange:function(ev){ st.d = ev.target.checked;
+        if (st.d && !st.on) st.on = today(); touch(); renderMain(); }});
+    var sig = h('div',{class:'sig' + (st.d?'':' hidden')},[
+      h('input',{type:'text', value:st.by||'', placeholder:'INIT', maxlength:'4',
+        oninput:function(ev){ st.by = ev.target.value.toUpperCase(); touch(); }}),
+      h('input',{type:'date', value:st.on||'',
+        onchange:function(ev){ st.on = ev.target.value; touch(); }})
+    ]);
+    qul.appendChild(h('li',{},[ h('div',{class:'item' + (st.d?' done':'')},[
+      cb, h('div',{class:'txt'},[ h('span',{class:'lbl', text:q.label + ' — Level 3 + all endorsements sustained'}) ]), sig
+    ])]));
+  });
+  var qdone = P.senior.quarters.filter(function(q){ return deepGet(S.pp,['senior',q.id,'d']); }).length;
+
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Senior Agent'}), pill('wage','+' + money(P.senior.pay)),
+      qdone === 4 ? pill('ok','Eligible') : pill('', qdone + ' of 4 quarters') ]),
+    h('div',{class:'body'},[ h('p',{class:'rule', text:P.senior.rule}), rul, qul ])
+  ]));
+
+  return frag;
+}
+
 function endorsePanel(){
   var frag = document.createDocumentFragment();
   var eligible = ['l2','l3'].indexOf(S.agent && S.agent.current_level) >= 0;
@@ -844,32 +890,6 @@ function endorsePanel(){
   frag.appendChild(h('div',{class:'card'},[
     h('header',{},[ h('h3',{text:'Earned endorsements'}) ]),
     h('div',{class:'body'},[ ul ])
-  ]));
-
-  /* senior agent */
-  var qul = h('ul',{class:'items'});
-  P.senior.quarters.forEach(function(q){
-    if (q.retired) return;
-    var st = (S.pp.senior[q.id] = S.pp.senior[q.id] || {});
-    var cb = h('input',{type:'checkbox', checked:!!st.d, 'aria-label':q.label,
-      onchange:function(ev){ st.d = ev.target.checked;
-        if (st.d && !st.on) st.on = today(); touch(); renderMain(); }});
-    var sig = h('div',{class:'sig' + (st.d?'':' hidden')},[
-      h('input',{type:'text', value:st.by||'', placeholder:'INIT', maxlength:'4',
-        oninput:function(ev){ st.by = ev.target.value.toUpperCase(); touch(); }}),
-      h('input',{type:'date', value:st.on||'',
-        onchange:function(ev){ st.on = ev.target.value; touch(); }})
-    ]);
-    qul.appendChild(h('li',{},[ h('div',{class:'item' + (st.d?' done':'')},[
-      cb, h('div',{class:'txt'},[ h('span',{class:'lbl', text:q.label + ' — Level 3 + all endorsements sustained'}) ]), sig
-    ])]));
-  });
-  var qdone = P.senior.quarters.filter(function(q){ return deepGet(S.pp,['senior',q.id,'d']); }).length;
-
-  frag.appendChild(h('div',{class:'card'},[
-    h('header',{},[ h('h3',{text:'Senior Agent'}), pill('wage','+' + money(P.senior.pay)),
-      qdone === 4 ? pill('ok','Eligible') : pill('', qdone + ' of 4 quarters') ]),
-    h('div',{class:'body'},[ h('p',{class:'rule', text:P.senior.rule}), qul ])
   ]));
 
   return frag;
@@ -1155,6 +1175,12 @@ function renderMain(){
       h('span',{class:'bar'},[ h('i',{style:'width:' + pr.pct + '%'}) ])
     ]));
   });
+  var sq = P.senior.quarters.filter(function(q){ return deepGet(S.pp,['senior',q.id,'d']); }).length;
+  nav.appendChild(h('button',{ class: S.tab === 'senior' ? 'active' : '',
+    onclick:function(){ S.tab = 'senior'; renderMain(); }},[
+    h('span',{class:'t1', text:'Senior Agent'}),
+    h('span',{class:'t2', text: money(P.senior.pay) + ' · ' + sq + '/' + P.senior.quarters.length })
+  ]));
   var ep = endorseProgress();
   nav.appendChild(h('button',{ class: S.tab === 'endorse' ? 'active' : '',
     onclick:function(){ S.tab = 'endorse'; renderMain(); }},[
@@ -1179,7 +1205,8 @@ function renderMain(){
   wrap.appendChild(nav);
 
   /* --- panel --- */
-  if (S.tab === 'endorse')      wrap.appendChild(endorsePanel());
+  if (S.tab === 'senior')       wrap.appendChild(seniorPanel());
+  else if (S.tab === 'endorse') wrap.appendChild(endorsePanel());
   else if (S.tab === 'log')     wrap.appendChild(logPanel());
   else if (S.tab === 'program') wrap.appendChild(programPanel());
   else {
@@ -1222,7 +1249,7 @@ async function selectAgent(id){
     setStatus('err','Could not load — ' + (e.message || e));
   }
   if (!P.levels.filter(function(l){ return l.id === S.tab; })[0]
-      && ['endorse','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
+      && ['senior','endorse','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
   renderRoster(); renderMain();
 }
 
