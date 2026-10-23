@@ -152,7 +152,7 @@ window.PROGRAM = {
       code: '2',
       name: 'Level 2 — Independent',
       short: 'Level 2',
-      wage: 20.50,
+      wage: 21.00,
       tenure: 'All Level 2 skills required within 1 year of employment',
       rule: 'Level 2 agents accomplish all Level 1 and Level 2 skills with no assistance. All Level 2 skills are required within 1 year of employment.',
       gates: [
@@ -200,7 +200,7 @@ window.PROGRAM = {
       code: '3',
       name: 'Level 3 — Independent',
       short: 'Level 3',
-      wage: 23.00,
+      wage: 23.50,
       tenure: 'Sustained Level 3 performance',
       rule: 'Level 3 agents accomplish all Level 1–2 skills with no assistance and own their own performance results.',
       gates: [
