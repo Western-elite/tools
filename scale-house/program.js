@@ -13,7 +13,7 @@
 var ATT_INFO = 'Attendance is scored as points lost (lower is better). Unapproved early out: 0.25. Tardy: 0.5. Day-of call out: 1. Call out with no coverage: 0.5. No call no show: 2.';
 
 window.PROGRAM = {
-  version: '2026.10.07',
+  version: '2026.10.23',
   sourceDoc: 'Scale House Levels Manager — Version 5 (8/2025)',
   org: 'Western Elite',
   title: 'Scale House Agent Passport',
@@ -244,11 +244,14 @@ window.PROGRAM = {
      ENDORSEMENTS — minimum Level 2 to be eligible
      --------------------------------------------------------------- */
   endorsements: {
-    eligibility: 'To be eligible for endorsements, an agent must be a minimum Level 2 agent.',
+    eligibility: 'To be eligible for endorsements, an agent must be a minimum Level 2 agent. Nellis endorsements do not stack: an agent holds either Nellis Yard — Primary or Nellis Yard — Backup, not both.',
     items: [
       { id: 'end.trainer', label: 'Trainer', pay: 0.50, note: 'Learn the new scale house agent training program and be able to train new agents' },
-      { id: 'end.tbd1', label: 'Additional endorsement', pay: null, tbd: true, note: 'TBD — to be defined' },
-      { id: 'end.tbd2', label: 'Additional endorsement', pay: null, tbd: true, note: 'TBD — to be defined' }
+      { id: 'end.tbd1', label: 'Additional endorsement', pay: null, tbd: true, retired: true, note: 'TBD — replaced by the Nellis Yard endorsements' },
+      { id: 'end.tbd2', label: 'Additional endorsement', pay: null, tbd: true, note: 'TBD — to be defined' },
+      /* group: items sharing a group are one endorsement slot; only one can be held at a time */
+      { id: 'end.nellis.primary', group: 'nellis', label: 'Nellis Yard — Primary', pay: 2.00, note: 'Nellis is your assigned home yard. You run the Nellis scale house on your regular schedule and own its accuracy, cash box and customer service. Paid while Nellis is your assigned yard; ends if you are reassigned.' },
+      { id: 'end.nellis.backup',  group: 'nellis', label: 'Nellis Yard — Backup',  pay: 0.50, note: 'Trained and signed off on Nellis yard procedures and ready to cover Nellis shifts when needed (call-outs, vacations, busy days).' }
     ]
   },
 
