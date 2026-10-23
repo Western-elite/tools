@@ -574,9 +574,17 @@ function levelProgress(lv){
   return { done:done, total:ids.length, pct: ids.length ? Math.round(done/ids.length*100) : 0 };
 }
 function endorseProgress(){
-  var ids = P.endorsements.items.filter(function(e){ return !e.tbd && !e.retired; }).map(function(e){ return e.id; });
-  var done = ids.filter(function(id){ return deepGet(S.pp,['endorsements',id,'d']); }).length;
-  return { done:done, total:ids.length, pct: ids.length ? Math.round(done/ids.length*100) : 0 };
+  // Items that share a group (e.g. Nellis Primary / Backup) count as one slot.
+  var slots = {};
+  P.endorsements.items.forEach(function(e){
+    if (e.tbd || e.retired) return;
+    var k = e.group || e.id;
+    if (deepGet(S.pp,['endorsements',e.id,'d'])) slots[k] = true;
+    else if (!(k in slots)) slots[k] = false;
+  });
+  var keys = Object.keys(slots);
+  var done = keys.filter(function(k){ return slots[k]; }).length;
+  return { done:done, total:keys.length, pct: keys.length ? Math.round(done/keys.length*100) : 0 };
 }
 function currentLevelCode(){
   var lv = P.levels.filter(function(l){ return l.id === (S.agent && S.agent.current_level); })[0];
@@ -866,6 +874,10 @@ function endorsePanel(){
       onchange:function(ev){
         st.d = ev.target.checked;
         if (st.d){ if(!st.on) st.on = today(); if(!st.by && S.who) st.by = S.who; }
+        // Grouped endorsements do not stack: checking one clears the others in its group.
+        if (st.d && e.group) P.endorsements.items.forEach(function(o){
+          if (o.id !== e.id && o.group === e.group && S.pp.endorsements[o.id]) S.pp.endorsements[o.id].d = false;
+        });
         touch(); renderMain();
       }});
     var sig = h('div',{class:'sig' + (st.d ? '' : ' hidden')},[
