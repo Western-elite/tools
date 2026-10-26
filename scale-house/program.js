@@ -274,5 +274,65 @@ window.PROGRAM = {
     ]
   },
 
+  /* ---------------------------------------------------------------
+     DATA TAB — scorecard numbers per agent (Data tab + leader dashboard)
+     Edit labels / values here; ids are stored with each entry, so never
+     reuse an id for something different.
+     --------------------------------------------------------------- */
+  data: {
+    // Ticket accuracy = 1 - (sum of these errors) / (check-ins + check-outs)
+    errorTypes: [
+      { id: 'wrong_acct', label: 'Wrong customer / account # in Encore or ticket' },
+      { id: 'weight',     label: 'Weight / yardage or minimum amount' },
+      { id: 'duplicate',  label: 'Duplicate ticket / not entered in Encore' },
+      { id: 'no_unloads', label: 'No unloads' },
+      { id: 'no_tvs',     label: 'No TVs' },
+      { id: 'type2',      label: 'Type 2 error' },
+      { id: 'no_tires',   label: 'No tires' }
+    ],
+    // Accounting accuracy = average of these three (each shown on its own too)
+    accounting: [
+      { id: 'payment',  label: 'Payment collected correctly', how: '1 - COD not collected / COD tickets checked out' },
+      { id: 'cash',     label: 'Cash count balanced',         how: 'share of lunch and end-of-day counts that balanced' },
+      { id: 'pastdue',  label: 'No past-due customers let through', how: '1 - past-due customers let through / check-ins' }
+    ],
+    // Customer service checklist (same questions as the Google Form). 3 points each; N/A counts as full points.
+    csPoints: 3,
+    csQuestions: [
+      { id: 'greet',     q: 'Did the agent greet the customer promptly and professionally, making eye contact?' },
+      { id: 'rapport',   q: 'Did the agent say anything to build trust/rapport with the customer?' },
+      { id: 'card',      q: 'At entrance scale, if the agent does not know the customer, did they ask for their account card and provide one if the customer has none?', na: true },
+      { id: 'efficient', q: 'Did the agent handle the customer efficiently without unnecessary delays? (find the customer quickly in Encore, run the transaction quickly, etc.)' },
+      { id: 'clear',     q: 'Was the agent clear and easy to understand, and did they listen attentively to the customer?' },
+      { id: 'prohibited',q: 'Did the agent ask prohibited waste / add-on material questions at entrance scale?', na: true },
+      { id: 'mincharge', q: 'Did the agent properly communicate the minimum charge and fuel surcharge?', na: true },
+      { id: 'attitude',  q: 'Did the agent maintain a positive, helpful attitude?' },
+      { id: 'knowledge', q: 'If appropriate, did the agent have the product knowledge the customer was looking for?', na: true },
+      { id: 'thank',     q: 'Did the agent thank the customer by name?' },
+      { id: 'dress',     q: 'Was the agent dressed appropriately and presentable, including a clean kiosk and no distracting screens or audio/noise, according to the handbook?' }
+    ],
+    // Attendance points (lower is better), same values as the Time / attendance gate
+    attendance: [
+      { id: 'early_out',   label: 'Unapproved early out',   pts: 0.25 },
+      { id: 'tardy',       label: 'Tardy',                  pts: 0.5 },
+      { id: 'no_coverage', label: 'Call out with no coverage', pts: 0.5 },
+      { id: 'day_of',      label: 'Day-of call out',        pts: 1 },
+      { id: 'ncns',        label: 'No call no show',        pts: 2 }
+    ],
+    // Cash drawer bank per kiosk. Over / short = counted - bank.
+    kiosks: [
+      { id: 'Nellis Kiosk 1', bank: 400 },
+      { id: 'Nellis Kiosk 2', bank: 400 },
+      { id: 'Hen Kiosk 3',    bank: 500 },
+      { id: 'Hen Kiosk 4',    bank: 500 },
+      { id: 'Wynn',           bank: 400 }
+    ],
+    cashCounts: [
+      { id: 'lunch', label: 'Lunch' },
+      { id: 'eod',   label: 'End of day' }
+    ],
+    cashTolerance: 0   // dollars of over/short still counted as balanced
+  },
+
   coachingSources: ['Supervisor', 'Manager', 'Self', 'Peer', 'Customer', 'QA review']
 };

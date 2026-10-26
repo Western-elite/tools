@@ -55,6 +55,33 @@ create index if not exists sh_coaching_log_agent_idx
   on public.sh_coaching_log (agent_id, entry_date desc);
 
 -- ---------------------------------------------------------------------
+-- 3b. Data tab — scorecard entries (one row per entry, tied to an agent)
+-- ---------------------------------------------------------------------
+-- kind:  'daily'      ticket counts, COD, past-due, errors   (leader)
+--        'cs'         customer service checklist             (leader)
+--        'attendance' attendance incident                    (leader)
+--        'cash'       lunch / end-of-day drawer count        (agent)
+-- data holds the fields for that kind; the app defines them in program.js.
+-- Every row carries agent_id so a later signed-in mode can limit each
+-- agent to their own rows with RLS.
+create table if not exists public.sh_data_entries (
+  id         uuid primary key default gen_random_uuid(),
+  agent_id   uuid not null
+               references public.sh_agents(id) on delete cascade,
+  kind       text not null check (kind in ('daily','cs','attendance','cash')),
+  entry_date date not null default current_date,
+  data       jsonb not null default '{}'::jsonb,
+  entered_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists sh_data_entries_agent_idx
+  on public.sh_data_entries (agent_id, kind, entry_date desc);
+create index if not exists sh_data_entries_date_idx
+  on public.sh_data_entries (entry_date desc, kind);
+
+-- ---------------------------------------------------------------------
 -- 4. Keep updated_at honest
 -- ---------------------------------------------------------------------
 create or replace function public.sh_touch_updated_at()
@@ -67,6 +94,11 @@ end $$;
 drop trigger if exists sh_passports_touch on public.sh_passports;
 create trigger sh_passports_touch
   before update on public.sh_passports
+  for each row execute function public.sh_touch_updated_at();
+
+drop trigger if exists sh_data_entries_touch on public.sh_data_entries;
+create trigger sh_data_entries_touch
+  before update on public.sh_data_entries
   for each row execute function public.sh_touch_updated_at();
 
 -- ---------------------------------------------------------------------
@@ -85,6 +117,7 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update         on public.sh_agents       to anon, authenticated;
 grant select, insert, update         on public.sh_passports    to anon, authenticated;
 grant select, insert, update, delete on public.sh_coaching_log to anon, authenticated;
+grant select, insert, update, delete on public.sh_data_entries to anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- 6. Row Level Security
@@ -92,6 +125,7 @@ grant select, insert, update, delete on public.sh_coaching_log to anon, authenti
 alter table public.sh_agents       enable row level security;
 alter table public.sh_passports    enable row level security;
 alter table public.sh_coaching_log enable row level security;
+alter table public.sh_data_entries enable row level security;
 
 -- ==== OPTION A — SHARED-LINK MODE (what the app ships with) ==========
 -- Anyone holding the anon key (i.e. anyone who can open the page) can
@@ -111,6 +145,13 @@ create policy sh_passports_anon on public.sh_passports
   for all to anon using (true) with check (true);
 
 create policy sh_log_anon on public.sh_coaching_log
+  for all to anon using (true) with check (true);
+
+-- Data tab entries: same shared-link mode for now. When individual logins
+-- are added, replace this with policies that let an agent read only rows
+-- where agent_id is their own, and let leaders read/write all rows.
+drop policy if exists sh_data_anon on public.sh_data_entries;
+create policy sh_data_anon on public.sh_data_entries
   for all to anon using (true) with check (true);
 
 -- ==== OPTION B — SIGNED-IN MODE (recommended once it's in real use) ==

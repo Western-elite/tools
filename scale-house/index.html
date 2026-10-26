@@ -314,6 +314,26 @@ a{color:var(--accent)}
   margin-bottom:16px;
 }
 
+/* ---------- data tab ---------- */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px}
+.stat{border:1px solid var(--line); border-radius:8px; padding:11px 13px; background:var(--surface-2)}
+.stat-l{font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.stat-v{font-size:24px; font-weight:800; color:var(--blue); font-variant-numeric:tabular-nums; margin-top:2px}
+.stat-s{font-size:12px; color:var(--muted)}
+.stat-g{margin-top:6px}
+.dform{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:9px; align-items:end}
+.dform .full{grid-column:1/-1}
+.dform-act{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+.dsub{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px}
+.tscroll{overflow-x:auto}
+.csq{margin:14px 0 8px; padding-left:22px}
+.csq li{padding:7px 0; border-bottom:1px solid var(--line); font-size:14px}
+.csq-t{display:block}
+.csq-a{display:flex; gap:16px; margin-top:4px; font-size:13px}
+.csq-a label{display:inline-flex; align-items:center; gap:3px; cursor:pointer}
+/* stacked layout: keep main at screen width so wide tables scroll inside .tscroll */
+@media (max-width:860px){ .main{width:100%; box-sizing:border-box} }
+
 /* ---------- gate / login ---------- */
 .gatebox{max-width:340px; margin:14vh auto; text-align:center}
 .gatebox .card{padding:24px}
@@ -447,6 +467,7 @@ try{
 var T_AG  = CFG.TABLE_AGENTS    || 'sh_agents';
 var T_PP  = CFG.TABLE_PASSPORTS || 'sh_passports';
 var T_LOG = CFG.TABLE_LOG       || 'sh_coaching_log';
+var T_DATA = CFG.TABLE_DATA     || 'sh_data_entries';
 var LSKEY = 'we.shp.v1';
 
 function lsRead(){
@@ -540,6 +561,48 @@ var Store = {
     var db = lsRead();
     if (db.log && db.log[id]) db.log[id] = db.log[id].filter(function(x){ return x.id !== rowId; });
     lsWrite(db);
+  },
+  /* Data tab entries — agentId null = every agent (leader dashboard) */
+  async listData(agentId, since){
+    if (MODE === 'supabase'){
+      var q = SB.from(T_DATA).select('*');
+      if (agentId) q = q.eq('agent_id', agentId);
+      if (since) q = q.gte('entry_date', since);
+      var r = await q.order('entry_date', { ascending:false })
+                     .order('created_at', { ascending:false }).limit(5000);
+      if (r.error) throw r.error;
+      return r.data || [];
+    }
+    return (lsRead().data || []).filter(function(x){
+      return (!agentId || x.agent_id === agentId) && (!since || x.entry_date >= since);
+    }).sort(function(a,b){
+      return (b.entry_date||'').localeCompare(a.entry_date||'') || (b.created_at||'').localeCompare(a.created_at||'');
+    });
+  },
+  async saveData(row){
+    var id = row.id;
+    var rec = { agent_id:row.agent_id, kind:row.kind, entry_date:row.entry_date,
+                data:row.data || {}, entered_by:row.entered_by || null };
+    if (MODE === 'supabase'){
+      var r = id ? await SB.from(T_DATA).update(rec).eq('id', id)
+                 : await SB.from(T_DATA).insert(rec);
+      if (r.error) throw r.error;
+      return;
+    }
+    var db = lsRead(); db.data = db.data || [];
+    if (id) db.data.forEach(function(x){ if (x.id === id) Object.assign(x, rec, { updated_at:new Date().toISOString() }); });
+    else { rec.id = uid(); rec.created_at = new Date().toISOString(); db.data.push(rec); }
+    lsWrite(db);
+  },
+  async deleteData(rowId){
+    if (MODE === 'supabase'){
+      var r = await SB.from(T_DATA).delete().eq('id', rowId);
+      if (r.error) throw r.error;
+      return;
+    }
+    var db = lsRead();
+    db.data = (db.data || []).filter(function(x){ return x.id !== rowId; });
+    lsWrite(db);
   }
 };
 
@@ -552,7 +615,11 @@ var S = {
   agent: null,
   pp: null,          // passport data object
   log: [],
-  tab: 'nat',        // level id | 'senior' | 'endorse' | 'log' | 'program'
+  data: [],          // Data tab entries for the open agent
+  dataWin: 'quarter',
+  dashDate: today(),
+  lastKiosk: '',
+  tab: 'nat',        // level id | 'senior' | 'endorse' | 'data' | 'log' | 'program'
   filter: '',
   who: (function(){ try{ return localStorage.getItem('we.shp.who') || ''; }catch(e){ return ''; } })(),
   dirty: false,
@@ -907,6 +974,390 @@ function endorsePanel(){
   return frag;
 }
 
+/* ==================================================================
+   5b. Data tab — scorecard numbers, cash counts, leader dashboard
+   ================================================================== */
+var D = P.data || { errorTypes:[], accounting:[], csQuestions:[], attendance:[], kiosks:[], cashCounts:[], csPoints:3, cashTolerance:0 };
+
+function isoDaysAgo(n){
+  var d = new Date(); d.setDate(d.getDate() - n);
+  var p = function(x){ return (x<10?'0':'')+x; };
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function quarterStart(){
+  var d = new Date(), m = Math.floor(d.getMonth()/3)*3;
+  return d.getFullYear()+'-'+(m+1<10?'0':'')+(m+1)+'-01';
+}
+var DATA_WINDOWS = [
+  { id:'quarter', label:'This quarter' },
+  { id:'30', label:'Last 30 days' },
+  { id:'60', label:'Last 60 days' },
+  { id:'90', label:'Last 90 days' }
+];
+function windowSince(w){ return w === 'quarter' ? quarterStart() : isoDaysAgo(parseInt(w,10) || 60); }
+function windowLabel(w){ var o = DATA_WINDOWS.filter(function(x){ return x.id === w; })[0]; return o ? o.label : w; }
+
+function num(v){ var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function pct(v){ return v == null ? '—' : (Math.round(v*10000)/100).toFixed(2) + '%'; }
+function signedMoney(n){ n = Math.round(n*100)/100; return (n > 0 ? '+' : n < 0 ? '−' : '') + money(Math.abs(n)); }
+function kioskBank(k){ var o = D.kiosks.filter(function(x){ return x.id === k; })[0]; return o ? o.bank : null; }
+function attPts(cat){ var o = D.attendance.filter(function(x){ return x.id === cat; })[0]; return o ? o.pts : 0; }
+function attLabel(cat){ var o = D.attendance.filter(function(x){ return x.id === cat; })[0]; return o ? o.label : cat; }
+function countLabel(c){ var o = D.cashCounts.filter(function(x){ return x.id === c; })[0]; return o ? o.label : c; }
+
+/* cash count result from what the agent entered */
+function cashResult(d){
+  var bank = d.bank != null ? num(d.bank) : kioskBank(d.kiosk);
+  if (bank == null || d.counted === '' || d.counted == null) return { bank:bank, os:null, ok:null };
+  var os = Math.round((num(d.counted) - bank)*100)/100;
+  return { bank:bank, os:os, ok: Math.abs(os) <= num(D.cashTolerance) + 0.005 };
+}
+/* customer service score from the checklist answers */
+function csResult(d){
+  var pts = 0, poss = 0, answered = 0;
+  D.csQuestions.forEach(function(q){
+    var a = (d.answers || {})[q.id];
+    if (!a) return;
+    answered++; poss += D.csPoints;
+    if (a === 'yes' || a === 'na') pts += D.csPoints;
+  });
+  return { pts:pts, poss:poss, answered:answered, pct: poss ? pts/poss : null };
+}
+function dailyErrors(d){
+  return D.errorTypes.reduce(function(s, e){ return s + num((d.errors||{})[e.id]); }, 0);
+}
+
+/* every metric for one agent's entries, from `since` on */
+function computeMetrics(rows, since){
+  var m = { inn:0, out:0, err:0, cod:0, codNC:0, pastDue:0, days:0,
+            cashN:0, cashOk:0, csPts:0, csPoss:0, csN:0, attPts:0, attN:0 };
+  rows.forEach(function(r){
+    if (since && r.entry_date < since) return;
+    var d = r.data || {};
+    if (r.kind === 'daily'){
+      m.days++; m.inn += num(d.check_in); m.out += num(d.check_out);
+      m.err += dailyErrors(d); m.cod += num(d.cod_tickets);
+      m.codNC += num(d.cod_not_collected); m.pastDue += num(d.past_due);
+    } else if (r.kind === 'cash'){
+      var c = cashResult(d); if (c.ok == null) return;
+      m.cashN++; if (c.ok) m.cashOk++;
+    } else if (r.kind === 'cs'){
+      var s = csResult(d); if (!s.poss) return;
+      m.csN++; m.csPts += s.pts; m.csPoss += s.poss;
+    } else if (r.kind === 'attendance'){
+      m.attN++; m.attPts += attPts(d.category);
+    }
+  });
+  var tix = m.inn + m.out;
+  m.ticket  = tix ? 1 - m.err / tix : null;
+  m.payment = m.cod ? 1 - m.codNC / m.cod : null;
+  m.cash    = m.cashN ? m.cashOk / m.cashN : null;
+  m.pastdue = m.inn ? 1 - m.pastDue / m.inn : null;
+  var parts = [m.payment, m.cash, m.pastdue].filter(function(v){ return v != null; });
+  m.accounting = parts.length ? parts.reduce(function(a,b){ return a+b; }, 0) / parts.length : null;
+  m.cs = m.csPoss ? m.csPts / m.csPoss : null;
+  return m;
+}
+
+/* the agent's gate target for a metric, from their current level */
+function levelGate(suffix){
+  var lv = P.levels.filter(function(l){ return l.id === (S.agent && S.agent.current_level); })[0];
+  if (!lv || !lv.gates) return null;
+  return lv.gates.filter(function(g){ return g.id.slice(-suffix.length) === suffix; })[0] || null;
+}
+function gatePill(g, value, isPct){
+  if (!g || g.target == null || value == null) return null;
+  var v = isPct ? value*100 : value;
+  var ok = g.max ? v <= g.target + 1e-9 : v >= g.target - 1e-9;
+  return pill(ok ? 'ok' : 'bad', (ok ? 'Met ' : 'Below ') + (g.max ? '≤ ' : '') + g.target + (g.unit||''));
+}
+
+function statTile(label, value, sub, gp){
+  return h('div',{class:'stat'},[
+    h('div',{class:'stat-l', text:label}),
+    h('div',{class:'stat-v', text:value}),
+    sub ? h('div',{class:'stat-s', text:sub}) : null,
+    gp ? h('div',{class:'stat-g'},[ gp ]) : null
+  ]);
+}
+
+async function reloadData(){
+  S.data = await Store.listData(S.agentId, isoDaysAgo(400));
+  renderMain();
+}
+async function saveEntry(row, btn){
+  if (btn) btn.disabled = true;
+  try{
+    await Store.saveData(Object.assign({ agent_id:S.agentId, entered_by:S.who || null }, row));
+    await reloadData();
+  }catch(e){ console.error(e); alert('Could not save: ' + (e.message||e)); if (btn) btn.disabled = false; }
+}
+function delBtn(r){
+  return h('button',{class:'btn ghost sm noprint', onclick:async function(){
+    if (!confirm('Delete this entry?')) return;
+    try{ await Store.deleteData(r.id); await reloadData(); }
+    catch(e){ alert('Could not delete: ' + (e.message||e)); }
+  }}, ['Delete']);
+}
+function numInput(obj, key, attrs){
+  return h('input', Object.assign({ type:'number', min:'0', step:'1', inputmode:'numeric',
+    value: obj[key] == null ? '' : obj[key],
+    oninput:function(e){ obj[key] = e.target.value; } }, attrs||{}));
+}
+function rowsOf(kind){ return (S.data||[]).filter(function(r){ return r.kind === kind; }); }
+
+function dataPanel(){
+  var frag = document.createDocumentFragment();
+  var since = windowSince(S.dataWin);
+  var m = computeMetrics(S.data || [], since);
+
+  /* --- 1. summary --- */
+  var winSel = h('select',{onchange:function(e){ S.dataWin = e.target.value; renderMain(); }},
+    DATA_WINDOWS.map(function(w){ return h('option',{value:w.id, text:w.label, selected:w.id===S.dataWin}); }));
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Scorecard'}), h('div',{style:'margin-left:auto'},[ winSel ]) ]),
+    h('div',{class:'body'},[
+      h('div',{class:'stats'},[
+        statTile('Ticket accuracy', pct(m.ticket), (m.inn+m.out) + ' tickets · ' + m.err + ' error' + (m.err===1?'':'s'), gatePill(levelGate('.g.ticket'), m.ticket, true)),
+        statTile('Accounting accuracy', pct(m.accounting), 'average of the 3 below', gatePill(levelGate('.g.acct'), m.accounting, true)),
+        statTile('Customer service', pct(m.cs), m.csN + ' score' + (m.csN===1?'':'s'), gatePill(levelGate('.g.cs'), m.cs, true)),
+        statTile('Attendance points', String(m.attPts), m.attN + ' incident' + (m.attN===1?'':'s') + ' · lower is better', gatePill(levelGate('.g.attendance'), m.attPts, false))
+      ]),
+      h('table',{class:'gates', style:'margin-top:14px'},[
+        h('thead',{},[ h('tr',{},[ h('th',{text:'Accounting'}), h('th',{text:'Score'}), h('th',{text:'How it is figured'}) ])]),
+        h('tbody',{}, D.accounting.map(function(a){
+          var v = a.id === 'payment' ? m.payment : a.id === 'cash' ? m.cash : m.pastdue;
+          var extra = a.id === 'payment' ? ' (' + m.codNC + ' of ' + m.cod + ')' :
+                      a.id === 'cash' ? ' (' + m.cashOk + ' of ' + m.cashN + ' balanced)' :
+                      ' (' + m.pastDue + ' let through)';
+          return h('tr',{},[ h('td',{text:a.label}), h('td',{},[ h('b',{text:pct(v)}) ]), h('td',{class:'hint', text:a.how + extra}) ]);
+        }))
+      ]),
+      h('p',{class:'gatewin', text: windowLabel(S.dataWin) + ' · from ' + fmtDate(since) + '. Blank (—) means nothing entered yet for that window.'})
+    ])
+  ]));
+
+  /* --- 2. cash count (the agent fills this in) --- */
+  var cf = { date: today(), count: (new Date().getHours() >= 14 ? 'eod' : 'lunch'),
+             kiosk: (S.lastKiosk || (D.kiosks[0] && D.kiosks[0].id) || ''), counted:'', notes:'' };
+  var cOut = h('span',{class:'cash-out'});
+  function paintCash(){
+    var r = cashResult(cf);
+    cOut.innerHTML = '';
+    cOut.appendChild(h('span',{class:'hint', text:'Bank ' + (r.bank == null ? '—' : money(r.bank)) + ' · '}));
+    cOut.appendChild(r.ok == null ? h('span',{class:'hint', text:'enter the amount counted'}) :
+      pill(r.ok ? 'ok' : 'bad', r.ok ? 'Balanced' : (r.os > 0 ? 'Over ' : 'Short ') + money(Math.abs(r.os))));
+  }
+  paintCash();
+  var cBtn = h('button',{class:'btn primary', onclick:function(){
+    if (cf.counted === '' || isNaN(parseFloat(cf.counted))){ alert('Enter the dollar amount in the drawer.'); return; }
+    var dup = rowsOf('cash').filter(function(r){ return r.entry_date === cf.date && (r.data||{}).count === cf.count; })[0];
+    if (dup && !confirm('A ' + countLabel(cf.count).toLowerCase() + ' count for ' + fmtDate(cf.date) + ' is already saved. Replace it?')) return;
+    S.lastKiosk = cf.kiosk;
+    saveEntry({ id: dup ? dup.id : undefined, kind:'cash', entry_date:cf.date,
+      data:{ count:cf.count, kiosk:cf.kiosk, bank:kioskBank(cf.kiosk), counted:parseFloat(cf.counted), notes:cf.notes.trim() } }, cBtn);
+  }}, ['Save cash count']);
+  var cashRows = rowsOf('cash').slice(0, 30);
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Cash count'}), pill('', 'Lunch & end of day') ]),
+    h('div',{class:'body'},[
+      h('p',{class:'hint', style:'margin:0 0 10px', text:'Count your drawer at lunch and at the end of the day and enter what is in it. It shows up on the leader dashboard right away.'}),
+      h('div',{class:'dform noprint'},[
+        field('Date', h('input',{type:'date', value:cf.date, onchange:function(e){ cf.date = e.target.value; }})),
+        field('Count', h('select',{onchange:function(e){ cf.count = e.target.value; }},
+          D.cashCounts.map(function(c){ return h('option',{value:c.id, text:c.label, selected:c.id===cf.count}); }))),
+        field('Kiosk', h('select',{onchange:function(e){ cf.kiosk = e.target.value; paintCash(); }},
+          D.kiosks.map(function(k){ return h('option',{value:k.id, text:k.id + ' (' + money(k.bank) + ')', selected:k.id===cf.kiosk}); }))),
+        field('$ in drawer', h('input',{type:'number', step:'0.01', min:'0', inputmode:'decimal', placeholder:'0.00',
+          oninput:function(e){ cf.counted = e.target.value; paintCash(); }})),
+        h('div',{class:'field full'},[ h('label',{text:'Notes (optional)'}),
+          h('input',{type:'text', placeholder:'e.g. $100 out for change', oninput:function(e){ cf.notes = e.target.value; }}) ]),
+        h('div',{class:'full dform-act'},[ cBtn, cOut ])
+      ]),
+      cashRows.length ? h('div',{class:'tscroll'},[ h('table',{class:'gates', style:'margin-top:14px'},[
+        h('thead',{},[ h('tr',{},['Date','Count','Kiosk','Counted','Over / short','',''].map(function(t){ return h('th',{text:t}); })) ]),
+        h('tbody',{}, cashRows.map(function(r){
+          var d = r.data||{}, c = cashResult(d);
+          return h('tr',{},[ h('td',{text:fmtDate(r.entry_date)}), h('td',{text:countLabel(d.count)}), h('td',{text:d.kiosk||''}),
+            h('td',{text: d.counted == null ? '' : money(d.counted)}),
+            h('td',{},[ c.ok == null ? '' : pill(c.ok ? 'ok' : 'bad', c.ok ? 'Balanced' : signedMoney(c.os)), d.notes ? h('div',{class:'hint', text:d.notes}) : null ]),
+            h('td',{class:'hint', text:r.entered_by||''}), h('td',{},[ delBtn(r) ]) ]);
+        }))
+      ])]) : h('p',{class:'empty', text:'No cash counts yet.'})
+    ])
+  ]));
+
+  /* --- 3. daily numbers (leader) --- */
+  var df = { date: isoDaysAgo(1), errors:{} };
+  var dBtn = h('button',{class:'btn primary', onclick:function(){
+    var dup = rowsOf('daily').filter(function(r){ return r.entry_date === df.date; })[0];
+    if (dup && !confirm('Numbers for ' + fmtDate(df.date) + ' are already saved. Replace them?')) return;
+    var data = { check_in:num(df.check_in), check_out:num(df.check_out), wynn_tickets:num(df.wynn_tickets),
+      cod_tickets:num(df.cod_tickets), cod_not_collected:num(df.cod_not_collected), past_due:num(df.past_due),
+      errors:{}, notes:(df.notes||'').trim() };
+    D.errorTypes.forEach(function(e){ data.errors[e.id] = num(df.errors[e.id]); });
+    saveEntry({ id: dup ? dup.id : undefined, kind:'daily', entry_date:df.date, data:data }, dBtn);
+  }}, ['Save day']);
+  var dailyRows = rowsOf('daily').slice(0, 30);
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Daily numbers'}), pill('', 'Manager / team lead') ]),
+    h('div',{class:'body'},[
+      h('div',{class:'dform noprint'},[
+        field('Date', h('input',{type:'date', value:df.date, onchange:function(e){ df.date = e.target.value; }})),
+        field('Check-ins', numInput(df,'check_in')),
+        field('Check-outs', numInput(df,'check_out')),
+        field('Wynn tickets entered', numInput(df,'wynn_tickets')),
+        field('COD tickets checked out', numInput(df,'cod_tickets')),
+        field('COD not collected', numInput(df,'cod_not_collected')),
+        field('Past-due let through', numInput(df,'past_due'))
+      ]),
+      h('div',{class:'dsub noprint', text:'Ticket errors'}),
+      h('div',{class:'dform noprint'}, D.errorTypes.map(function(e){ return field(e.label, numInput(df.errors, e.id)); }).concat([
+        h('div',{class:'field full'},[ h('label',{text:'Notes (optional)'}),
+          h('input',{type:'text', placeholder:'e.g. account and ticket # for any error', oninput:function(e){ df.notes = e.target.value; }}) ]),
+        h('div',{class:'full dform-act'},[ dBtn ])
+      ])),
+      dailyRows.length ? h('div',{class:'tscroll'},[ h('table',{class:'gates', style:'margin-top:14px'},[
+        h('thead',{},[ h('tr',{},['Date','In','Out','Wynn','COD','COD missed','Past-due','Errors','Ticket %','',''].map(function(t){ return h('th',{text:t}); })) ]),
+        h('tbody',{}, dailyRows.map(function(r){
+          var d = r.data||{}, t = num(d.check_in)+num(d.check_out), er = dailyErrors(d);
+          return h('tr',{},[ h('td',{text:fmtDate(r.entry_date)}), h('td',{text:String(num(d.check_in))}), h('td',{text:String(num(d.check_out))}),
+            h('td',{text:String(num(d.wynn_tickets))}), h('td',{text:String(num(d.cod_tickets))}), h('td',{text:String(num(d.cod_not_collected))}),
+            h('td',{text:String(num(d.past_due))}), h('td',{},[ String(er), d.notes ? h('div',{class:'hint', text:d.notes}) : null ]),
+            h('td',{text: t ? pct(1 - er/t) : '—'}), h('td',{class:'hint', text:r.entered_by||''}), h('td',{},[ delBtn(r) ]) ]);
+        }))
+      ])]) : h('p',{class:'empty', text:'No daily numbers yet.'})
+    ])
+  ]));
+
+  /* --- 4. customer service score (leader) --- */
+  var sf = { date: today(), time:'', answers:{}, notes:'' };
+  var sOut = h('span',{class:'hint'});
+  function paintCs(){ var r = csResult(sf); sOut.textContent = r.answered + ' of ' + D.csQuestions.length + ' answered · ' + r.pts + ' / ' + r.poss + (r.poss ? ' (' + pct(r.pct) + ')' : ''); }
+  paintCs();
+  var sBtn = h('button',{class:'btn primary', onclick:function(){
+    var r = csResult(sf);
+    if (r.answered < D.csQuestions.length){ alert('Answer every question (use N/A where it applies).'); return; }
+    saveEntry({ kind:'cs', entry_date:sf.date, data:{ time:sf.time, answers:sf.answers, points:r.pts, possible:r.poss, notes:sf.notes.trim() } }, sBtn);
+  }}, ['Save score']);
+  var qList = h('ol',{class:'csq noprint'}, D.csQuestions.map(function(q){
+    var opts = [['yes','Yes'],['no','No']].concat(q.na ? [['na','N/A']] : []);
+    var name = 'csq_' + q.id;
+    return h('li',{},[ h('span',{class:'csq-t', text:q.q}),
+      h('span',{class:'csq-a'}, opts.map(function(o){
+        return h('label',{},[ h('input',{type:'radio', name:name, value:o[0], onchange:function(){ sf.answers[q.id] = o[0]; paintCs(); }}), ' ' + o[1] ]);
+      })) ]);
+  }));
+  var csRows = rowsOf('cs').slice(0, 30);
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Customer service score'}), pill('', 'Team lead') ]),
+    h('div',{class:'body'},[
+      h('div',{class:'dform noprint'},[
+        field('Interaction date', h('input',{type:'date', value:sf.date, onchange:function(e){ sf.date = e.target.value; }})),
+        field('Interaction time', h('input',{type:'time', onchange:function(e){ sf.time = e.target.value; }}))
+      ]),
+      qList,
+      h('div',{class:'dform noprint'},[
+        h('div',{class:'field full'},[ h('label',{text:'Notes (optional)'}),
+          h('input',{type:'text', oninput:function(e){ sf.notes = e.target.value; }}) ]),
+        h('div',{class:'full dform-act'},[ sBtn, sOut ])
+      ]),
+      csRows.length ? h('div',{class:'tscroll'},[ h('table',{class:'gates', style:'margin-top:14px'},[
+        h('thead',{},[ h('tr',{},['Date','Time','Score','Missed','',''].map(function(t){ return h('th',{text:t}); })) ]),
+        h('tbody',{}, csRows.map(function(r){
+          var d = r.data||{}, s = csResult(d);
+          var missed = []; D.csQuestions.forEach(function(q, i){ if ((d.answers||{})[q.id] === 'no') missed.push('Q' + (i+1)); });
+          return h('tr',{},[ h('td',{text:fmtDate(r.entry_date)}), h('td',{text:d.time||''}),
+            h('td',{},[ h('b',{text: s.pts + ' / ' + s.poss}), ' ', h('span',{class:'hint', text:pct(s.pct)}) ]),
+            h('td',{class:'hint', text: missed.length ? missed.join(', ') : '—'}),
+            h('td',{class:'hint', text:r.entered_by||''}), h('td',{},[ delBtn(r) ]) ]);
+        }))
+      ])]) : h('p',{class:'empty', text:'No customer service scores yet.'})
+    ])
+  ]));
+
+  /* --- 5. attendance (leader) --- */
+  var af = { date: today(), category: (D.attendance[0] && D.attendance[0].id) || '', notes:'' };
+  var aBtn = h('button',{class:'btn primary', onclick:function(){
+    saveEntry({ kind:'attendance', entry_date:af.date, data:{ category:af.category, points:attPts(af.category), notes:af.notes.trim() } }, aBtn);
+  }}, ['Add incident']);
+  var attRows = rowsOf('attendance').slice(0, 30);
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Attendance'}), pill('', 'Manager / team lead') ]),
+    h('div',{class:'body'},[
+      h('div',{class:'dform noprint'},[
+        field('Date', h('input',{type:'date', value:af.date, onchange:function(e){ af.date = e.target.value; }})),
+        field('Incident', h('select',{onchange:function(e){ af.category = e.target.value; }},
+          D.attendance.map(function(a){ return h('option',{value:a.id, text:a.label + ' (' + a.pts + ')'}); }))),
+        h('div',{class:'field full'},[ h('label',{text:'Notes (optional)'}),
+          h('input',{type:'text', oninput:function(e){ af.notes = e.target.value; }}) ]),
+        h('div',{class:'full dform-act'},[ aBtn ])
+      ]),
+      attRows.length ? h('div',{class:'tscroll'},[ h('table',{class:'gates', style:'margin-top:14px'},[
+        h('thead',{},[ h('tr',{},['Date','Incident','Points','',''].map(function(t){ return h('th',{text:t}); })) ]),
+        h('tbody',{}, attRows.map(function(r){
+          var d = r.data||{};
+          return h('tr',{},[ h('td',{text:fmtDate(r.entry_date)}), h('td',{},[ attLabel(d.category), d.notes ? h('div',{class:'hint', text:d.notes}) : null ]),
+            h('td',{text:String(attPts(d.category))}), h('td',{class:'hint', text:r.entered_by||''}), h('td',{},[ delBtn(r) ]) ]);
+        }))
+      ])]) : h('p',{class:'empty', text:'No attendance incidents on file.'})
+    ])
+  ]));
+
+  return frag;
+}
+
+/* leader dashboard on the program overview: today's cash counts + team scorecard */
+function dashboardCard(){
+  var body = h('div',{class:'body'},[ h('p',{class:'empty', text:'Loading…'}) ]);
+  var dateI = h('input',{type:'date', value:S.dashDate, onchange:function(e){ S.dashDate = e.target.value || today(); fill(); }});
+  var winSel = h('select',{onchange:function(e){ S.dataWin = e.target.value; fill(); }},
+    DATA_WINDOWS.map(function(w){ return h('option',{value:w.id, text:w.label, selected:w.id===S.dataWin}); }));
+  async function fill(){
+    var since = windowSince(S.dataWin);
+    var from = since < S.dashDate ? since : S.dashDate;
+    var rows;
+    try{ rows = await Store.listData(null, from); }
+    catch(e){ body.innerHTML = ''; body.appendChild(h('p',{class:'empty', text:'Could not load data: ' + (e.message||e)})); return; }
+    var by = {}; rows.forEach(function(r){ (by[r.agent_id] = by[r.agent_id] || []).push(r); });
+
+    var cashT = h('tbody');
+    var done = 0, ok = 0, need = S.agents.length * D.cashCounts.length;
+    S.agents.forEach(function(a){
+      var mine = (by[a.id]||[]).filter(function(r){ return r.kind === 'cash' && r.entry_date === S.dashDate; });
+      cashT.appendChild(h('tr',{},[ h('td',{},[ h('b',{text:a.name}) ]) ].concat(D.cashCounts.map(function(c){
+        var r = mine.filter(function(x){ return (x.data||{}).count === c.id; })[0];
+        if (!r) return h('td',{},[ h('span',{class:'hint', text:'Not done'}) ]);
+        var res = cashResult(r.data||{}); done++; if (res.ok) ok++;
+        return h('td',{},[ pill(res.ok ? 'ok' : 'bad', res.ok ? 'Balanced' : signedMoney(res.os)),
+          h('div',{class:'hint', text:(r.data.kiosk||'') + (r.data.notes ? ' · ' + r.data.notes : '')}) ]);
+      }))));
+    });
+
+    var teamT = h('tbody');
+    S.agents.forEach(function(a){
+      var m = computeMetrics(by[a.id]||[], since);
+      teamT.appendChild(h('tr',{},[ h('td',{},[ h('b',{text:a.name}) ]),
+        h('td',{text:pct(m.ticket)}), h('td',{text:pct(m.accounting)}), h('td',{text:pct(m.cash)}),
+        h('td',{text:pct(m.cs)}), h('td',{text:String(m.attPts)}) ]));
+    });
+
+    body.innerHTML = '';
+    body.appendChild(h('div',{class:'dsub', text:'Cash counts · ' + fmtDate(S.dashDate) + ' · ' + done + ' of ' + need + ' done, ' + ok + ' balanced'}));
+    body.appendChild(h('div',{class:'tscroll'},[ h('table',{class:'gates'},[
+      h('thead',{},[ h('tr',{},[ h('th',{text:'Agent'}) ].concat(D.cashCounts.map(function(c){ return h('th',{text:c.label}); }))) ]), cashT ])]));
+    body.appendChild(h('div',{class:'dsub', style:'margin-top:18px', text:'Team scorecard · ' + windowLabel(S.dataWin)}));
+    body.appendChild(h('div',{class:'tscroll'},[ h('table',{class:'gates'},[
+      h('thead',{},[ h('tr',{},['Agent','Ticket','Accounting','Cash count','Customer service','Attendance pts'].map(function(t){ return h('th',{text:t}); })) ]), teamT ])]));
+  }
+  setTimeout(fill, 0);
+  return h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Leader dashboard'}), pill('tbd','Leaders only once logins are added'),
+      h('div',{style:'margin-left:auto;display:flex;gap:8px;flex-wrap:wrap'},[ dateI, winSel ]) ]),
+    S.agents.length ? body : h('div',{class:'body'},[ h('p',{class:'empty', text:'No agents on the roster yet.'}) ])
+  ]);
+}
+
 function logPanel(){
   var frag = document.createDocumentFragment();
 
@@ -1009,6 +1460,7 @@ function teamSummary(){
 
 function overviewPanel(){
   var frag = document.createDocumentFragment();
+  frag.appendChild(dashboardCard());
   frag.appendChild(teamSummary());
   frag.appendChild(programPanel());
   return frag;
@@ -1200,6 +1652,11 @@ function renderMain(){
     h('span',{class:'t2', text:'+pay · ' + ep.done + '/' + ep.total}),
     h('span',{class:'bar'},[ h('i',{style:'width:' + ep.pct + '%'}) ])
   ]));
+  nav.appendChild(h('button',{ class: S.tab === 'data' ? 'active' : '',
+    onclick:function(){ S.tab = 'data'; renderMain(); }},[
+    h('span',{class:'t1', text:'Data'}),
+    h('span',{class:'t2', text:'scores & cash count'})
+  ]));
   nav.appendChild(h('button',{ class: S.tab === 'log' ? 'active' : '',
     onclick:function(){ S.tab = 'log'; renderMain(); }},[
     h('span',{class:'t1', text:'Coaching log'}),
@@ -1219,6 +1676,7 @@ function renderMain(){
   /* --- panel --- */
   if (S.tab === 'senior')       wrap.appendChild(seniorPanel());
   else if (S.tab === 'endorse') wrap.appendChild(endorsePanel());
+  else if (S.tab === 'data')    wrap.appendChild(dataPanel());
   else if (S.tab === 'log')     wrap.appendChild(logPanel());
   else if (S.tab === 'program') wrap.appendChild(programPanel());
   else {
@@ -1238,7 +1696,7 @@ var saveAgentSoon = debounce(function(){
 /* return to the program overview without losing anything — the open
    passport has already autosaved, so this is just a view change */
 function showOverview(){
-  S.agentId = null; S.agent = null; S.pp = null; S.log = [];
+  S.agentId = null; S.agent = null; S.pp = null; S.log = []; S.data = [];
   S.tab = 'nat';
   setStatus(MODE === 'supabase' ? 'ok' : '', MODE === 'supabase' ? 'Connected' : 'Local mode');
   renderRoster(); renderMain();
@@ -1255,13 +1713,15 @@ async function selectAgent(id){
     S.pp.goals = S.pp.goals || {}; S.pp.signoff = S.pp.signoff || {};
     S.pp.endorsements = S.pp.endorsements || {}; S.pp.senior = S.pp.senior || {};
     S.log = await Store.listLog(id);
+    try{ S.data = await Store.listData(id, isoDaysAgo(400)); }
+    catch(e){ console.error(e); S.data = []; }
     setStatus('ok', MODE === 'supabase' ? 'Synced' : 'Local mode');
   }catch(e){
-    console.error(e); S.pp = blankPassport(); S.log = [];
+    console.error(e); S.pp = blankPassport(); S.log = []; S.data = [];
     setStatus('err','Could not load — ' + (e.message || e));
   }
   if (!P.levels.filter(function(l){ return l.id === S.tab; })[0]
-      && ['senior','endorse','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
+      && ['senior','endorse','data','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
   renderRoster(); renderMain();
 }
 
