@@ -2693,10 +2693,12 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function todayISO(){return iso(new Date());}
   function bandLevel(val,b){if(val==null)return null;var l=0;if(val>=b[0])l=1;if(val>=b[1])l=2;if(val>=b[2])l=3;if(val>=b[3])l=4;return l;}
 
+  // ---- V.Creator: the Manager scores up to 2 calls per agent; only the best one counts ----
+  function bestVC(d){var x=n(d.vc),y=n(d.vc2);if(x==null)return y;if(y==null)return x;return Math.max(x,y);}
   // ---- auto-calc: derive a metric % from one day's raw counts ----
   function dayVal(d,key){
     if(!d)return null;
-    if(key==="call"){var a=n(d.zoom),b=n(d.vc);var arr=[a,b].filter(function(x){return x!=null;});return arr.length?arr.reduce(function(s,x){return s+x;},0)/arr.length:null;}
+    if(key==="call"){var a=n(d.zoom),b=bestVC(d);var arr=[a,b].filter(function(x){return x!=null;});return arr.length?arr.reduce(function(s,x){return s+x;},0)/arr.length:null;}
     if(key==="answered"){var ib=n(d.inbound);if(ib==null||ib<=0)return null;return (ib-(n(d.missed)||0))/ib*100;}
     if(key==="avail"){var op=n(d.onphone),av=n(d.avail);if(op==null||op<=0||av==null)return null;return av/op*100;}
     if(key==="order"){var o=n(d.orders);if(o==null||o<=0)return null;var errs=0;ORDCAT_KEYS.forEach(function(k){errs+=(n(d[k])||0);});return (o-errs)/o*100;}
@@ -2718,12 +2720,12 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function monthRange(offset){var t=new Date();t.setHours(0,0,0,0);var start=new Date(t.getFullYear(),t.getMonth()+offset,1);var end=new Date(t.getFullYear(),t.getMonth()+offset+1,0);end.setHours(23,59,59,999);return {start:start,end:end};}
   function rangeMetric(id,key,start,end){var o=dayAll(),dd=o[id]||{};var s=0,cnt=0;Object.keys(dd).forEach(function(ds){var dt=new Date(ds+"T00:00:00");if(dt>=start&&dt<=end){var v=dayVal(dd[ds],key);if(v!=null){s+=v;cnt++;}}});return {avg:cnt?s/cnt:null,n:cnt};}
 
-  var RAW=[{k:"zoom",lab:"Zoom",g:"call"},{k:"vc",lab:"V.Creator",g:"call"},{k:"onphone",lab:"On-phone hrs",g:"call"},{k:"avail",lab:"Avail hrs",g:"call"},{k:"inbound",lab:"Inbound",g:"call"},{k:"outbound",lab:"Outbound",g:"call"},{k:"missed",lab:"Missed",g:"call"},{k:"orders",lab:"Orders",g:"ord"},{k:"cod",lab:"COD orders",g:"ord"},{k:"acctErr",lab:"Acct errors",g:"ord"},{k:"trip",lab:"Trip charge",g:"oe"},{k:"code",lab:"Incorrect code",g:"oe"},{k:"missord",lab:"Missed order",g:"oe"},{k:"addr",lab:"Address",g:"oe"},{k:"dtw",lab:"Date/Time win",g:"oe"},{k:"oentry",lab:"Order entry",g:"oe"},{k:"mrf",lab:"MRF",g:"oe"},{k:"pdriver",lab:"Prev driver",g:"oe"}];var ORDCAT_KEYS=["trip","code","missord","addr","dtw","oentry","mrf","pdriver"];
+  var RAW=[{k:"zoom",lab:"Zoom",g:"call"},{k:"vc",lab:"V.Creator 1",g:"call"},{k:"vc2",lab:"V.Creator 2",g:"call"},{k:"onphone",lab:"On-phone hrs",g:"call"},{k:"avail",lab:"Avail hrs",g:"call"},{k:"inbound",lab:"Inbound",g:"call"},{k:"outbound",lab:"Outbound",g:"call"},{k:"missed",lab:"Missed",g:"call"},{k:"orders",lab:"Orders",g:"ord"},{k:"cod",lab:"COD orders",g:"ord"},{k:"acctErr",lab:"Acct errors",g:"ord"},{k:"trip",lab:"Trip charge",g:"oe"},{k:"code",lab:"Incorrect code",g:"oe"},{k:"missord",lab:"Missed order",g:"oe"},{k:"addr",lab:"Address",g:"oe"},{k:"dtw",lab:"Date/Time win",g:"oe"},{k:"oentry",lab:"Order entry",g:"oe"},{k:"mrf",lab:"MRF",g:"oe"},{k:"pdriver",lab:"Prev driver",g:"oe"}];var ORDCAT_KEYS=["trip","code","missord","addr","dtw","oentry","mrf","pdriver"];
   var DAYPCT=[{k:"call",lab:"V.Cr"},{k:"answered",lab:"Ans"},{k:"avail",lab:"Avail"},{k:"order",lab:"Order"},{k:"acct",lab:"Acct"}];
   // Column order for the daily entry grid — each auto-% sits right after the data it summarizes
   var DGRID=[
     {grp:"Calls",cls:"g-call",cols:[
-      {raw:"zoom"},{raw:"vc"},{pct:"call"},
+      {raw:"zoom"},{raw:"vc"},{raw:"vc2"},{pct:"call"},
       {raw:"onphone"},{raw:"avail"},{pct:"answered"},{pct:"avail"},
       {raw:"inbound"},{raw:"outbound"},{raw:"missed"}
     ]},
@@ -3008,9 +3010,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     function rawLab(k){for(var i=0;i<RAW.length;i++)if(RAW[i].k===k)return RAW[i].lab;return k;}
     function pctLab(k){for(var i=0;i<DAYPCT.length;i++)if(DAYPCT[i].k===k)return DAYPCT[i].lab;return k;}
     function pctFmt(v){var s=String(v==null?"":v).trim();if(s===""||/no\s*score/i.test(s))return s;var num=parseFloat(s);return isNaN(num)?s:(num+"%");}
-    // role-based column filter: Manager and Director see every column; Supervisor sees everything except V.Creator (vc)
+    // role-based column filter: Manager and Director see every column; Supervisor sees everything except V.Creator (vc, vc2)
     var _role=window.__weRole||"";
-    function colAllowed(col){var isVCraw=(col.raw==="vc");if(_role==="manager")return true;if(_role==="supervisor")return !isVCraw;return true;}
+    function colAllowed(col){var isVCraw=(col.raw==="vc"||col.raw==="vc2");if(_role==="manager")return true;if(_role==="supervisor")return !isVCraw;return true;}
     var DG=DGRID.map(function(g){return {grp:g.grp,cls:g.cls,cols:g.cols.filter(colAllowed)};}).filter(function(g){return g.cols.length;});
     var h='<table class="dt-grid dt-wide"><tr class="grp"><th></th><th></th>'+
       DG.map(function(g){return '<th colspan="'+g.cols.length+'" class="'+g.cls+'">'+g.grp+'</th>';}).join("")+'</tr>';
@@ -3023,7 +3025,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       var cells=DG.map(function(g){return g.cols.map(function(col){
         if(col.raw){
           var k=col.raw,val=(e[k]==null?"":e[k]);
-          if(k==="zoom"||k==="vc"){
+          if(k==="zoom"||k==="vc"||k==="vc2"){
             return '<td><input class="dd-in dd-score" list="dd-nsopts" data-id="'+a.id+'" data-k="'+k+'" value="'+pctFmt(val)+'" autocomplete="off" placeholder="score % / No score"></td>';
           }
           return '<td><input class="dd-in" data-id="'+a.id+'" data-k="'+k+'" value="'+val+'" inputmode="decimal"></td>';
@@ -3158,7 +3160,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   function leadPull(key,cb){if(!window.sbReady()){cb&&cb(leadData(key));return;}window.sbSelect("passports","agent=eq."+encodeURIComponent(key)+"&select=data&limit=1").then(function(rows){var d=(rows&&rows[0]&&rows[0].data)||null;if(d&&d.kind==="leader"){_leadCache[key]=d;try{localStorage.setItem("we_leader_"+key,JSON.stringify(d));}catch(e){}}cb&&cb(leadData(key));}).catch(function(){cb&&cb(leadData(key));});}
   function leadSave(key){var d=leadData(key);d.kind="leader";d.key=key;d.updated=new Date().toISOString();try{localStorage.setItem("we_leader_"+key,JSON.stringify(d));}catch(e){}if(window.sbReady()){clearTimeout(_leadTmr[key]);_leadTmr[key]=setTimeout(function(){window.sbUpsert("passports",{agent:key,data:d,updated_at:d.updated});},800);}}
   function callScoreStatus(role){
-    var keys=(role==="manager")?["vc"]:["zoom","onphone","avail","inbound","outbound","missed","orders","cod","acctErr"];
+    var keys=(role==="manager")?["vc","vc2"]:["zoom","onphone","avail","inbound","outbound","missed","orders","cod","acctErr"];
     var o=dayAll(),list=realAgents(),today=new Date();today.setHours(0,0,0,0);var scored=0,behind=[];
     function noScoreDay(day){return /no\s*score/i.test(((day&&day.att)||"")+"");}
     list.forEach(function(a){var dd=o[a.id]||{},last=null;Object.keys(dd).forEach(function(ds){var day=dd[ds]||{};var has=keys.some(function(k){var v=day[k];return v!=null&&v!=="";})||noScoreDay(day);if(has&&(!last||ds>last))last=ds;});var days=last?Math.floor((today-new Date(last+"T00:00:00"))/86400000):null;if(days!=null&&days<=2)scored++;else behind.push({name:a.name,days:days});});
