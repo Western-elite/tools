@@ -147,12 +147,74 @@ create policy sh_passports_anon on public.sh_passports
 create policy sh_log_anon on public.sh_coaching_log
   for all to anon using (true) with check (true);
 
--- Data tab entries: same shared-link mode for now. When individual logins
--- are added, replace this with policies that let an agent read only rows
--- where agent_id is their own, and let leaders read/write all rows.
-drop policy if exists sh_data_anon on public.sh_data_entries;
-create policy sh_data_anon on public.sh_data_entries
-  for all to anon using (true) with check (true);
+-- ==== LEADER LOGINS (manager / team lead) ============================
+-- Leaders sign in with a Supabase Auth account (email + password). The
+-- password lives only in Supabase — never put it in this repo.
+-- A signed-in account counts as a leader only if its email is listed in
+-- sh_leaders, so a stray sign-up can't get leader rights.
+--
+-- To add a leader:
+--   1. Supabase > Authentication > Users > Add user (email + password,
+--      tick "Auto Confirm User").
+--   2. insert into public.sh_leaders (email, name, role)
+--        values ('name@westernelite.com', 'Name', 'manager');  -- or 'team_lead'
+create table if not exists public.sh_leaders (
+  email      text primary key,          -- store lowercase
+  name       text,
+  role       text not null default 'team_lead'
+               check (role in ('manager','team_lead')),
+  created_at timestamptz not null default now()
+);
+alter table public.sh_leaders enable row level security;
+revoke all on public.sh_leaders from anon;
+grant select on public.sh_leaders to authenticated;
+drop policy if exists sh_leaders_self on public.sh_leaders;
+create policy sh_leaders_self on public.sh_leaders
+  for select to authenticated
+  using (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+
+create or replace function public.sh_is_leader()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.sh_leaders
+    where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
+$$;
+grant execute on function public.sh_is_leader() to anon, authenticated;
+
+-- Signed-in leaders use the 'authenticated' role, so they need the same
+-- access to the passport tables that the shared link has.
+drop policy if exists sh_agents_auth    on public.sh_agents;
+drop policy if exists sh_passports_auth on public.sh_passports;
+drop policy if exists sh_log_auth       on public.sh_coaching_log;
+create policy sh_agents_auth on public.sh_agents
+  for all to authenticated using (true) with check (true);
+create policy sh_passports_auth on public.sh_passports
+  for all to authenticated using (true) with check (true);
+create policy sh_log_auth on public.sh_coaching_log
+  for all to authenticated using (true) with check (true);
+
+-- Data tab entries:
+--   everyone with the page can READ (agent-only reading comes with agent logins)
+--   anyone can add / update a CASH COUNT (agents do this at the kiosk)
+--   only leaders can add / change daily numbers, CS scores and attendance
+--   only leaders can delete anything
+drop policy if exists sh_data_anon      on public.sh_data_entries;
+drop policy if exists sh_data_read      on public.sh_data_entries;
+drop policy if exists sh_data_insert    on public.sh_data_entries;
+drop policy if exists sh_data_update    on public.sh_data_entries;
+drop policy if exists sh_data_delete    on public.sh_data_entries;
+create policy sh_data_read on public.sh_data_entries
+  for select to anon, authenticated using (true);
+create policy sh_data_insert on public.sh_data_entries
+  for insert to anon, authenticated
+  with check (kind = 'cash' or public.sh_is_leader());
+create policy sh_data_update on public.sh_data_entries
+  for update to anon, authenticated
+  using (kind = 'cash' or public.sh_is_leader())
+  with check (kind = 'cash' or public.sh_is_leader());
+create policy sh_data_delete on public.sh_data_entries
+  for delete to authenticated using (public.sh_is_leader());
 
 -- ==== OPTION B — SIGNED-IN MODE (recommended once it's in real use) ==
 -- Turn on Supabase Auth (email magic link), invite only your
