@@ -334,6 +334,12 @@ a{color:var(--accent)}
 /* stacked layout: keep main at screen width so wide tables scroll inside .tscroll */
 @media (max-width:860px){ .main{width:100%; box-sizing:border-box} }
 
+.leader-box{display:flex; align-items:center; gap:6px}
+.leader-tag{font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:12px; background:rgba(255,255,255,.18); color:#fff; white-space:nowrap}
+.modal-ov{position:fixed; inset:0; background:rgba(10,20,40,.45); display:flex; align-items:flex-start; justify-content:center; padding:12vh 16px 16px; z-index:50}
+.modal-card{width:100%; max-width:360px; text-align:center}
+.modal-card .search{width:100%; box-sizing:border-box}
+
 /* ---------- gate / login ---------- */
 .gatebox{max-width:340px; margin:14vh auto; text-align:center}
 .gatebox .card{padding:24px}
@@ -468,6 +474,7 @@ var T_AG  = CFG.TABLE_AGENTS    || 'sh_agents';
 var T_PP  = CFG.TABLE_PASSPORTS || 'sh_passports';
 var T_LOG = CFG.TABLE_LOG       || 'sh_coaching_log';
 var T_DATA = CFG.TABLE_DATA     || 'sh_data_entries';
+var T_LEAD = CFG.TABLE_LEADERS  || 'sh_leaders';
 var LSKEY = 'we.shp.v1';
 
 function lsRead(){
@@ -607,6 +614,81 @@ var Store = {
 };
 
 /* ==================================================================
+   1b. leader sign-in (manager / team lead) — Supabase Auth
+   Agents use the page without signing in and can only add cash counts;
+   the database enforces that too (see schema.sql, LEADER LOGINS).
+   In local mode there is no login, so everything stays open.
+   ================================================================== */
+var Auth = {
+  async refresh(){
+    if (MODE !== 'supabase'){ S.leader = true; S.leaderEmail = ''; S.leaderRole = 'local'; return; }
+    S.leader = false; S.leaderEmail = ''; S.leaderRole = '';
+    var r = await SB.auth.getSession();
+    var u = r && r.data && r.data.session && r.data.session.user;
+    if (!u) return;
+    // RLS only returns the signed-in leader's own row
+    var q = await SB.from(T_LEAD).select('email,name,role').limit(1);
+    var row = q && !q.error && q.data && q.data[0];
+    if (row){ S.leader = true; S.leaderEmail = u.email || row.email; S.leaderRole = row.role || 'team_lead'; }
+    else S.leaderEmail = u.email || '';
+  },
+  async signIn(email, password){
+    var r = await SB.auth.signInWithPassword({ email:email, password:password });
+    if (r.error) return r.error.message || 'Sign-in failed.';
+    await Auth.refresh();
+    if (!S.leader){ await SB.auth.signOut(); S.leaderEmail = ''; return 'This account is not set up as a manager or team lead.'; }
+    return null;
+  },
+  async signOut(){
+    if (MODE === 'supabase') await SB.auth.signOut();
+    await Auth.refresh();
+  }
+};
+
+function paintLeader(){
+  var el = document.getElementById('leaderBox');
+  if (!el) return;
+  el.innerHTML = '';
+  if (MODE !== 'supabase') return;
+  if (S.leader){
+    el.appendChild(h('span',{class:'leader-tag', title:S.leaderEmail,
+      text:(S.leaderRole === 'manager' ? 'Manager' : 'Team lead') + ' view'}));
+    el.appendChild(h('button',{class:'btn sm', onclick:async function(){
+      await Auth.signOut(); paintLeader(); renderMain();
+    }}, ['Sign out']));
+  } else {
+    el.appendChild(h('button',{class:'btn sm', onclick:openLeaderLogin}, ['Leader sign-in']));
+  }
+}
+
+function openLeaderLogin(){
+  var em = h('input',{type:'email', class:'search', placeholder:'Work email', autocomplete:'username'});
+  var pw = h('input',{type:'password', class:'search', placeholder:'Password', autocomplete:'current-password',
+    onkeydown:function(e){ if (e.key === 'Enter') go(); }});
+  var msg = h('p',{class:'hint', style:'min-height:18px;margin:8px 0 0'});
+  var btn = h('button',{class:'btn primary', style:'margin-top:10px;width:100%', onclick:go}, ['Sign in']);
+  var ov = h('div',{class:'modal-ov', onclick:function(e){ if (e.target === ov) ov.remove(); }},[
+    h('div',{class:'card modal-card', role:'dialog', 'aria-label':'Leader sign-in'},[ h('div',{class:'body'},[
+      h('h3',{text:'Manager / team lead sign-in', style:'margin:0 0 4px'}),
+      h('p',{class:'hint', style:'margin:0 0 12px', text:'Agents don’t need to sign in — they only enter cash counts.'}),
+      em, h('div',{style:'height:8px'}), pw, btn, msg,
+      h('button',{class:'btn ghost sm', style:'margin-top:6px', onclick:function(){ ov.remove(); }}, ['Cancel'])
+    ])])
+  ]);
+  async function go(){
+    if (!em.value.trim() || !pw.value){ msg.textContent = 'Enter your email and password.'; return; }
+    btn.disabled = true; msg.textContent = 'Signing in…';
+    var err = null;
+    try{ err = await Auth.signIn(em.value.trim(), pw.value); }catch(e){ err = e.message || String(e); }
+    btn.disabled = false;
+    if (err){ msg.textContent = err; pw.value = ''; return; }
+    ov.remove(); paintLeader(); renderMain();
+  }
+  document.body.appendChild(ov);
+  em.focus();
+}
+
+/* ==================================================================
    2. app state
    ================================================================== */
 var S = {
@@ -617,6 +699,9 @@ var S = {
   log: [],
   data: [],          // Data tab entries for the open agent
   dataWin: 'quarter',
+  leader: false,     // signed in as manager / team lead
+  leaderEmail: '',
+  leaderRole: '',
   dashDate: today(),
   lastKiosk: '',
   tab: 'nat',        // level id | 'senior' | 'endorse' | 'data' | 'log' | 'program'
@@ -1093,6 +1178,7 @@ async function saveEntry(row, btn){
   }catch(e){ console.error(e); alert('Could not save: ' + (e.message||e)); if (btn) btn.disabled = false; }
 }
 function delBtn(r){
+  if (!S.leader) return null;
   return h('button',{class:'btn ghost sm noprint', onclick:async function(){
     if (!confirm('Delete this entry?')) return;
     try{ await Store.deleteData(r.id); await reloadData(); }
@@ -1186,6 +1272,11 @@ function dataPanel(){
       ])]) : h('p',{class:'empty', text:'No cash counts yet.'})
     ])
   ]));
+
+  if (!S.leader){
+    frag.appendChild(h('p',{class:'hint', style:'margin:0 0 16px', text:'Daily numbers, customer service scores and attendance are entered by your manager or team lead.'}));
+    return frag;
+  }
 
   /* --- 3. daily numbers (leader) --- */
   var df = { date: isoDaysAgo(1), errors:{} };
@@ -1460,7 +1551,9 @@ function teamSummary(){
 
 function overviewPanel(){
   var frag = document.createDocumentFragment();
-  frag.appendChild(dashboardCard());
+  if (S.leader) frag.appendChild(dashboardCard());
+  else frag.appendChild(h('div',{class:'card noprint'},[ h('div',{class:'body'},[
+    h('p',{class:'hint', style:'margin:0', text:'The leader dashboard (cash counts and team scorecard) is for managers and team leads. Use Leader sign-in at the top to open it.'}) ])]));
   frag.appendChild(teamSummary());
   frag.appendChild(programPanel());
   return frag;
@@ -1793,6 +1886,7 @@ function buildShell(){
     ]),
     h('div',{class:'htitle', text:(CFG.TEAM_LABEL || 'Scale House') + ' Passport'}),
     h('div',{class:'spacer'}),
+    h('div',{id:'leaderBox', class:'leader-box'}),
     whoInput,
     h('button',{class:'btn sm', onclick:function(){ window.print(); }}, ['Print']),
     h('button',{class:'btn sm', onclick:exportCsv}, ['Export CSV']),
@@ -1859,6 +1953,8 @@ async function boot(){
   }catch(e){}
 
   buildShell();
+  try{ await Auth.refresh(); }catch(e){ console.error(e); }
+  paintLeader();
   setStatus('busy','Loading roster…');
   try{
     S.agents = await Store.listAgents();
