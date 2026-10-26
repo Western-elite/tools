@@ -334,6 +334,8 @@ a{color:var(--accent)}
 /* stacked layout: keep main at screen width so wide tables scroll inside .tscroll */
 @media (max-width:860px){ .main{width:100%; box-sizing:border-box} }
 
+.topbar .btn.leader-btn.on{background:#fff; color:var(--blue); border-color:#fff}
+
 /* ---------- gate / login ---------- */
 .gatebox{max-width:340px; margin:14vh auto; text-align:center}
 .gatebox .card{padding:24px}
@@ -617,6 +619,9 @@ var S = {
   log: [],
   data: [],          // Data tab entries for the open agent
   dataWin: 'quarter',
+  // Leader view: manager / team lead screens on the Data tab and the dashboard.
+  // A view switch only, not security; real leader logins come later.
+  leader: (function(){ try{ return localStorage.getItem('we.shp.leader') === '1'; }catch(e){ return false; } })(),
   dashDate: today(),
   lastKiosk: '',
   tab: 'nat',        // level id | 'senior' | 'endorse' | 'data' | 'log' | 'program'
@@ -1093,6 +1098,7 @@ async function saveEntry(row, btn){
   }catch(e){ console.error(e); alert('Could not save: ' + (e.message||e)); if (btn) btn.disabled = false; }
 }
 function delBtn(r){
+  if (!S.leader) return null;
   return h('button',{class:'btn ghost sm noprint', onclick:async function(){
     if (!confirm('Delete this entry?')) return;
     try{ await Store.deleteData(r.id); await reloadData(); }
@@ -1186,6 +1192,11 @@ function dataPanel(){
       ])]) : h('p',{class:'empty', text:'No cash counts yet.'})
     ])
   ]));
+
+  if (!S.leader){
+    frag.appendChild(h('p',{class:'hint', style:'margin:0 0 16px', text:'Daily numbers, customer service scores and attendance are entered by your manager or team lead.'}));
+    return frag;
+  }
 
   /* --- 3. daily numbers (leader) --- */
   var df = { date: isoDaysAgo(1), errors:{} };
@@ -1460,7 +1471,9 @@ function teamSummary(){
 
 function overviewPanel(){
   var frag = document.createDocumentFragment();
-  frag.appendChild(dashboardCard());
+  if (S.leader) frag.appendChild(dashboardCard());
+  else frag.appendChild(h('div',{class:'card noprint'},[ h('div',{class:'body'},[
+    h('p',{class:'hint', style:'margin:0', text:'The leader dashboard (cash counts and team scorecard) is for managers and team leads. Turn on Leader view at the top to open it.'}) ])]));
   frag.appendChild(teamSummary());
   frag.appendChild(programPanel());
   return frag;
@@ -1793,6 +1806,15 @@ function buildShell(){
     ]),
     h('div',{class:'htitle', text:(CFG.TEAM_LABEL || 'Scale House') + ' Passport'}),
     h('div',{class:'spacer'}),
+    h('button',{id:'leaderBtn', class:'btn sm leader-btn' + (S.leader ? ' on' : ''),
+      title:'Switch between the agent view and the manager / team lead view',
+      onclick:function(e){
+        S.leader = !S.leader;
+        try{ localStorage.setItem('we.shp.leader', S.leader ? '1' : '0'); }catch(err){}
+        e.currentTarget.className = 'btn sm leader-btn' + (S.leader ? ' on' : '');
+        e.currentTarget.textContent = S.leader ? 'Leader view: On' : 'Leader view: Off';
+        renderMain();
+      }}, [S.leader ? 'Leader view: On' : 'Leader view: Off']),
     whoInput,
     h('button',{class:'btn sm', onclick:function(){ window.print(); }}, ['Print']),
     h('button',{class:'btn sm', onclick:exportCsv}, ['Export CSV']),
