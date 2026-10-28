@@ -619,9 +619,12 @@ var S = {
   log: [],
   data: [],          // Data tab entries for the open agent
   dataWin: 'quarter',
-  // Leader view: manager / team lead screens on the Data tab and the dashboard.
-  // A view switch only, not security; real leader logins come later.
-  leader: (function(){ try{ return localStorage.getItem('we.shp.leader') === '1'; }catch(e){ return false; } })(),
+  // Sign-in role: 'director' (the main access code), 'manager' or 'teamlead'.
+  // A soft gate, not security; real Supabase logins come later.
+  role: '',
+  // Director only: preview the manager, team lead or agent screens.
+  viewAs: (function(){ try{ return localStorage.getItem('we.shp.viewas') || 'director'; }catch(e){ return 'director'; } })(),
+  leader: false,     // set by applyRole(): true on any leader screen
   dashDate: today(),
   lastKiosk: '',
   tab: 'nat',        // level id | 'senior' | 'endorse' | 'data' | 'log' | 'program'
@@ -631,6 +634,21 @@ var S = {
   saving: false,
   err: null
 };
+
+var ROLES = { director:'Director', manager:'Manager', teamlead:'Team lead', agent:'Agent' };
+function viewRole(){
+  if (S.role === 'director') return ROLES[S.viewAs] ? S.viewAs : 'director';
+  return S.role || 'agent';
+}
+function applyRole(){ S.leader = viewRole() !== 'agent'; }
+// What each screen shows. Director: everything + team dashboard.
+// Manager: daily numbers + attendance. Team lead: daily numbers, CS score + attendance.
+function canSee(section){
+  var r = viewRole();
+  if (section === 'dashboard') return r === 'director';
+  if (section === 'cs') return r === 'director' || r === 'teamlead';
+  return r !== 'agent';   // daily numbers, attendance, delete
+}
 
 function blankPassport(){
   return { meta:{}, items:{}, gates:{}, goals:{}, signoff:{},
@@ -1260,7 +1278,7 @@ function dataPanel(){
       })) ]);
   }));
   var csRows = rowsOf('cs').slice(0, 30);
-  frag.appendChild(h('div',{class:'card'},[
+  if (canSee('cs')) frag.appendChild(h('div',{class:'card'},[
     h('header',{},[ h('h3',{text:'Customer service score'}), pill('', 'Team lead') ]),
     h('div',{class:'body'},[
       h('div',{class:'dform noprint'},[
@@ -1363,7 +1381,7 @@ function dashboardCard(){
   }
   setTimeout(fill, 0);
   return h('div',{class:'card'},[
-    h('header',{},[ h('h3',{text:'Leader dashboard'}), pill('tbd','Leaders only once logins are added'),
+    h('header',{},[ h('h3',{text:'Leader dashboard'}), pill('', 'Director'),
       h('div',{style:'margin-left:auto;display:flex;gap:8px;flex-wrap:wrap'},[ dateI, winSel ]) ]),
     S.agents.length ? body : h('div',{class:'body'},[ h('p',{class:'empty', text:'No agents on the roster yet.'}) ])
   ]);
@@ -1471,9 +1489,9 @@ function teamSummary(){
 
 function overviewPanel(){
   var frag = document.createDocumentFragment();
-  if (S.leader) frag.appendChild(dashboardCard());
+  if (canSee('dashboard')) frag.appendChild(dashboardCard());
   else frag.appendChild(h('div',{class:'card noprint'},[ h('div',{class:'body'},[
-    h('p',{class:'hint', style:'margin:0', text:'The leader dashboard (cash counts and team scorecard) is for managers and team leads. Turn on Leader view at the top to open it.'}) ])]));
+    h('p',{class:'hint', style:'margin:0', text:'The team dashboard (cash counts and team scorecard) is in the Director view.'}) ])]));
   frag.appendChild(teamSummary());
   frag.appendChild(programPanel());
   return frag;
@@ -1806,15 +1824,21 @@ function buildShell(){
     ]),
     h('div',{class:'htitle', text:(CFG.TEAM_LABEL || 'Scale House') + ' Passport'}),
     h('div',{class:'spacer'}),
-    h('button',{id:'leaderBtn', class:'btn sm leader-btn' + (S.leader ? ' on' : ''),
-      title:'Switch between the agent view and the manager / team lead view',
-      onclick:function(e){
-        S.leader = !S.leader;
-        try{ localStorage.setItem('we.shp.leader', S.leader ? '1' : '0'); }catch(err){}
-        e.currentTarget.className = 'btn sm leader-btn' + (S.leader ? ' on' : '');
-        e.currentTarget.textContent = S.leader ? 'Leader view: On' : 'Leader view: Off';
-        renderMain();
-      }}, [S.leader ? 'Leader view: On' : 'Leader view: Off']),
+    h('span',{id:'roleBadge', class:'btn sm leader-btn on', style:'cursor:default',
+      title:'Signed in as ' + ROLES[S.role || 'director']}, [ ROLES[S.role || 'director'] ]),
+    S.role === 'director'
+      ? h('select',{id:'viewAs', class:'btn sm', title:'See the screens as a manager, team lead or agent sees them',
+          onchange:function(e){
+            S.viewAs = e.target.value;
+            try{ localStorage.setItem('we.shp.viewas', S.viewAs); }catch(err){}
+            applyRole(); renderMain();
+          }}, ['director','manager','teamlead','agent'].map(function(r){
+            return h('option',{value:r, text:'View as: ' + ROLES[r], selected:r === viewRole()}); }))
+      : null,
+    CFG.ACCESS_CODE ? h('button',{class:'btn ghost sm', onclick:function(){
+      try{ sessionStorage.removeItem('we.shp.gate'); sessionStorage.removeItem('we.shp.role'); }catch(err){}
+      location.reload();
+    }}, ['Sign out']) : null,
     whoInput,
     h('button',{class:'btn sm', onclick:function(){ window.print(); }}, ['Print']),
     h('button',{class:'btn sm', onclick:exportCsv}, ['Export CSV']),
@@ -1850,24 +1874,38 @@ function buildShell(){
   ]));
 }
 
+// Sign-in codes: ACCESS_CODE = Director, MANAGER_CODE = Manager, TEAMLEAD_CODE = Team lead.
+function roleForCode(v){
+  if (!v) return '';
+  if (v === CFG.ACCESS_CODE) return 'director';
+  if (CFG.MANAGER_CODE && v === CFG.MANAGER_CODE) return 'manager';
+  if (CFG.TEAMLEAD_CODE && v === CFG.TEAMLEAD_CODE) return 'teamlead';
+  return '';
+}
 function accessGate(onPass){
-  if (!CFG.ACCESS_CODE){ onPass(); return; }
-  var ok = false;
-  try{ ok = sessionStorage.getItem('we.shp.gate') === '1'; }catch(e){}
-  if (ok){ onPass(); return; }
+  function enter(role){ S.role = role; applyRole(); onPass(); }
+  if (!CFG.ACCESS_CODE){ enter('director'); return; }
+  var saved = '';
+  try{
+    if (sessionStorage.getItem('we.shp.gate') === '1')
+      saved = sessionStorage.getItem('we.shp.role') || 'director';   // older sessions = director
+  }catch(e){}
+  if (ROLES[saved] && saved !== 'agent'){ enter(saved); return; }
   var root = document.getElementById('root');
-  var inp = h('input',{type:'password', class:'search', placeholder:'Access code',
+  var inp = h('input',{type:'password', class:'search', placeholder:'Sign-in code',
     onkeydown:function(e){ if (e.key === 'Enter') go(); }});
   function go(){
-    if (inp.value === CFG.ACCESS_CODE){
-      try{ sessionStorage.setItem('we.shp.gate','1'); }catch(e){}
-      onPass();
+    var role = roleForCode(inp.value);
+    if (role){
+      try{ sessionStorage.setItem('we.shp.gate','1'); sessionStorage.setItem('we.shp.role', role); }catch(e){}
+      enter(role);
     } else { inp.value=''; inp.placeholder = 'Incorrect — try again'; }
   }
   root.innerHTML = '';
   root.appendChild(h('div',{class:'gatebox'},[
     h('div',{class:'card'},[ h('div',{class:'body'},[
-      h('h3',{text:'Scale House Passport', style:'margin:0 0 12px'}),
+      h('h3',{text:'Scale House Passport', style:'margin:0 0 6px'}),
+      h('p',{class:'hint', style:'margin:0 0 12px', text:'Director, manager or team lead code'}),
       inp,
       h('button',{class:'btn primary', style:'margin-top:10px;width:100%', onclick:go}, ['Enter'])
     ])])
