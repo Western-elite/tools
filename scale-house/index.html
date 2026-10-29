@@ -864,7 +864,7 @@ function levelPanel(lv){
 
   if (lv.gates && lv.gates.length){
     frag.appendChild(h('div',{class:'card'},[
-      h('header',{},[ h('h3',{text:'Performance gates'}) ]),
+      h('header',{},[ h('h3',{text:'Performance gates'}), h('span',{class:'hint', text:'All gates are based on a 30-day rolling average'}) ]),
       h('div',{class:'body'},[ gateTable(lv.gates, lv.gateWindow) ])
     ]));
   }
