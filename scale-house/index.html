@@ -870,6 +870,7 @@ function levelPanel(lv){
   }
 
   (lv.groups||[]).forEach(function(g){
+    if (g.retired) return;
     var ul = h('ul',{class:'items'});
     (g.items||[]).forEach(function(it){ if(!it.retired) ul.appendChild(itemRow(it,0)); });
     frag.appendChild(h('div',{class:'card'},[
