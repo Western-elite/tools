@@ -218,24 +218,14 @@ window.PROGRAM = {
           lead: 'Demonstrated at an advanced level for a minimum of 60 days:',
           items: [
             { id: 'l3.own.comments', label: 'Log customer comments' },
-            { id: 'l3.own.selfmanage', label: 'Manage individual performance goals on a trailing 90-day basis', note: 'Tracked in the 90-day panel below' }
+            { id: 'l3.own.selfmanage', label: 'Manage individual performance goals on a trailing 90-day basis', retired: true },
+            { id: 'l3.own.cashbox', label: 'Self-manage cash box accuracy — count and log the actual cash box amount at lunch and at end of day', note: 'Logged in the Cash count section of the Data tab' }
           ]
         }
       ],
-      /* Level 3 agents self-manage a trailing 90-day goal set */
-      trailing90: {
-        title: 'Trailing 90-day performance goals — self-managed',
-        gates: [
-          { id: 'l3.t90.cod', label: 'Missed CODs', target: 98, unit: '%' },
-          { id: 'l3.t90.ticket', label: 'Ticket accuracy', target: 99.8, unit: '%' },
-          { id: 'l3.t90.cashbox', label: 'Cash box accuracy', target: 97, unit: '%' },
-          { id: 'l3.t90.cs', label: 'Customer service scores', target: 95, unit: '%' },
-          { id: 'l3.t90.attendance', label: 'Time and attendance', target: 1.5, unit: '', max: true, info: ATT_INFO }
-        ]
-      },
       advance: [
         { id: 'l3.adv.unaided', label: 'Performs all Level 1–3 skills without help' },
-        { id: 'l3.adv.t90', label: 'Holds the trailing 90-day goal set' }
+        { id: 'l3.adv.t90', label: 'Holds the trailing 90-day goal set', retired: true }
       ]
     }
   ],
