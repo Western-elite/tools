@@ -107,8 +107,8 @@ window.PROGRAM = {
       name: 'Level 1 — Learning',
       short: 'Level 1',
       wage: 19.00,
-      tenure: 'Must advance to Level 2 within 6 months of hire date',
-      rule: 'Agents cannot live in Level 1. An agent must advance to Level 2 within 6 months of hire date or employment is in review.',
+      tenure: 'Must advance to Level 2 within 8 months of hire date',
+      rule: 'Agents cannot live in Level 1. An agent must advance to Level 2 within 8 months of hire date or employment is in review.',
       gates: [
         { id: 'l1.g.acct', label: 'Accounting accuracy', target: 99, unit: '%' },
         { id: 'l1.g.ticket', label: 'Ticket accuracy', target: 99, unit: '%' },
@@ -154,7 +154,7 @@ window.PROGRAM = {
       short: 'Level 2',
       wage: 21.00,
       tenure: 'All Level 2 skills required within 1 year of employment',
-      rule: 'Level 2 agents accomplish all Level 1 and Level 2 skills with no assistance. All Level 2 skills are required within 1 year of employment.',
+      rule: 'Level 2 agents accomplish all Level 1 skills with no assistance. All Level 2 skills are required within 1 year of employment.',
       gates: [
         { id: 'l2.g.acct', label: 'Accounting accuracy', target: 99.5, unit: '%' },
         { id: 'l2.g.ticket', label: 'Ticket accuracy', target: 99.5, unit: '%' },
@@ -167,7 +167,7 @@ window.PROGRAM = {
         {
           id: 'l2.own',
           title: 'What You Own',
-          lead: 'Demonstrated at an advanced level for a minimum of 60 days:',
+          lead: 'Demonstrated at an advanced level for a minimum of 90 days. Ownership of these is based on actual performance and manager\u2019s discretion and approval:',
           items: [
             { id: 'l2.own.cv.safety', label: 'Safety First — follow yard and scale house safety rules, report hazards and unsafe loads' },
             { id: 'l2.own.cv.beam', label: 'Be a team player — back up teammates and other yards, share information, and cover the radio / Teams chat for each other' },
@@ -198,7 +198,7 @@ window.PROGRAM = {
     {
       id: 'l3',
       code: '3',
-      name: 'Level 3 — Independent',
+      name: 'Level 3 — Advanced',
       short: 'Level 3',
       wage: 23.50,
       tenure: 'Sustained Level 3 performance',
