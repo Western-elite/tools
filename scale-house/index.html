@@ -627,7 +627,7 @@ var S = {
   leader: false,     // set by applyRole(): true on any leader screen
   dashDate: today(),
   lastKiosk: '',
-  tab: 'nat',        // level id | 'senior' | 'endorse' | 'data' | 'log' | 'program'
+  tab: 'nat',        // level id | 'senior' | 'endorse' | 'cash' | 'data' | 'log' | 'program'
   filter: '',
   who: (function(){ try{ return localStorage.getItem('we.shp.who') || ''; }catch(e){ return ''; } })(),
   dirty: false,
@@ -1130,6 +1130,63 @@ function numInput(obj, key, attrs){
 }
 function rowsOf(kind){ return (S.data||[]).filter(function(r){ return r.kind === kind; }); }
 
+/* Cash Box tab: agents log their cash drawer 2x daily (lunch + end of day) */
+function cashPanel(){
+  var frag = document.createDocumentFragment();
+  var m = computeMetrics(S.data || [], windowSince(S.dataWin));
+  var cf = { date: today(), count: (new Date().getHours() >= 14 ? 'eod' : 'lunch'),
+             kiosk: (S.lastKiosk || (D.kiosks[0] && D.kiosks[0].id) || ''), counted:'', notes:'' };
+  var cOut = h('span',{class:'cash-out'});
+  function paintCash(){
+    var r = cashResult(cf);
+    cOut.innerHTML = '';
+    cOut.appendChild(h('span',{class:'hint', text:'Bank ' + (r.bank == null ? '—' : money(r.bank)) + ' · '}));
+    cOut.appendChild(r.ok == null ? h('span',{class:'hint', text:'enter the amount counted'}) :
+      pill(r.ok ? 'ok' : 'bad', r.ok ? 'Balanced' : (r.os > 0 ? 'Over ' : 'Short ') + money(Math.abs(r.os))));
+  }
+  paintCash();
+  var cBtn = h('button',{class:'btn primary', onclick:function(){
+    if (cf.counted === '' || isNaN(parseFloat(cf.counted))){ alert('Enter the dollar amount in the drawer.'); return; }
+    var dup = rowsOf('cash').filter(function(r){ return r.entry_date === cf.date && (r.data||{}).count === cf.count; })[0];
+    if (dup && !confirm('A ' + countLabel(cf.count).toLowerCase() + ' count for ' + fmtDate(cf.date) + ' is already saved. Replace it?')) return;
+    S.lastKiosk = cf.kiosk;
+    saveEntry({ id: dup ? dup.id : undefined, kind:'cash', entry_date:cf.date,
+      data:{ count:cf.count, kiosk:cf.kiosk, bank:kioskBank(cf.kiosk), counted:parseFloat(cf.counted), notes:cf.notes.trim() } }, cBtn);
+  }}, ['Save cash count']);
+  var cashRows = rowsOf('cash').slice(0, 30);
+  frag.appendChild(h('div',{class:'card'},[
+    h('header',{},[ h('h3',{text:'Cash Box'}), pill('', '2x daily · lunch & end of day') ]),
+    h('div',{class:'body'},[
+      h('p',{class:'hint', style:'margin:0 0 10px', text:'When you are on shift, count your cash drawer twice a day (at lunch and at the end of the day) and log what is in it here. It shows up on the leader dashboard right away.'}),
+      h('div',{class:'dform noprint'},[
+        field('Date', h('input',{type:'date', value:cf.date, onchange:function(e){ cf.date = e.target.value; }})),
+        field('Count', h('select',{onchange:function(e){ cf.count = e.target.value; }},
+          D.cashCounts.map(function(c){ return h('option',{value:c.id, text:c.label, selected:c.id===cf.count}); }))),
+        field('Kiosk', h('select',{onchange:function(e){ cf.kiosk = e.target.value; paintCash(); }},
+          D.kiosks.map(function(k){ return h('option',{value:k.id, text:k.id + ' (' + money(k.bank) + ')', selected:k.id===cf.kiosk}); }))),
+        field('$ in drawer', h('input',{type:'number', step:'0.01', min:'0', inputmode:'decimal', placeholder:'0.00',
+          oninput:function(e){ cf.counted = e.target.value; paintCash(); }})),
+        h('div',{class:'field full'},[ h('label',{text:'Notes (optional)'}),
+          h('input',{type:'text', placeholder:'e.g. $100 out for change', oninput:function(e){ cf.notes = e.target.value; }}) ]),
+        h('div',{class:'full dform-act'},[ cBtn, cOut ])
+      ]),
+      cashRows.length ? h('div',{class:'tscroll'},[ h('table',{class:'gates', style:'margin-top:14px'},[
+        h('thead',{},[ h('tr',{},['Date','Count','Kiosk','Counted','Over / short','',''].map(function(t){ return h('th',{text:t}); })) ]),
+        h('tbody',{}, cashRows.map(function(r){
+          var d = r.data||{}, c = cashResult(d);
+          return h('tr',{},[ h('td',{text:fmtDate(r.entry_date)}), h('td',{text:countLabel(d.count)}), h('td',{text:d.kiosk||''}),
+            h('td',{text: d.counted == null ? '' : money(d.counted)}),
+            h('td',{},[ c.ok == null ? '' : pill(c.ok ? 'ok' : 'bad', c.ok ? 'Balanced' : signedMoney(c.os)), d.notes ? h('div',{class:'hint', text:d.notes}) : null ]),
+            h('td',{class:'hint', text:r.entered_by||''}), h('td',{},[ delBtn(r) ]) ]);
+        }))
+      ])]) : h('p',{class:'empty', text:'No cash counts yet.'})
+    ])
+  ]));
+
+  frag.appendChild(h('p',{class:'hint', style:'margin:0 0 16px', text: windowLabel(S.dataWin) + ': ' + m.cashOk + ' of ' + m.cashN + ' counts balanced (' + pct(m.cash) + '). Cash count accuracy feeds Accounting accuracy on the Data tab.'}));
+  return frag;
+}
+
 function dataPanel(){
   var frag = document.createDocumentFragment();
   var since = windowSince(S.dataWin);
@@ -1161,55 +1218,8 @@ function dataPanel(){
     ])
   ]));
 
-  /* --- 2. cash count (the agent fills this in) --- */
-  var cf = { date: today(), count: (new Date().getHours() >= 14 ? 'eod' : 'lunch'),
-             kiosk: (S.lastKiosk || (D.kiosks[0] && D.kiosks[0].id) || ''), counted:'', notes:'' };
-  var cOut = h('span',{class:'cash-out'});
-  function paintCash(){
-    var r = cashResult(cf);
-    cOut.innerHTML = '';
-    cOut.appendChild(h('span',{class:'hint', text:'Bank ' + (r.bank == null ? '—' : money(r.bank)) + ' · '}));
-    cOut.appendChild(r.ok == null ? h('span',{class:'hint', text:'enter the amount counted'}) :
-      pill(r.ok ? 'ok' : 'bad', r.ok ? 'Balanced' : (r.os > 0 ? 'Over ' : 'Short ') + money(Math.abs(r.os))));
-  }
-  paintCash();
-  var cBtn = h('button',{class:'btn primary', onclick:function(){
-    if (cf.counted === '' || isNaN(parseFloat(cf.counted))){ alert('Enter the dollar amount in the drawer.'); return; }
-    var dup = rowsOf('cash').filter(function(r){ return r.entry_date === cf.date && (r.data||{}).count === cf.count; })[0];
-    if (dup && !confirm('A ' + countLabel(cf.count).toLowerCase() + ' count for ' + fmtDate(cf.date) + ' is already saved. Replace it?')) return;
-    S.lastKiosk = cf.kiosk;
-    saveEntry({ id: dup ? dup.id : undefined, kind:'cash', entry_date:cf.date,
-      data:{ count:cf.count, kiosk:cf.kiosk, bank:kioskBank(cf.kiosk), counted:parseFloat(cf.counted), notes:cf.notes.trim() } }, cBtn);
-  }}, ['Save cash count']);
-  var cashRows = rowsOf('cash').slice(0, 30);
-  frag.appendChild(h('div',{class:'card'},[
-    h('header',{},[ h('h3',{text:'Cash count'}), pill('', 'Lunch & end of day') ]),
-    h('div',{class:'body'},[
-      h('p',{class:'hint', style:'margin:0 0 10px', text:'Count your drawer at lunch and at the end of the day and enter what is in it. It shows up on the leader dashboard right away.'}),
-      h('div',{class:'dform noprint'},[
-        field('Date', h('input',{type:'date', value:cf.date, onchange:function(e){ cf.date = e.target.value; }})),
-        field('Count', h('select',{onchange:function(e){ cf.count = e.target.value; }},
-          D.cashCounts.map(function(c){ return h('option',{value:c.id, text:c.label, selected:c.id===cf.count}); }))),
-        field('Kiosk', h('select',{onchange:function(e){ cf.kiosk = e.target.value; paintCash(); }},
-          D.kiosks.map(function(k){ return h('option',{value:k.id, text:k.id + ' (' + money(k.bank) + ')', selected:k.id===cf.kiosk}); }))),
-        field('$ in drawer', h('input',{type:'number', step:'0.01', min:'0', inputmode:'decimal', placeholder:'0.00',
-          oninput:function(e){ cf.counted = e.target.value; paintCash(); }})),
-        h('div',{class:'field full'},[ h('label',{text:'Notes (optional)'}),
-          h('input',{type:'text', placeholder:'e.g. $100 out for change', oninput:function(e){ cf.notes = e.target.value; }}) ]),
-        h('div',{class:'full dform-act'},[ cBtn, cOut ])
-      ]),
-      cashRows.length ? h('div',{class:'tscroll'},[ h('table',{class:'gates', style:'margin-top:14px'},[
-        h('thead',{},[ h('tr',{},['Date','Count','Kiosk','Counted','Over / short','',''].map(function(t){ return h('th',{text:t}); })) ]),
-        h('tbody',{}, cashRows.map(function(r){
-          var d = r.data||{}, c = cashResult(d);
-          return h('tr',{},[ h('td',{text:fmtDate(r.entry_date)}), h('td',{text:countLabel(d.count)}), h('td',{text:d.kiosk||''}),
-            h('td',{text: d.counted == null ? '' : money(d.counted)}),
-            h('td',{},[ c.ok == null ? '' : pill(c.ok ? 'ok' : 'bad', c.ok ? 'Balanced' : signedMoney(c.os)), d.notes ? h('div',{class:'hint', text:d.notes}) : null ]),
-            h('td',{class:'hint', text:r.entered_by||''}), h('td',{},[ delBtn(r) ]) ]);
-        }))
-      ])]) : h('p',{class:'empty', text:'No cash counts yet.'})
-    ])
-  ]));
+  /* --- 2. cash count now lives in its own Cash Box tab --- */
+  frag.appendChild(h('p',{class:'hint', style:'margin:0 0 12px', text:'Cash drawer counts are logged in the Cash Box tab.'}));
 
   if (!S.leader){
     frag.appendChild(h('p',{class:'hint', style:'margin:0 0 16px', text:'Daily numbers, customer service scores and attendance are entered by your manager or team lead.'}));
@@ -1683,10 +1693,16 @@ function renderMain(){
     h('span',{class:'t2', text:'+pay · ' + ep.done + '/' + ep.total}),
     h('span',{class:'bar'},[ h('i',{style:'width:' + ep.pct + '%'}) ])
   ]));
+  var cashToday = rowsOf('cash').filter(function(r){ return r.entry_date === today(); }).length;
+  nav.appendChild(h('button',{ class: S.tab === 'cash' ? 'active' : '',
+    onclick:function(){ S.tab = 'cash'; renderMain(); }},[
+    h('span',{class:'t1', text:'Cash Box'}),
+    h('span',{class:'t2', text:'today ' + cashToday + '/' + D.cashCounts.length + ' counts'})
+  ]));
   nav.appendChild(h('button',{ class: S.tab === 'data' ? 'active' : '',
     onclick:function(){ S.tab = 'data'; renderMain(); }},[
     h('span',{class:'t1', text:'Data'}),
-    h('span',{class:'t2', text:'scores & cash count'})
+    h('span',{class:'t2', text:'scores & numbers'})
   ]));
   nav.appendChild(h('button',{ class: S.tab === 'log' ? 'active' : '',
     onclick:function(){ S.tab = 'log'; renderMain(); }},[
@@ -1707,6 +1723,7 @@ function renderMain(){
   /* --- panel --- */
   if (S.tab === 'senior')       wrap.appendChild(seniorPanel());
   else if (S.tab === 'endorse') wrap.appendChild(endorsePanel());
+  else if (S.tab === 'cash')    wrap.appendChild(cashPanel());
   else if (S.tab === 'data')    wrap.appendChild(dataPanel());
   else if (S.tab === 'log')     wrap.appendChild(logPanel());
   else if (S.tab === 'program') wrap.appendChild(programPanel());
@@ -1752,7 +1769,7 @@ async function selectAgent(id){
     setStatus('err','Could not load — ' + (e.message || e));
   }
   if (!P.levels.filter(function(l){ return l.id === S.tab; })[0]
-      && ['senior','endorse','data','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
+      && ['senior','endorse','cash','data','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
   renderRoster(); renderMain();
 }
 

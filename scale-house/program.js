@@ -219,7 +219,7 @@ window.PROGRAM = {
           items: [
             { id: 'l3.own.comments', label: 'Log customer comments' },
             { id: 'l3.own.selfmanage', label: 'Manage individual performance goals on a trailing 90-day basis', retired: true },
-            { id: 'l3.own.cashbox', label: 'Self-manage cash box accuracy — count and log the actual cash box amount at lunch and at end of day', note: 'Logged in the Cash count section of the Data tab' }
+            { id: 'l3.own.cashbox', label: 'Self-manage cash box accuracy — count and log the actual cash box amount at lunch and at end of day', note: 'Logged in the Cash Box tab (2x daily while on shift)' }
           ]
         }
       ],
