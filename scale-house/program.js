@@ -214,12 +214,13 @@ window.PROGRAM = {
       groups: [
         {
           id: 'l3.own',
+          retired: true,   // whole section removed (Oct 2026); ids kept for saved passports
           title: 'What You Own',
           lead: 'Demonstrated at an advanced level for a minimum of 60 days:',
           items: [
-            { id: 'l3.own.comments', label: 'Log customer comments' },
+            { id: 'l3.own.comments', label: 'Log customer comments', retired: true },
             { id: 'l3.own.selfmanage', label: 'Manage individual performance goals on a trailing 90-day basis', retired: true },
-            { id: 'l3.own.cashbox', label: 'Self-manage cash box accuracy — count and log the actual cash box amount at lunch and at end of day', note: 'Logged in the Cash Box tab (2x daily while on shift)' }
+            { id: 'l3.own.cashbox', retired: true, label: 'Self-manage cash box accuracy — count and log the actual cash box amount at lunch and at end of day', note: 'Logged in the Cash Box tab (2x daily while on shift)' }
           ]
         }
       ],
