@@ -224,9 +224,11 @@ window.PROGRAM = {
           ]
         }
       ],
+      advanceTitle: 'Eligible to move up to Senior Agent when:',
       advance: [
         { id: 'l3.adv.unaided', label: 'Performs all Level 1–3 skills without help' },
-        { id: 'l3.adv.t90', label: 'Holds the trailing 90-day goal set', retired: true }
+        { id: 'l3.adv.t90', label: 'Holds the trailing 90-day goal set', retired: true },
+        { id: 'l3.adv.year', label: 'Holds Level 3 gates for 1 year' }
       ]
     }
   ],
