@@ -1131,10 +1131,9 @@ function numInput(obj, key, attrs){
 }
 function rowsOf(kind){ return (S.data||[]).filter(function(r){ return r.kind === kind; }); }
 
-/* Cash Box tab: agents log their cash drawer 2x daily (lunch + end of day) */
-function cashPanel(){
-  var frag = document.createDocumentFragment();
-  var m = computeMetrics(S.data || [], windowSince(S.dataWin));
+/* Cash Box card: agents log their cash drawer 2x daily (lunch + end of day).
+   Leaders see it in the Cash Box tab; agents see it on their Data tab. */
+function cashCard(){
   var cf = { date: today(), count: (new Date().getHours() >= 14 ? 'eod' : 'lunch'),
              kiosk: (S.lastKiosk || (D.kiosks[0] && D.kiosks[0].id) || ''), counted:'', notes:'' };
   var cOut = h('span',{class:'cash-out'});
@@ -1155,7 +1154,7 @@ function cashPanel(){
       data:{ count:cf.count, kiosk:cf.kiosk, bank:kioskBank(cf.kiosk), counted:parseFloat(cf.counted), notes:cf.notes.trim() } }, cBtn);
   }}, ['Save cash count']);
   var cashRows = rowsOf('cash').slice(0, 30);
-  frag.appendChild(h('div',{class:'card'},[
+  return h('div',{class:'card'},[
     h('header',{},[ h('h3',{text:'Cash Box'}), pill('', '2x daily · lunch & end of day') ]),
     h('div',{class:'body'},[
       h('p',{class:'hint', style:'margin:0 0 10px', text:'When you are on shift, count your cash drawer twice a day (at lunch and at the end of the day) and log what is in it here. It shows up on the leader dashboard right away.'}),
@@ -1182,16 +1181,54 @@ function cashPanel(){
         }))
       ])]) : h('p',{class:'empty', text:'No cash counts yet.'})
     ])
-  ]));
-
-  frag.appendChild(h('p',{class:'hint', style:'margin:0 0 16px', text: windowLabel(S.dataWin) + ': ' + m.cashOk + ' of ' + m.cashN + ' counts balanced (' + pct(m.cash) + '). Cash count accuracy feeds Accounting accuracy on the Data tab.'}));
+  ]);
+}
+function cashSummary(m){
+  return h('p',{class:'hint', style:'margin:0 0 16px', text: windowLabel(S.dataWin) + ': ' + m.cashOk + ' of ' + m.cashN + ' counts balanced (' + pct(m.cash) + '). Cash count accuracy feeds Accounting accuracy on the Data tab.'});
+}
+function cashPanel(){
+  var frag = document.createDocumentFragment();
+  var m = computeMetrics(S.data || [], windowSince(S.dataWin));
+  frag.appendChild(cashCard());
+  frag.appendChild(cashSummary(m));
   return frag;
+}
+
+/* Agent Data tab: the agent's current level and the gates they need to hold */
+function levelCard(m){
+  var lv = P.levels.filter(function(l){ return l.id === (S.agent && S.agent.current_level); })[0] || P.levels[0];
+  var gates = (lv.gates || []).filter(function(g){ return !g.retired; });
+  var VAL = { '.g.acct':[m.accounting,true], '.g.ticket':[m.ticket,true], '.g.cashbox':[m.cash,true],
+              '.g.cs':[m.cs,true], '.g.attendance':[m.attPts,false] };
+  function mine(g){
+    for (var k in VAL) if (g.id.slice(-k.length) === k) return VAL[k];
+    return null;
+  }
+  return h('div',{class:'card', id:'agentLevel'},[
+    h('header',{},[ h('h3',{text:'Your level: ' + lv.name}), pill('wage', money(lv.wage) + '/hr') ]),
+    h('div',{class:'body'},[
+      lv.gateWindow ? h('p',{class:'hint', style:'margin:0 0 10px', text:'Gates to hold: ' + lv.gateWindow + '.'}) : null,
+      gates.length ? h('div',{class:'tscroll'},[ h('table',{class:'gates'},[
+        h('thead',{},[ h('tr',{},['Gate','Target','You (' + windowLabel(S.dataWin) + ')',''].map(function(t){ return h('th',{text:t}); })) ]),
+        h('tbody',{}, gates.map(function(g){
+          var v = mine(g);
+          var tgt = (g.tbd || g.target == null) ? 'TBD' : (g.max ? '≤ ' : '') + g.target + (g.unit||'');
+          var shown = !v ? '—' : v[1] ? pct(v[0]) : (v[0] == null ? '—' : String(v[0]));
+          return h('tr',{},[ h('td',{text:g.label}), h('td',{},[ h('b',{text:tgt}) ]), h('td',{text:shown}),
+            h('td',{},[ v ? gatePill(g, v[0], v[1]) : null ]) ]);
+        }))
+      ])]) : h('p',{class:'empty', text:'No performance gates at this level.'})
+    ])
+  ]);
 }
 
 function dataPanel(){
   var frag = document.createDocumentFragment();
   var since = windowSince(S.dataWin);
   var m = computeMetrics(S.data || [], since);
+
+  /* --- 0. agent home: current level and the gates to hold --- */
+  if (!S.leader) frag.appendChild(levelCard(m));
 
   /* --- 1. summary --- */
   var winSel = h('select',{onchange:function(e){ S.dataWin = e.target.value; renderMain(); }},
@@ -1219,8 +1256,13 @@ function dataPanel(){
     ])
   ]));
 
-  /* --- 2. cash count now lives in its own Cash Box tab --- */
-  frag.appendChild(h('p',{class:'hint', style:'margin:0 0 12px', text:'Cash drawer counts are logged in the Cash Box tab.'}));
+  /* --- 2. cash box: on the Data tab for agents, its own tab for leaders --- */
+  if (!S.leader){
+    frag.appendChild(cashCard());
+    frag.appendChild(cashSummary(m));
+  } else {
+    frag.appendChild(h('p',{class:'hint', style:'margin:0 0 12px', text:'Cash drawer counts are logged in the Cash Box tab.'}));
+  }
 
   if (!S.leader){
     frag.appendChild(h('p',{class:'hint', style:'margin:0 0 16px', text:'Daily numbers, customer service scores and attendance are entered by your manager or team lead.'}));
@@ -1695,7 +1737,7 @@ function renderMain(){
     h('span',{class:'bar'},[ h('i',{style:'width:' + ep.pct + '%'}) ])
   ]));
   var cashToday = rowsOf('cash').filter(function(r){ return r.entry_date === today(); }).length;
-  nav.appendChild(h('button',{ class: S.tab === 'cash' ? 'active' : '',
+  if (S.leader) nav.appendChild(h('button',{ class: S.tab === 'cash' ? 'active' : '',
     onclick:function(){ S.tab = 'cash'; renderMain(); }},[
     h('span',{class:'t1', text:'Cash Box'}),
     h('span',{class:'t2', text:'today ' + cashToday + '/' + D.cashCounts.length + ' counts'})
@@ -1722,6 +1764,7 @@ function renderMain(){
   wrap.appendChild(nav);
 
   /* --- panel --- */
+  if (!S.leader && S.tab === 'cash') S.tab = 'data';   // agents log cash on the Data tab
   if (S.tab === 'senior')       wrap.appendChild(seniorPanel());
   else if (S.tab === 'endorse') wrap.appendChild(endorsePanel());
   else if (S.tab === 'cash')    wrap.appendChild(cashPanel());
@@ -1771,6 +1814,7 @@ async function selectAgent(id){
   }
   if (!P.levels.filter(function(l){ return l.id === S.tab; })[0]
       && ['senior','endorse','cash','data','log','program'].indexOf(S.tab) < 0) S.tab = 'nat';
+  if (!S.leader) S.tab = 'data';   // agent view: the Data tab is the home screen
   renderRoster(); renderMain();
 }
 
@@ -1849,7 +1893,7 @@ function buildShell(){
           onchange:function(e){
             S.viewAs = e.target.value;
             try{ localStorage.setItem('we.shp.viewas', S.viewAs); }catch(err){}
-            applyRole(); renderMain();
+            applyRole(); if (!S.leader && S.agent) S.tab = 'data'; renderMain();
           }}, ['director','manager','teamlead','agent'].map(function(r){
             return h('option',{value:r, text:'View as: ' + ROLES[r], selected:r === viewRole()}); }))
       : null,
