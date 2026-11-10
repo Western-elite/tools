@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DAR Sales Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
@@ -23,6 +23,10 @@ window.DAR_CONFIG = {
   // e.g. LBD, LBEX, LBF, 15D, 15EX, 15F, 30D ... CONVF. Anything else is flagged.
   normalSizes: ["LB", "15", "30", "40", "CONV"],
   normalSuffixes: ["D", "EX", "F"],
+
+  // Possible cancellation = SiteName2 contains one of these words
+  // AND the code is a final (ends in F: 40F, 30F, 15F, LBF, LBCMF, CONVF...)
+  cancelSiteNames: ["YARD", "OFFICE"],
 
   // New accounts = AcctNbr ending in this
   newAccountSuffix: "00",
@@ -42,37 +46,56 @@ window.DAR_CONFIG = {
 };
 </script>
 <style>
+/* Western Elite: navy header band, brand blue accent, cool white page. Semantic colors stay separate from the brand. */
 :root{
-  --bg:#f5f6f4; --surface:#ffffff; --surface-2:#f0f2ef; --border:#dfe3dc;
-  --text:#1b1f1a; --muted:#5f685d; --accent:#1f6b3a; --accent-soft:#e3f0e6;
+  --navy:#004070; --navy-fg:#ffffff; --navy-muted:#a9c6de; --navy-active:rgba(255,255,255,.14);
+  --bg:#f3f6fa; --surface:#ffffff; --surface-2:#eef2f8; --border:#d9e1ec;
+  --text:#14213a; --muted:#5a6a82; --accent:#057dcd; --accent-soft:#e2f1fb; --on-accent:#ffffff;
   --red:#b42318; --red-soft:#fdecea; --amber:#a15c07; --amber-soft:#fdf3e1;
-  --blue:#1d4f91; --blue-soft:#e6eef9; --violet:#5b3c9e; --violet-soft:#efe9fa;
-  --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04);
+  --blue:#0e7490; --blue-soft:#e0f4f8; --violet:#5b3c9e; --violet-soft:#efe9fa;
+  --shadow:0 1px 2px rgba(0,64,112,.06),0 2px 8px rgba(0,64,112,.05);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#121512; --surface:#1a1e1a; --surface-2:#222722; --border:#2f352e;
-    --text:#e8ece6; --muted:#9aa597; --accent:#5cbf7d; --accent-soft:#1f3326;
-    --red:#ff8a80; --red-soft:#3a1f1d; --amber:#f5b452; --amber-soft:#3a2d17;
-    --blue:#8ab4f8; --blue-soft:#1c2a40; --violet:#c3a6ff; --violet-soft:#2b2340;
-    --shadow:none;
+  --navy:#00284a; --navy-fg:#eef3fb; --navy-muted:#8fa3c2; --navy-active:rgba(255,255,255,.12);
+  --bg:#0c1422; --surface:#121c2e; --surface-2:#18243a; --border:#25334d;
+  --text:#e6ecf5; --muted:#93a2ba; --accent:#4fb0ee; --accent-soft:#0f2f4a; --on-accent:#00284a;
+  --red:#ff8a80; --red-soft:#3a1f1d; --amber:#f5b452; --amber-soft:#3a2d17;
+  --blue:#5fd0e6; --blue-soft:#13303a; --violet:#c3a6ff; --violet-soft:#2b2340;
+  --shadow:none; color-scheme:dark;
   }
+}
+:root[data-theme="dark"]{
+  --navy:#00284a; --navy-fg:#eef3fb; --navy-muted:#8fa3c2; --navy-active:rgba(255,255,255,.12);
+  --bg:#0c1422; --surface:#121c2e; --surface-2:#18243a; --border:#25334d;
+  --text:#e6ecf5; --muted:#93a2ba; --accent:#4fb0ee; --accent-soft:#0f2f4a; --on-accent:#00284a;
+  --red:#ff8a80; --red-soft:#3a1f1d; --amber:#f5b452; --amber-soft:#3a2d17;
+  --blue:#5fd0e6; --blue-soft:#13303a; --violet:#c3a6ff; --violet-soft:#2b2340;
+  --shadow:none; color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased}
-header{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
-.bar{max-width:1280px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.brand{font-weight:700;font-size:16px;letter-spacing:-.01em}
-.brand small{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+header{background:var(--navy);color:var(--navy-fg);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+.bar{max-width:1280px;margin:0 auto;padding-block:12px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-family:'Space Grotesk',Inter,system-ui,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.brand small{font-family:Inter,system-ui,sans-serif}
+.kpi .n,.card-h h3,.drop h2{font-family:'Space Grotesk',Inter,system-ui,sans-serif}
+.kpi{cursor:default} button.kpi{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.brand small{display:block;font-weight:500;font-size:12px;color:var(--navy-muted)}
 nav{display:flex;gap:4px;margin-left:8px}
-nav button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;padding:8px 12px;border-radius:8px;cursor:pointer}
-nav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+nav button{border:0;background:transparent;color:var(--navy-muted);font:inherit;font-weight:600;padding:8px 12px;border-radius:8px;cursor:pointer}
+nav button[aria-current="page"]{background:var(--navy-active);color:var(--navy-fg)}
+nav button:hover{color:var(--navy-fg)}
+header :focus-visible{outline-color:var(--navy-fg)}
 .spacer{flex:1}
 .btn{border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+header .btn.primary{background:var(--navy-fg);border-color:var(--navy-fg);color:var(--navy)}
 .btn.sm{padding:4px 10px;font-size:12px}
 .btn:disabled{opacity:.5;cursor:default}
-main{max-width:1280px;margin:0 auto;padding:20px}
+main{max-width:1280px;margin:0 auto;padding-block:20px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 .meta{color:var(--muted);font-size:13px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);font-size:12px}
 .pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
@@ -104,20 +127,23 @@ tbody tr:hover td{background:var(--surface-2)}
 .chip.price{background:var(--red-soft);color:var(--red)}
 .chip.code{background:var(--amber-soft);color:var(--amber)}
 .chip.new{background:var(--violet-soft);color:var(--violet)}
+.chip.cancel{background:var(--red);color:var(--surface)}
+.kpi.alert{background:var(--red-soft);border-color:var(--red)}
+.kpi.alert .n{color:var(--red)}
 .hi{color:var(--red);font-weight:600}
 .codehi{color:var(--amber);font-weight:700}
 details.sub summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:12px}
 .reps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
 .reps button{border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer}
 .reps button .c{color:var(--muted);font-weight:500;margin-left:4px}
-.reps button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
-.reps button[aria-pressed="true"] .c{color:#e3f0e6}
+.reps button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--navy-fg)}
+.reps button[aria-pressed="true"] .c{color:var(--navy-muted)}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 input[type=search]{font:inherit;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);min-width:240px}
 label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-weight:500}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;display:none;z-index:10}
 .hidden{display:none!important}
-@media (max-width:640px){ main{padding:16px} .bar{padding:10px 16px} input[type=search]{min-width:0;width:100%} }
+@media (max-width:640px){ main,.bar{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))} input[type=search]{min-width:0;width:100%} }
 </style>
 </head>
 <body>
@@ -164,6 +190,8 @@ const CFG = window.DAR_CONFIG;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = n => n.toLocaleString("en-US", {style:"currency", currency:"USD"});
+const SITE_RE = new RegExp("\\b(" + CFG.cancelSiteNames.join("|") + ")\\b", "i");
+const isCancel = r => SITE_RE.test(r.site2) && /F$/.test(r.code);
 const CODE_RE = new RegExp("^(" + CFG.normalSizes.join("|") + ")(" + CFG.normalSuffixes.join("|") + ")$", "i");
 
 const FIELDS = ["acct","customer","address","site2","contact","phone","zip","code","total"];
@@ -322,26 +350,28 @@ function analyze(){
     .map(([acct, rs]) => ({acct, rows: rs, customer: rs[0].customer, zip: rs[0].zip5, contact: rs[0].contact, phone: rs[0].phone, address: rs[0].address, total: rs.reduce((s,r)=>s+r.total,0)}));
   const newAccts = newAll.filter(n => !notNew.has(n.acct));
   const newSet = new Set(newAccts.map(n => n.acct));
+  const cancel = rows.filter(isCancel);
   const flagsFor = r => ({
+    cancel: isCancel(r),
     vol: hvSet.has(r.acct), price: r.total > CFG.priceThreshold,
     code: !!r.code && !CODE_RE.test(r.code), new: newSet.has(r.acct)
   });
-  return {byAcct, highVolume, overPrice, oddCode, newAll, newAccts, flagsFor};
+  return {byAcct, cancel, highVolume, overPrice, oddCode, newAll, newAccts, flagsFor};
 }
 const repFor = zip5 => CFG.zipToRep[zip5] || "Unassigned";
 
 /* ---------- Rendering ---------- */
 function chips(f){
-  return (f.vol?'<span class="chip vol">10+ txns</span>':"") + (f.price?'<span class="chip price">Over $'+CFG.priceThreshold+'</span>':"")
+  return (f.cancel?'<span class="chip cancel">Possible cancel</span>':"") + (f.vol?'<span class="chip vol">10+ txns</span>':"") + (f.price?'<span class="chip price">Over $'+CFG.priceThreshold+'</span>':"")
        + (f.code?'<span class="chip code">Code</span>':"") + (f.new?'<span class="chip new">New</span>':"");
 }
 function txTable(rows, a, opts = {}){
   if (!rows.length) return '<div class="empty">Nothing flagged.</div>';
   return `<div class="tbl-wrap"><table><thead><tr>
-    <th>AcctNbr</th><th>Customer</th><th>Site address</th><th>Contact</th><th>Phone</th><th>Zip</th>
+    <th>AcctNbr</th><th>Customer</th><th>Site address</th>${opts.site2?'<th>SiteName2</th>':""}<th>Contact</th><th>Phone</th><th>Zip</th>
     ${opts.rep?'<th>Rep</th>':""}<th>Code</th><th class="num">$/Total</th>${opts.flags?'<th>Flags</th>':""}
     </tr></thead><tbody>${rows.map(r => `<tr>
-      <td>${esc(r.acct)}</td><td>${esc(r.customer)}</td><td>${esc(r.address)}</td><td>${esc(r.contact)}</td>
+      <td>${esc(r.acct)}</td><td>${esc(r.customer)}</td><td>${esc(r.address)}</td>${opts.site2?`<td><b>${esc(r.site2)}</b></td>`:""}<td>${esc(r.contact)}</td>
       <td>${esc(r.phone)}</td><td>${esc(r.zip)}</td>${opts.rep?`<td>${esc(repFor(r.zip5))}</td>`:""}
       <td class="${!CODE_RE.test(r.code)?"codehi":""}">${esc(r.code)}</td>
       <td class="num ${r.total>CFG.priceThreshold?"hi":""}">${money(r.total)}</td>
@@ -376,6 +406,7 @@ function card(id, title, count, hint, body, extra=""){
 let showMarked = false;
 function renderDash(a){
   $("#kpis").innerHTML = [
+    ["cancel","alert",a.cancel.length,"Possible cancellations"],
     ["vol","blue",a.highVolume.length,"Accounts with "+CFG.maxTransactions+"+ transactions"],
     ["price","red",a.overPrice.length,"Transactions over "+money(CFG.priceThreshold).replace(".00","")],
     ["code","amber",a.oddCode.length,"Non-standard codes"],
@@ -384,7 +415,10 @@ function renderDash(a){
   const newList = showMarked ? a.newAll : a.newAccts;
   const hiddenCount = a.newAll.length - a.newAccts.length;
   $("#dashCards").innerHTML =
-    card("card-new","New accounts", a.newAccts.length,
+    card("card-cancel","Possible cancellations", a.cancel.length,
+      `SiteName2 is ${CFG.cancelSiteNames.join(" or ")} and the code is a final (ends in F). The customer may be ending service.`,
+      txTable(a.cancel, a, {rep:true, site2:true}))
+  +     card("card-new","New accounts", a.newAccts.length,
       `AcctNbr ends in ${CFG.newAccountSuffix}. Mark one “Not new” and it stays off future reports `
       + (store.mode==="sharepoint" ? "for the whole team." : "<b>on this computer only</b> (SharePoint list not connected)."),
       newTable(newList), hiddenCount ? `<label class="chk"><input type="checkbox" id="showMarked" ${showMarked?"checked":""}> Show ${hiddenCount} marked not new</label>` : "")
@@ -409,14 +443,17 @@ function renderReps(a){
   const zips = [...new Set(repRows.map(r => r.zip5).filter(Boolean))].sort();
   const repNew = a.newAccts.filter(n => repFor(n.zip) === state.rep);
   const repVol = a.highVolume.filter(h => repFor(h.zip) === state.rep);
+  const repCancel = repRows.filter(isCancel);
   $("#repBody").innerHTML =
     `<div class="kpis">
+      <div class="kpi alert"><div class="n">${repCancel.length}</div><div class="l">Possible cancellations</div></div>
       <div class="kpi blue"><div class="n">${repVol.length}</div><div class="l">High-volume accounts</div></div>
       <div class="kpi red"><div class="n">${repRows.filter(r=>r.total>CFG.priceThreshold).length}</div><div class="l">Over ${money(CFG.priceThreshold)}</div></div>
       <div class="kpi amber"><div class="n">${repRows.filter(r=>r.code&&!CODE_RE.test(r.code)).length}</div><div class="l">Non-standard codes</div></div>
       <div class="kpi violet"><div class="n">${repNew.length}</div><div class="l">New accounts</div></div>
     </div>`
     + (state.rep==="Unassigned" && zips.length ? `<div class="meta"><span class="pill warn">These zips have no rep yet: ${zips.join(", ")}</span></div>` : "")
+    + (repCancel.length ? card("rep-cancel","Possible cancellations", repCancel.length, "", txTable(repCancel, a, {site2:true})) : "")
     + (repNew.length ? card("rep-new","New accounts", repNew.length, "", newTable(repNew)) : "")
     + card("rep-all", "Activity", rs.length, zips.length && state.rep!=="Unassigned" ? "Zips: " + zips.join(", ") : "", txTable(rs, a, {flags:true}));
 }
@@ -483,6 +520,7 @@ document.addEventListener("click", async e => {
   await initStore();
   notNew = store.all();
   try { const last = JSON.parse(localStorage.getItem("dar.last") || "null"); if (last?.rows?.length) Object.assign(state, last); } catch {}
+  if (!state.rows.length && window.DAR_SAMPLE) Object.assign(state, {rows: window.DAR_SAMPLE.map(cleanRow), period: "11/6/2026 to 11/8/2026", fileName: "Example data · upload a DAR to replace"});
   render();
 })();
 })();
