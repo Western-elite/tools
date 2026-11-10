@@ -2276,9 +2276,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   ["mousemove","keydown","click","scroll","touchstart"].forEach(function(ev){document.addEventListener(ev,function(){if(Date.now()-_lastAct>5000||_missedPoll)wake();else _lastAct=Date.now();},{passive:true,capture:true});});
   document.addEventListener("visibilitychange",function(){if(!document.hidden)wake();});
   function startAutoRefresh(){if(_arTimer)return;_arTimer=setInterval(pollTick,POLL_MS);}
-  var MGR_SALT="WE-mgr-v1",MGR_VER="a04d092f2e8b2";
+  var MGR_SALT="WE-mgr-v1",MGR_VER="100fb30a62d793";
   var TRAIN_SALT="WE-trn-v1",TRAIN_VER="3f569d00a958e";
-  var SUP_SALT="WE-sup-v1",SUP_VER="1d886e439391ae";
+  var SUP_SALT="WE-sup-v1",SUP_VER="1cdc38bba2e8ee";
   var DIR_SALT="WE-dir-v1",DIR_VER="b15b36c40b404";
   var _lastEdit=0,_arTimer=null;
   function doAuth(){var pw=document.getElementById("lockPw").value;var msg=document.getElementById("lockMsg");if(!pw){msg.textContent="Enter the password.";return;}
