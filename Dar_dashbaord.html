@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAR Sales Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+/* =====================================================================
+   CONFIG — edit this block to change rules, reps, and storage.
+   ===================================================================== */
+window.DAR_CONFIG = {
+  // Flag accounts with MORE than this many transactions (counted by AcctNbr)
+  maxTransactions: 10,
+
+  // Flag any single transaction with $/Total GREATER than this
+  priceThreshold: 529,
+
+  // Normal codes = one of these sizes followed by one of these suffixes.
+  // e.g. LBD, LBEX, LBF, 15D, 15EX, 15F, 30D ... CONVF. Anything else is flagged.
+  normalSizes: ["LB", "15", "30", "40", "CONV"],
+  normalSuffixes: ["D", "EX", "F"],
+
+  // Possible cancellation = SiteName2 contains one of these words
+  // AND the code is a final (ends in F: 40F, 30F, 15F, LBF, LBCMF, CONVF...)
+  cancelSiteNames: ["YARD", "OFFICE"],
+
+  // New accounts = AcctNbr ending in this
+  newAccountSuffix: "00",
+
+  // Zip code -> sales rep. Only the first 5 digits of SiteZip are used.
+  // PLACEHOLDER — replace with the real assignments.
+  zipToRep: {
+    // "89109": "Rep Name",
+  },
+
+  // Team-wide "not a new account" list, stored in a SharePoint list.
+  // siteUrl: leave "" to auto-detect the site this page is hosted on.
+  sharePoint: {
+    siteUrl: "",
+    listTitle: "DAR Not New Accounts"
+  }
+};
+</script>
+<style>
+/* Western Elite: navy header band, brand blue accent, cool white page. Semantic colors stay separate from the brand. */
+:root{
+  --navy:#004070; --navy-fg:#ffffff; --navy-muted:#a9c6de; --navy-active:rgba(255,255,255,.14);
+  --bg:#f3f6fa; --surface:#ffffff; --surface-2:#eef2f8; --border:#d9e1ec;
+  --text:#14213a; --muted:#5a6a82; --accent:#057dcd; --accent-soft:#e2f1fb; --on-accent:#ffffff;
+  --red:#b42318; --red-soft:#fdecea; --amber:#a15c07; --amber-soft:#fdf3e1;
+  --blue:#0e7490; --blue-soft:#e0f4f8; --violet:#5b3c9e; --violet-soft:#efe9fa;
+  --shadow:0 1px 2px rgba(0,64,112,.06),0 2px 8px rgba(0,64,112,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+  --navy:#00284a; --navy-fg:#eef3fb; --navy-muted:#8fa3c2; --navy-active:rgba(255,255,255,.12);
+  --bg:#0c1422; --surface:#121c2e; --surface-2:#18243a; --border:#25334d;
+  --text:#e6ecf5; --muted:#93a2ba; --accent:#4fb0ee; --accent-soft:#0f2f4a; --on-accent:#00284a;
+  --red:#ff8a80; --red-soft:#3a1f1d; --amber:#f5b452; --amber-soft:#3a2d17;
+  --blue:#5fd0e6; --blue-soft:#13303a; --violet:#c3a6ff; --violet-soft:#2b2340;
+  --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --navy:#00284a; --navy-fg:#eef3fb; --navy-muted:#8fa3c2; --navy-active:rgba(255,255,255,.12);
+  --bg:#0c1422; --surface:#121c2e; --surface-2:#18243a; --border:#25334d;
+  --text:#e6ecf5; --muted:#93a2ba; --accent:#4fb0ee; --accent-soft:#0f2f4a; --on-accent:#00284a;
+  --red:#ff8a80; --red-soft:#3a1f1d; --amber:#f5b452; --amber-soft:#3a2d17;
+  --blue:#5fd0e6; --blue-soft:#13303a; --violet:#c3a6ff; --violet-soft:#2b2340;
+  --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased}
+header{background:var(--navy);color:var(--navy-fg);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+.bar{max-width:1280px;margin:0 auto;padding-block:12px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-family:'Space Grotesk',Inter,system-ui,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.brand small{font-family:Inter,system-ui,sans-serif}
+.kpi .n,.card-h h3,.drop h2{font-family:'Space Grotesk',Inter,system-ui,sans-serif}
+.kpi{cursor:default} button.kpi{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.brand small{display:block;font-weight:500;font-size:12px;color:var(--navy-muted)}
+nav{display:flex;gap:4px;margin-left:8px}
+nav button{border:0;background:transparent;color:var(--navy-muted);font:inherit;font-weight:600;padding:8px 12px;border-radius:8px;cursor:pointer}
+nav button[aria-current="page"]{background:var(--navy-active);color:var(--navy-fg)}
+nav button:hover{color:var(--navy-fg)}
+header :focus-visible{outline-color:var(--navy-fg)}
+.spacer{flex:1}
+.btn{border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+header .btn.primary{background:var(--navy-fg);border-color:var(--navy-fg);color:var(--navy)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+main{max-width:1280px;margin:0 auto;padding-block:20px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.meta{color:var(--muted);font-size:13px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);font-size:12px}
+.pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+.drop{border:2px dashed var(--border);border-radius:14px;background:var(--surface);padding:48px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop h2{margin:0 0 6px;font-size:18px}
+.drop p{margin:0;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.kpi:hover{border-color:var(--accent)}
+.kpi .n{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi .l{color:var(--muted);font-size:13px;font-weight:500}
+.kpi.red .n{color:var(--red)} .kpi.amber .n{color:var(--amber)} .kpi.blue .n{color:var(--blue)} .kpi.violet .n{color:var(--violet)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.card-h h3{margin:0;font-size:15px}
+.card-h .count{color:var(--muted);font-weight:500}
+.card-h .hint{color:var(--muted);font-size:12px;flex-basis:100%}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--surface-2);color:var(--muted);font-weight:600;font-size:12px;position:sticky;top:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+.empty{padding:24px 16px;color:var(--muted)}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;margin-right:4px}
+.chip.vol{background:var(--blue-soft);color:var(--blue)}
+.chip.price{background:var(--red-soft);color:var(--red)}
+.chip.code{background:var(--amber-soft);color:var(--amber)}
+.chip.new{background:var(--violet-soft);color:var(--violet)}
+.chip.cancel{background:var(--red);color:var(--surface)}
+.kpi.alert{background:var(--red-soft);border-color:var(--red)}
+.kpi.alert .n{color:var(--red)}
+.hi{color:var(--red);font-weight:600}
+.codehi{color:var(--amber);font-weight:700}
+details.sub summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:12px}
+.reps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.reps button{border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer}
+.reps button .c{color:var(--muted);font-weight:500;margin-left:4px}
+.reps button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--navy-fg)}
+.reps button[aria-pressed="true"] .c{color:var(--navy-muted)}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+input[type=search]{font:inherit;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);min-width:240px}
+label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-weight:500}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;display:none;z-index:10}
+.hidden{display:none!important}
+@media (max-width:640px){ main,.bar{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))} input[type=search]{min-width:0;width:100%} }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">DAR Sales Dashboard<small>Daily Activity Review, filtered for sales</small></div>
+    <nav>
+      <button data-page="dash" aria-current="page">Dashboard</button>
+      <button data-page="reps">By Sales Rep</button>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn primary" id="uploadBtn">Upload DAR</button>
+    <input type="file" id="file" accept=".pdf,.xlsx,.xls,.csv" class="hidden">
+  </div>
+</header>
+
+<main>
+  <div class="meta" id="meta"></div>
+
+  <section id="dropZone" class="drop" tabindex="0">
+    <h2>Drop a DAR here</h2>
+    <p>PDF, Excel, or CSV. Or click to choose a file.</p>
+  </section>
+
+  <section id="page-dash" class="hidden">
+    <div class="kpis" id="kpis"></div>
+    <div id="dashCards"></div>
+  </section>
+
+  <section id="page-reps" class="hidden">
+    <div class="reps" id="repTabs"></div>
+    <div class="toolbar">
+      <input type="search" id="repSearch" placeholder="Search customer, address, code…">
+      <label class="chk"><input type="checkbox" id="flaggedOnly"> Flagged only</label>
+    </div>
+    <div id="repBody"></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+const CFG = window.DAR_CONFIG;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => n.toLocaleString("en-US", {style:"currency", currency:"USD"});
+const SITE_RE = new RegExp("\\b(" + CFG.cancelSiteNames.join("|") + ")\\b", "i");
+const isCancel = r => SITE_RE.test(r.site2) && /F$/.test(r.code);
+const CODE_RE = new RegExp("^(" + CFG.normalSizes.join("|") + ")(" + CFG.normalSuffixes.join("|") + ")$", "i");
+
+const FIELDS = ["acct","customer","address","site2","contact","phone","zip","code","total"];
+const HEADER_MAP = { acctnbr:"acct", acct:"acct", accountnumber:"acct", customer:"customer", siteaddress:"address",
+  sitename2:"site2", sitecontact:"contact", sitephone:"phone", sitezip:"zip", zip:"zip", code:"code", total:"total" };
+const normHeader = h => String(h||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+
+let state = { rows: [], fileName: "", period: "", page: "dash", rep: null };
+let notNew = new Set();
+let store = null;
+
+/* ---------- Storage for "not a new account" ---------- */
+function detectSiteUrl(){
+  if (CFG.sharePoint.siteUrl) return CFG.sharePoint.siteUrl.replace(/\/$/,"");
+  if (window._spPageContextInfo?.webAbsoluteUrl) return _spPageContextInfo.webAbsoluteUrl;
+  if (!/sharepoint\.com$/i.test(location.hostname)) return null;
+  const m = location.pathname.match(/^\/(sites|teams)\/[^/]+/i);
+  return location.origin + (m ? m[0] : "");
+}
+async function initStore(){
+  const site = detectSiteUrl();
+  if (site){
+    try{
+      const list = `${site}/_api/web/lists/getbytitle('${encodeURIComponent(CFG.sharePoint.listTitle)}')`;
+      const r = await fetch(`${list}/items?$select=Id,Title&$top=5000`, {headers:{Accept:"application/json;odata=nometadata"}, credentials:"include"});
+      if (!r.ok) throw new Error("List not reachable (" + r.status + ")");
+      const data = await r.json();
+      const ids = new Map(data.value.map(i => [String(i.Title).trim(), i.Id]));
+      const digest = async () => {
+        const d = await fetch(`${site}/_api/contextinfo`, {method:"POST", headers:{Accept:"application/json;odata=nometadata"}, credentials:"include"});
+        return (await d.json()).FormDigestValue;
+      };
+      store = {
+        mode: "sharepoint",
+        all: () => new Set(ids.keys()),
+        async add(acct){
+          const r = await fetch(`${list}/items`, {method:"POST", credentials:"include",
+            headers:{Accept:"application/json;odata=nometadata","Content-Type":"application/json;odata=nometadata","X-RequestDigest":await digest()},
+            body: JSON.stringify({Title: acct})});
+          if (!r.ok) throw new Error("Save failed (" + r.status + ")");
+          ids.set(acct, (await r.json()).Id);
+        },
+        async remove(acct){
+          const id = ids.get(acct); if (!id) return;
+          const r = await fetch(`${list}/items(${id})`, {method:"POST", credentials:"include",
+            headers:{Accept:"application/json;odata=nometadata","X-RequestDigest":await digest(),"IF-MATCH":"*","X-HTTP-Method":"DELETE"}});
+          if (!r.ok) throw new Error("Undo failed (" + r.status + ")");
+          ids.delete(acct);
+        }
+      };
+      return;
+    }catch(e){ console.warn("SharePoint list unavailable, using this browser instead:", e); }
+  }
+  const KEY = "dar.notNew";
+  const read = () => { try { return new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch { return new Set(); } };
+  const write = s => { try { localStorage.setItem(KEY, JSON.stringify([...s])); } catch {} };
+  store = { mode:"local", all: read,
+    async add(a){ const s = read(); s.add(a); write(s); },
+    async remove(a){ const s = read(); s.delete(a); write(s); } };
+}
+
+/* ---------- Parsing ---------- */
+function parseMoney(v){
+  if (typeof v === "number") return v;
+  const s = String(v||"").trim(); if (!s) return 0;
+  const neg = /^\(.*\)$/.test(s) || s.includes("-");
+  const n = parseFloat(s.replace(/[^0-9.]/g,"")) || 0;
+  return neg ? -n : n;
+}
+function cleanRow(r){
+  const o = {};
+  FIELDS.forEach(f => o[f] = String(r[f] ?? "").replace(/\s+/g," ").trim());
+  // A long zip can run into the code column in the PDF ("89030-4443 40EX")
+  if (!o.code && /\s/.test(o.zip)){ const p = o.zip.split(" "); o.zip = p.shift(); o.code = p.join(" "); }
+  // Excel/CSV can turn "07110" into the number 7110
+  if (/^\d{3,4}$/.test(o.zip)) o.zip = o.zip.padStart(5, "0");
+  o.code = o.code.toUpperCase();
+  o.total = parseMoney(r.total);
+  o.zip5 = (o.zip.match(/\d{5}/) || [""])[0];
+  o.section = r.section || "";
+  return o;
+}
+
+async function parseSheet(file){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:"array", raw: /\.csv$/i.test(file.name)});
+  const rows = [];
+  wb.SheetNames.forEach(name => {
+    const grid = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:""});
+    let cols = null, section = "";
+    for (const line of grid){
+      const keys = line.map(c => HEADER_MAP[normHeader(c)]);
+      if (keys.includes("acct") && keys.includes("code")){ cols = keys; continue; }
+      if (!cols) continue;
+      const r = {section};
+      cols.forEach((k,i) => { if (k) r[k] = line[i]; });
+      const acct = String(r.acct ?? "").trim();
+      if (/^\d+$/.test(acct)) rows.push(cleanRow(r));
+      else if (acct && line.filter(c => String(c).trim()).length === 1) section = acct;
+    }
+  });
+  return {rows, period: ""};
+}
+
+async function parsePdf(file){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+  const rows = []; let cols = null, section = "", period = "";
+  for (let p = 1; p <= pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    // Group text pieces into lines by their vertical position
+    const lines = [];
+    tc.items.filter(it => it.str.trim()).forEach(it => {
+      const x = it.transform[4], y = it.transform[5];
+      let line = lines.find(l => Math.abs(l.y - y) < 3);
+      if (!line){ line = {y, items:[]}; lines.push(line); }
+      line.items.push({x, str: it.str});
+    });
+    lines.sort((a,b) => b.y - a.y).forEach(l => l.items.sort((a,b) => a.x - b.x));
+    for (const l of lines){
+      const text = l.items.map(i => i.str).join(" ");
+      if (!period){ const m = text.match(/(\d{1,2}\/\d{1,2}\/\d{4}\s*to\s*\d{1,2}\/\d{1,2}\/\d{4})/i); if (m) period = m[1]; }
+      const hdr = l.items.map(i => HEADER_MAP[normHeader(i.str)]);
+      if (hdr.includes("acct") && hdr.includes("code")){
+        cols = l.items.map((i,k) => ({key: hdr[k], x: i.x})).filter(c => c.key).sort((a,b) => a.x - b.x);
+        continue;
+      }
+      if (!cols) continue;
+      const r = {section};
+      for (const it of l.items){
+        let col = cols[0];
+        for (const c of cols) if (it.x >= c.x - 8) col = c;
+        r[col.key] = r[col.key] ? r[col.key] + " " + it.str : it.str;
+      }
+      const acct = String(r.acct || "").trim();
+      if (/^\d+$/.test(acct) && (r.code || r.total)) rows.push(cleanRow(r));
+      else if (l.items.length === 1 && /^[A-Za-z][A-Za-z .'-]{1,40}$/.test(text.trim()) && l.items[0].x < cols[1].x) section = text.trim();
+    }
+  }
+  return {rows, period};
+}
+
+/* ---------- Analysis ---------- */
+function analyze(){
+  const rows = state.rows;
+  const byAcct = new Map();
+  rows.forEach(r => { if (!byAcct.has(r.acct)) byAcct.set(r.acct, []); byAcct.get(r.acct).push(r); });
+  const highVolume = [...byAcct.entries()].filter(([,rs]) => rs.length > CFG.maxTransactions)
+    .map(([acct, rs]) => ({acct, rows: rs, customer: rs[0].customer, zip: rs[0].zip5, total: rs.reduce((s,r)=>s+r.total,0)}))
+    .sort((a,b) => b.rows.length - a.rows.length);
+  const hvSet = new Set(highVolume.map(h => h.acct));
+  const overPrice = rows.filter(r => r.total > CFG.priceThreshold).sort((a,b) => b.total - a.total);
+  const oddCode = rows.filter(r => r.code && !CODE_RE.test(r.code));
+  const newAll = [...byAcct.entries()].filter(([a]) => a.endsWith(CFG.newAccountSuffix))
+    .map(([acct, rs]) => ({acct, rows: rs, customer: rs[0].customer, zip: rs[0].zip5, contact: rs[0].contact, phone: rs[0].phone, address: rs[0].address, total: rs.reduce((s,r)=>s+r.total,0)}));
+  const newAccts = newAll.filter(n => !notNew.has(n.acct));
+  const newSet = new Set(newAccts.map(n => n.acct));
+  const cancel = rows.filter(isCancel);
+  const flagsFor = r => ({
+    cancel: isCancel(r),
+    vol: hvSet.has(r.acct), price: r.total > CFG.priceThreshold,
+    code: !!r.code && !CODE_RE.test(r.code), new: newSet.has(r.acct)
+  });
+  return {byAcct, cancel, highVolume, overPrice, oddCode, newAll, newAccts, flagsFor};
+}
+const repFor = zip5 => CFG.zipToRep[zip5] || "Unassigned";
+
+/* ---------- Rendering ---------- */
+function chips(f){
+  return (f.cancel?'<span class="chip cancel">Possible cancel</span>':"") + (f.vol?'<span class="chip vol">10+ txns</span>':"") + (f.price?'<span class="chip price">Over $'+CFG.priceThreshold+'</span>':"")
+       + (f.code?'<span class="chip code">Code</span>':"") + (f.new?'<span class="chip new">New</span>':"");
+}
+function txTable(rows, a, opts = {}){
+  if (!rows.length) return '<div class="empty">Nothing flagged.</div>';
+  return `<div class="tbl-wrap"><table><thead><tr>
+    <th>AcctNbr</th><th>Customer</th><th>Site address</th>${opts.site2?'<th>SiteName2</th>':""}<th>Contact</th><th>Phone</th><th>Zip</th>
+    ${opts.rep?'<th>Rep</th>':""}<th>Code</th><th class="num">$/Total</th>${opts.flags?'<th>Flags</th>':""}
+    </tr></thead><tbody>${rows.map(r => `<tr>
+      <td>${esc(r.acct)}</td><td>${esc(r.customer)}</td><td>${esc(r.address)}</td>${opts.site2?`<td><b>${esc(r.site2)}</b></td>`:""}<td>${esc(r.contact)}</td>
+      <td>${esc(r.phone)}</td><td>${esc(r.zip)}</td>${opts.rep?`<td>${esc(repFor(r.zip5))}</td>`:""}
+      <td class="${!CODE_RE.test(r.code)?"codehi":""}">${esc(r.code)}</td>
+      <td class="num ${r.total>CFG.priceThreshold?"hi":""}">${money(r.total)}</td>
+      ${opts.flags?`<td>${chips(a.flagsFor(r))}</td>`:""}</tr>`).join("")}</tbody></table></div>`;
+}
+function volTable(list){
+  if (!list.length) return '<div class="empty">No account has more than '+CFG.maxTransactions+' transactions.</div>';
+  return `<div class="tbl-wrap"><table><thead><tr><th>AcctNbr</th><th>Customer</th><th>Zip</th><th>Rep</th>
+    <th class="num">Transactions</th><th class="num">Total</th><th></th></tr></thead><tbody>
+    ${list.map(h => `<tr><td>${esc(h.acct)}</td><td>${esc(h.customer)}</td><td>${esc(h.zip)}</td><td>${esc(repFor(h.zip))}</td>
+      <td class="num"><b>${h.rows.length}</b></td><td class="num">${money(h.total)}</td>
+      <td><details class="sub"><summary>Codes</summary>${esc(countCodes(h.rows))}</details></td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+const countCodes = rs => Object.entries(rs.reduce((m,r)=>(m[r.code]=(m[r.code]||0)+1,m),{})).map(([c,n])=>`${c} ×${n}`).join(", ");
+function newTable(list, showMarked){
+  if (!list.length) return '<div class="empty">No new accounts on this report.</div>';
+  return `<div class="tbl-wrap"><table><thead><tr><th>AcctNbr</th><th>Customer</th><th>Site address</th><th>Contact</th><th>Phone</th>
+    <th>Zip</th><th>Rep</th><th class="num">Txns</th><th class="num">Total</th><th></th></tr></thead><tbody>
+    ${list.map(n => { const marked = notNew.has(n.acct); return `<tr>
+      <td>${esc(n.acct)}</td><td>${esc(n.customer)}</td><td>${esc(n.address)}</td><td>${esc(n.contact)}</td><td>${esc(n.phone)}</td>
+      <td>${esc(n.zip)}</td><td>${esc(repFor(n.zip))}</td><td class="num">${n.rows.length}</td><td class="num">${money(n.total)}</td>
+      <td>${marked ? `<button class="btn sm" data-undo="${esc(n.acct)}">Undo</button>`
+                   : `<button class="btn sm" data-notnew="${esc(n.acct)}">Not new</button>`}</td></tr>`; }).join("")}
+    </tbody></table></div>`;
+}
+function card(id, title, count, hint, body, extra=""){
+  return `<div class="card" id="${id}"><div class="card-h"><h3>${title} <span class="count">· ${count}</span></h3>
+    <div class="spacer"></div>${extra}<div class="hint">${hint}</div></div>${body}</div>`;
+}
+
+let showMarked = false;
+function renderDash(a){
+  $("#kpis").innerHTML = [
+    ["cancel","alert",a.cancel.length,"Possible cancellations"],
+    ["vol","blue",a.highVolume.length,"Accounts with "+CFG.maxTransactions+"+ transactions"],
+    ["price","red",a.overPrice.length,"Transactions over "+money(CFG.priceThreshold).replace(".00","")],
+    ["code","amber",a.oddCode.length,"Non-standard codes"],
+    ["new","violet",a.newAccts.length,"New accounts"]
+  ].map(([t,c,n,l]) => `<button class="kpi ${c}" data-jump="card-${t}"><div class="n">${n}</div><div class="l">${l}</div></button>`).join("");
+  const newList = showMarked ? a.newAll : a.newAccts;
+  const hiddenCount = a.newAll.length - a.newAccts.length;
+  $("#dashCards").innerHTML =
+    card("card-cancel","Possible cancellations", a.cancel.length,
+      `SiteName2 is ${CFG.cancelSiteNames.join(" or ")} and the code is a final (ends in F). The customer may be ending service.`,
+      txTable(a.cancel, a, {rep:true, site2:true}))
+  +     card("card-new","New accounts", a.newAccts.length,
+      `AcctNbr ends in ${CFG.newAccountSuffix}. Mark one “Not new” and it stays off future reports `
+      + (store.mode==="sharepoint" ? "for the whole team." : "<b>on this computer only</b> (SharePoint list not connected)."),
+      newTable(newList), hiddenCount ? `<label class="chk"><input type="checkbox" id="showMarked" ${showMarked?"checked":""}> Show ${hiddenCount} marked not new</label>` : "")
+  + card("card-vol","High-volume accounts", a.highVolume.length, `More than ${CFG.maxTransactions} transactions on one account number.`, volTable(a.highVolume))
+  + card("card-price","Transactions over "+money(CFG.priceThreshold), a.overPrice.length, "Single transactions, highest first.", txTable(a.overPrice, a, {rep:true}))
+  + card("card-code","Non-standard codes", a.oddCode.length, `Normal codes are ${CFG.normalSizes.join(", ")} + ${CFG.normalSuffixes.join(" / ")} (e.g. 40EX, CONVF). Everything else shows here.`,
+      txTable(a.oddCode, a, {rep:true}));
+}
+
+function renderReps(a){
+  const groups = new Map();
+  state.rows.forEach(r => { const rep = repFor(r.zip5); if (!groups.has(rep)) groups.set(rep, []); groups.get(rep).push(r); });
+  const names = [...groups.keys()].sort((x,y) => x==="Unassigned" ? 1 : y==="Unassigned" ? -1 : x.localeCompare(y));
+  if (!names.includes(state.rep)) state.rep = names[0];
+  const flaggedCount = rs => rs.filter(r => Object.values(a.flagsFor(r)).some(Boolean)).length;
+  $("#repTabs").innerHTML = names.map(n => `<button data-rep="${esc(n)}" aria-pressed="${n===state.rep}">${esc(n)}<span class="c">${flaggedCount(groups.get(n))} flagged</span></button>`).join("");
+  let rs = groups.get(state.rep) || [];
+  const q = $("#repSearch").value.trim().toLowerCase();
+  if (q) rs = rs.filter(r => [r.acct,r.customer,r.address,r.site2,r.contact,r.code,r.zip].join(" ").toLowerCase().includes(q));
+  if ($("#flaggedOnly").checked) rs = rs.filter(r => Object.values(a.flagsFor(r)).some(Boolean));
+  const repRows = groups.get(state.rep) || [];
+  const zips = [...new Set(repRows.map(r => r.zip5).filter(Boolean))].sort();
+  const repNew = a.newAccts.filter(n => repFor(n.zip) === state.rep);
+  const repVol = a.highVolume.filter(h => repFor(h.zip) === state.rep);
+  const repCancel = repRows.filter(isCancel);
+  $("#repBody").innerHTML =
+    `<div class="kpis">
+      <div class="kpi alert"><div class="n">${repCancel.length}</div><div class="l">Possible cancellations</div></div>
+      <div class="kpi blue"><div class="n">${repVol.length}</div><div class="l">High-volume accounts</div></div>
+      <div class="kpi red"><div class="n">${repRows.filter(r=>r.total>CFG.priceThreshold).length}</div><div class="l">Over ${money(CFG.priceThreshold)}</div></div>
+      <div class="kpi amber"><div class="n">${repRows.filter(r=>r.code&&!CODE_RE.test(r.code)).length}</div><div class="l">Non-standard codes</div></div>
+      <div class="kpi violet"><div class="n">${repNew.length}</div><div class="l">New accounts</div></div>
+    </div>`
+    + (state.rep==="Unassigned" && zips.length ? `<div class="meta"><span class="pill warn">These zips have no rep yet: ${zips.join(", ")}</span></div>` : "")
+    + (repCancel.length ? card("rep-cancel","Possible cancellations", repCancel.length, "", txTable(repCancel, a, {site2:true})) : "")
+    + (repNew.length ? card("rep-new","New accounts", repNew.length, "", newTable(repNew)) : "")
+    + card("rep-all", "Activity", rs.length, zips.length && state.rep!=="Unassigned" ? "Zips: " + zips.join(", ") : "", txTable(rs, a, {flags:true}));
+}
+
+function render(){
+  const has = state.rows.length > 0;
+  $("#dropZone").classList.toggle("hidden", has);
+  document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-current", b.dataset.page===state.page ? "page" : "false"));
+  $("#page-dash").classList.toggle("hidden", !has || state.page!=="dash");
+  $("#page-reps").classList.toggle("hidden", !has || state.page!=="reps");
+  if (!has){ $("#meta").innerHTML = store?.mode==="local" ? "" : ""; return; }
+  const a = analyze();
+  const sections = [...new Set(state.rows.map(r => r.section).filter(Boolean))];
+  $("#meta").innerHTML = `<span class="pill">${esc(state.fileName)}</span>`
+    + (state.period ? `<span>Period: <b>${esc(state.period)}</b></span>` : "")
+    + `<span>${state.rows.length.toLocaleString()} transactions · ${a.byAcct.size.toLocaleString()} accounts</span>`
+    + (Object.keys(CFG.zipToRep).length ? "" : `<span class="pill warn">Zip-to-rep list not set up yet</span>`)
+    + (store.mode==="local" ? `<span class="pill warn">“Not new” saves to this computer only</span>` : "");
+  if (state.page==="dash") renderDash(a); else renderReps(a);
+}
+
+/* ---------- Events ---------- */
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",2600); }
+
+async function loadFile(file){
+  if (!file) return;
+  toast("Reading " + file.name + "…");
+  try{
+    const res = /\.pdf$/i.test(file.name) ? await parsePdf(file) : await parseSheet(file);
+    if (!res.rows.length) throw new Error("No transactions found. Is this a DAR with an AcctNbr header?");
+    state.rows = res.rows; state.period = res.period; state.fileName = file.name; state.page = "dash";
+    try { localStorage.setItem("dar.last", JSON.stringify({rows:state.rows, period:state.period, fileName:state.fileName})); } catch {}
+    render(); toast(res.rows.length + " transactions loaded");
+  }catch(e){ console.error(e); toast(e.message || "Couldn't read that file"); }
+}
+
+$("#uploadBtn").onclick = () => $("#file").click();
+$("#dropZone").onclick = () => $("#file").click();
+$("#dropZone").onkeydown = e => { if (e.key==="Enter"||e.key===" ") $("#file").click(); };
+$("#file").onchange = e => { loadFile(e.target.files[0]); e.target.value = ""; };
+["dragover","dragenter"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); $("#dropZone").classList.add("over"); }));
+["dragleave","drop"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); $("#dropZone").classList.remove("over"); }));
+document.addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => { state.page = b.dataset.page; render(); });
+$("#repSearch").oninput = render; $("#flaggedOnly").onchange = render;
+
+document.addEventListener("click", async e => {
+  const t = e.target.closest("button, input"); if (!t) return;
+  if (t.dataset.jump){ document.getElementById(t.dataset.jump)?.scrollIntoView({behavior:"smooth", block:"start"}); }
+  if (t.dataset.rep){ state.rep = t.dataset.rep; render(); }
+  if (t.id === "showMarked"){ showMarked = t.checked; render(); }
+  const acct = t.dataset.notnew || t.dataset.undo;
+  if (acct){
+    t.disabled = true;
+    try{
+      if (t.dataset.notnew){ await store.add(acct); notNew.add(acct); toast(acct + " marked not new"); }
+      else { await store.remove(acct); notNew.delete(acct); toast(acct + " is back on the new list"); }
+      render();
+    }catch(err){ t.disabled = false; toast(err.message); }
+  }
+});
+
+(async () => {
+  await initStore();
+  notNew = store.all();
+  try { const last = JSON.parse(localStorage.getItem("dar.last") || "null"); if (last?.rows?.length) Object.assign(state, last); } catch {}
+  if (!state.rows.length && window.DAR_SAMPLE) Object.assign(state, {rows: window.DAR_SAMPLE.map(cleanRow), period: "11/6/2026 to 11/8/2026", fileName: "Example data · upload a DAR to replace"});
+  render();
+})();
+})();
+</script>
+</body>
+</html>
