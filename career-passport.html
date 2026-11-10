@@ -39,6 +39,48 @@
   .cover-id{max-width:640px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;
     background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:16px 18px;text-align:left;}
   @media(max-width:560px){ .cover-id{grid-template-columns:1fr;} .cover-title{font-size:21px;} }
+  /* cover: passport details on the left, Newsfeed on the right */
+  .cover-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start;}
+  .cover-main{min-width:0;}
+  .cover-news{min-width:0;text-align:left;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:14px 16px;}
+  .nf-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#bcd3ef;}
+  .nf-count{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:0;text-transform:none;background:#f0b429;color:#1b2a3a;border-radius:10px;padding:1px 8px;}
+  .nf-count:empty{display:none;}
+  .nf-list{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .nf-item{background:#fff;color:var(--ink);border-radius:9px;padding:10px 12px;border-left:4px solid #f0b429;}
+  .nf-item.done{border-left-color:#2e8b57;opacity:.88;}
+  .nf-meta{font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .nf-meta b{color:var(--blue);}
+  .nf-text{font-size:13.5px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;}
+  .nf-ack{margin-top:8px;font-family:inherit;font-size:12px;font-weight:800;border:none;border-radius:14px;padding:6px 14px;cursor:pointer;background:var(--blue);color:#fff;}
+  .nf-ack:disabled{cursor:default;}
+  .nf-ack.done{background:#2e8b57;color:#fff;}
+  .nf-ack.step2{background:#f0b429;color:#1b2a3a;}
+  .nf-ack:disabled:not(.done){opacity:.65;}
+  .nf-item.acked{border-left-color:#2e74b5;}
+  .nf-note{display:inline-block;margin:8px 0 0 10px;font-size:11.5px;color:var(--muted);vertical-align:middle;}
+  .nf-empty{font-size:13px;color:#cfe0f2;padding:6px 2px;}
+  @media(max-width:900px){ .cover-grid{grid-template-columns:1fr;} }
+  /* Data tab > Newsfeed (leaders) */
+  .nfp-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px;background:#fff;}
+  .nfp-top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:12px;color:var(--muted);}
+  .nfp-top b{color:var(--blue);}
+  .nfp-prog{margin-left:auto;font-weight:800;color:#b5562e;}
+  .nfp-prog.all{color:#2e8b57;}
+  .nfp-text{margin:6px 0 8px;font-size:14px;white-space:pre-wrap;word-wrap:break-word;}
+  .nfp-who{display:flex;flex-wrap:wrap;gap:5px;font-size:12px;}
+  .nfp-who span{border-radius:10px;padding:2px 9px;background:#fdf3ee;color:#8a3d1c;}
+  .nfp-who span.ok{background:#e7f4ec;color:#1f6b42;}
+  .nfp-who span.ack{background:#e8f0fa;color:#1d4f86;}
+  .nfp-curtag{background:#13427a;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;}
+  .nfp-key{margin-top:6px;font-size:11px;color:var(--muted);}
+  .nfp-top .nfp-prog+.nfp-prog{margin-left:10px;}
+  /* Team Dashboard: Acknowledged / Completed boxes for the newest Newsfeed task */
+  .dash-table th.nf-dh,.dash-table td.nf-dc{text-align:center;width:110px;}
+  .nf-box{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;border:1.5px solid #b9c4cf;background:#fff;font-size:13px;font-weight:800;line-height:1;}
+  .nf-box.yes{background:#2e8b57;border-color:#2e8b57;color:#fff;}
+  .nf-box.na{border-color:transparent;background:transparent;color:#9098a1;}
+  .nf-dkey{font-size:11.5px;color:#6a747e;margin-top:6px;}
   .cid-field label{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#bcd3ef;margin-bottom:3px;}
   .cid-input{width:100%;font-family:inherit;font-size:14px;font-weight:600;color:#fff;
     background:rgba(255,255,255,.08);border:none;border-bottom:1.5px solid rgba(255,255,255,.45);
@@ -212,6 +254,8 @@
     .pp-nav,.pp-toolbar{display:none!important;}
     .cover{background:#fff!important;color:var(--ink)!important;border-bottom:3px solid var(--blue);}
     .cover-lockup,.cover-tag{color:var(--blue)!important;}
+    .cover-news{display:none!important;}
+    .cover-grid{display:block!important;}
     .cid-input{color:var(--ink)!important;border-bottom:1px solid #888!important;background:transparent!important;}
     .cid-input::placeholder{color:#999!important;}
     .field-line,.field-inline,.field-cell{border-bottom:1px solid #888;background:transparent;}
@@ -626,7 +670,7 @@
   .ci-more summary{cursor:pointer;font-weight:700;color:#13427a;font-size:13px;}
   .ci-more .ci-week{margin-top:8px;font-size:12px;}
   .ci-chip.done{background:#2e8b57;border-color:#2e8b57;}
-  body.trainerview .dt-tab[data-sub="checkins"]{display:none!important;}
+  body.trainerview .dt-tab[data-sub="checkins"],body.trainerview .dt-tab[data-sub="news"],body.trainerview #dtPaneNews{display:none!important;}
   body.liveagent #kbNavLink,body.agentview #kbNavLink,body.agentpv #kbNavLink{display:none!important;}
   body.liveagent #skills,body.agentview #skills,body.agentpv #skills{display:none!important;}
   body.daily-open #dailyPanel{transform:translateX(0);}
@@ -980,9 +1024,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 <div id="mgrLogin" style="display:none"><input id="lockPw" type="password" placeholder="Staff password (manager · supervisor · director · trainer)" autocomplete="off"><button id="lockBtn">Unlock</button><div class="lk-msg" id="lockMsg"></div></div>
 <div class="lk-note"><a href="#" id="toMgr" style="color:#2e74b5;text-decoration:none;font-weight:700">Manager / Trainer sign-in &rarr;</a><span id="toAgent" style="display:none"><a href="#" style="color:#2e74b5;text-decoration:none;font-weight:700">&larr; Back to agent sign-in</a></span></div></div></div>
 <div class="mgr-bar" id="mgrBar" style="display:none"><span class="mb-brand">WE · MANAGER</span><select id="agentSelect" title="Select agent"></select><button class="mb-btn" id="addBtn">+ Add agent</button><button class="mb-btn" id="renameBtn">Rename</button><button class="mb-btn" id="delBtn">Delete</button><span class="mb-spacer"></span><span class="mb-save" id="saveStatus">Saved automatically</span><button class="mb-btn primary" id="exportBtn">Export agent’s view-only passport</button><button class="mb-btn" onclick="window.print()">Print</button><button class="mb-btn" id="chgPwBtn" style="display:none">Change password</button><button class="mb-btn" id="lockNowBtn">Log out</button></div>
-<div id="dashboard" style="display:none"><h2>Team Dashboard</h2><p class="dash-lede">Every agent at a glance. Level, supervisor, and hire date update automatically from each passport; add a flag or focus note per agent. Click Open to jump into a passport.</p><div id="dashWrap"></div></div>
+<div id="dashboard" style="display:none"><h2>Team Dashboard</h2><p class="dash-lede">Every agent at a glance. Level updates automatically from each passport. Acknowledged and Completed show where each agent is on the newest Newsfeed task. Click Open to jump into a passport.</p><div id="dashWrap"></div></div>
 <div id="passportBody" style="display:none"><!-- ═══ PASSPORT COVER — scrolls away with the page, not sticky ═══ -->
 <div class="cover">
+ <div class="cover-grid">
+ <div class="cover-main">
   <div class="cover-lockup">WESTERN <span>ELITE</span></div>
   <h1 class="cover-title">CUSTOMER SERVICE<br>CAREER PASSPORT</h1>
   <p class="cover-tag">Your Personal Roadmap to Professional Growth</p>
@@ -1003,6 +1049,12 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     <div class="cid-field"><label>Company Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(for agent login)</span></label><input type="email" class="cid-input" placeholder="name@westernelite.com" id="cvEmail" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
     <div class="cid-field" style="display:none"><label>Supervisor</label><input type="text" class="field-line cid-input" placeholder="Type supervisor name" id="cvSup"></div>
   </div>
+ </div>
+ <aside class="cover-news" id="newsFeed" aria-label="Newsfeed">
+  <div class="nf-head"><b>Newsfeed</b><span class="nf-count" id="nfCount"></span></div>
+  <div class="nf-list" id="nfList"><div class="nf-empty">Loading…</div></div>
+ </aside>
+ </div>
 </div>
 
 <!-- ═══ Slim sticky page-jump bar — no search, just the nine stops ═══ -->
@@ -2233,9 +2285,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   window.__weTextOn=function(id){var it=_rosterItem(id);return !!(it&&it.txt);};
   window.__weEmailOn=function(id){var it=_rosterItem(id);return !!(it&&it.eml);};
   window.__weTEenabled=function(id){return window.__weTextOn(id)||window.__weEmailOn(id);};
-  function renderDash(){var wrap=document.getElementById("dashWrap");migrateChannels();var list=roster().slice().sort(byName);if(!list.length){wrap.innerHTML='<div class="dash-empty">No agents yet. Click the “+ Add agent” button above to create the first passport.</div>';return;}var html='<table class="dash-table"><tr><th>Agent</th><th>Current level</th><th>Hire date</th><th>Track text/email</th><th style="width:22%">Manager flag / focus</th><th></th></tr>';list.forEach(function(r){var d=agentData(r.id)||{};var lvl=levelNumOf(d.level);html+='<tr><td><b>'+esc(d.name||r.name)+'</b></td><td>'+esc(d.level||"—")+'</td><td>'+esc(d.hire||"—")+'</td><td><label style="font-size:12px;display:inline-flex;align-items:center;gap:4px;margin-right:10px"><input type="checkbox" data-txt="'+r.id+'"'+(r.txt?" checked":"")+'> Texts</label><label style="font-size:12px;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" data-eml="'+r.id+'"'+(r.eml?" checked":"")+'> Emails</label></td><td><input data-flag="'+r.id+'" value="'+esc(r.flag||"")+'" placeholder="e.g. in 30-day review"></td><td><button class="dash-open" data-open="'+r.id+'">Open</button></td></tr>';});html+='</table>';wrap.innerHTML=html;wrap.querySelectorAll("[data-open]").forEach(function(b){b.addEventListener("click",function(){selectAgent(this.getAttribute("data-open"));document.getElementById("passportBody").scrollIntoView({behavior:"smooth"});});});wrap.querySelectorAll("[data-flag]").forEach(function(inp){inp.addEventListener("input",function(){var id=this.getAttribute("data-flag");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it.flag=this.value;setRoster(l);}});});wrap.querySelectorAll("[data-txt],[data-eml]").forEach(function(cb){cb.addEventListener("change",function(){var isTxt=this.hasAttribute("data-txt");var id=isTxt?this.getAttribute("data-txt"):this.getAttribute("data-eml");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it[isTxt?"txt":"eml"]=this.checked;setRoster(l);}try{if(window.__weTeamRefresh)window.__weTeamRefresh();if(window.__wePanelRefresh)window.__wePanelRefresh();var dt=document.getElementById("dataTab");if(dt&&dt.style.display!=="none"){populateMsgAgents("text");populateMsgAgents("email");}}catch(e){}});});}
+  function renderDash(){var wrap=document.getElementById("dashWrap");migrateChannels();var list=roster().slice().sort(byName);if(!list.length){wrap.innerHTML='<div class="dash-empty">No agents yet. Click the “+ Add agent” button above to create the first passport.</div>';return;}var html='<table class="dash-table"><tr><th>Agent</th><th>Current level</th><th>Track text/email</th><th class="nf-dh" id="nfDashHead">Acknowledged</th><th class="nf-dh">Completed</th><th></th></tr>';list.forEach(function(r){var d=agentData(r.id)||{};var lvl=levelNumOf(d.level);html+='<tr><td><b>'+esc(d.name||r.name)+'</b></td><td>'+esc(d.level||"—")+'</td><td><label style="font-size:12px;display:inline-flex;align-items:center;gap:4px;margin-right:10px"><input type="checkbox" data-txt="'+r.id+'"'+(r.txt?" checked":"")+'> Texts</label><label style="font-size:12px;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" data-eml="'+r.id+'"'+(r.eml?" checked":"")+'> Emails</label></td><td class="nf-dc" data-nfbox="ack" data-nfname="'+esc(d.name||r.name)+'"></td><td class="nf-dc" data-nfbox="done" data-nfname="'+esc(d.name||r.name)+'"></td><td><button class="dash-open" data-open="'+r.id+'">Open</button></td></tr>';});html+='</table><div class="nf-dkey">Acknowledged / Completed = the newest <b>Newsfeed</b> task (Data tab &rsaquo; Newsfeed). Hover a box for the time.</div>';wrap.innerHTML=html;try{if(window.__weNewsDashPaint)window.__weNewsDashPaint();}catch(e){}wrap.querySelectorAll("[data-open]").forEach(function(b){b.addEventListener("click",function(){selectAgent(this.getAttribute("data-open"));document.getElementById("passportBody").scrollIntoView({behavior:"smooth"});});});wrap.querySelectorAll("[data-flag]").forEach(function(inp){inp.addEventListener("input",function(){var id=this.getAttribute("data-flag");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it.flag=this.value;setRoster(l);}});});wrap.querySelectorAll("[data-txt],[data-eml]").forEach(function(cb){cb.addEventListener("change",function(){var isTxt=this.hasAttribute("data-txt");var id=isTxt?this.getAttribute("data-txt"):this.getAttribute("data-eml");var l=roster();var it=l.filter(function(r){return r.id===id;})[0];if(it){it[isTxt?"txt":"eml"]=this.checked;setRoster(l);}try{if(window.__weTeamRefresh)window.__weTeamRefresh();if(window.__wePanelRefresh)window.__wePanelRefresh();var dt=document.getElementById("dataTab");if(dt&&dt.style.display!=="none"){populateMsgAgents("text");populateMsgAgents("email");}}catch(e){}});});}
 
-  function exportAgent(){if(ACTIVE==null){alert("Select an agent first.");return;}saveActive();var list=roster();var it=list.filter(function(r){return r.id===ACTIVE;})[0];if(!it)return;var data=agentData(ACTIVE)||{v:{}};var pw=prompt("Set a password for "+it.name+"'s view-only passport.\nShare it with "+it.name+" only — they'll use it to open their file.");if(pw==null)return;pw=String(pw);if(!pw){alert("A password is required.");return;}var salt=cyrb53(it.name+"|"+Date.now(),9);var ver=cyrb53(salt+pw);var blob=encO(data,pw);var css=document.querySelector("style").textContent;var body=document.getElementById("passportBody").innerHTML;var head='<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Western Elite — '+esc(it.name)+' — Career Passport</title><style>'+css+'</style></head><body>';var pp='<scr'+'ipt>window.__PP__={data:'+JSON.stringify(blob)+',ver:'+JSON.stringify(ver)+',salt:'+JSON.stringify(salt)+',agent:'+JSON.stringify(it.name)+'};<\/scr'+'ipt>';var full=head+AGENT_LOCK+'<div id="passportBody" style="display:none">'+AGENT_BAR+body+'</div>'+pp+'<scr'+'ipt>'+AGENT_JS+'<\/scr'+'ipt></body></html>';var fname=(it.name||"agent").replace(/[^a-z0-9]+/gi,"_").replace(/^_|_$/g,"")+"_Career_Passport.html";var bl=new Blob([full],{type:"text/html"});var url=URL.createObjectURL(bl);var a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1500);var s=document.getElementById("saveStatus");if(s)s.textContent="Exported "+fname;}
+  function exportAgent(){if(ACTIVE==null){alert("Select an agent first.");return;}saveActive();var list=roster();var it=list.filter(function(r){return r.id===ACTIVE;})[0];if(!it)return;var data=agentData(ACTIVE)||{v:{}};var pw=prompt("Set a password for "+it.name+"'s view-only passport.\nShare it with "+it.name+" only — they'll use it to open their file.");if(pw==null)return;pw=String(pw);if(!pw){alert("A password is required.");return;}var salt=cyrb53(it.name+"|"+Date.now(),9);var ver=cyrb53(salt+pw);var blob=encO(data,pw);var css=document.querySelector("style").textContent;var body=document.getElementById("passportBody").innerHTML.replace(/<aside class="cover-news"[\s\S]*?<\/aside>/,"");var head='<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Western Elite — '+esc(it.name)+' — Career Passport</title><style>'+css+'</style></head><body>';var pp='<scr'+'ipt>window.__PP__={data:'+JSON.stringify(blob)+',ver:'+JSON.stringify(ver)+',salt:'+JSON.stringify(salt)+',agent:'+JSON.stringify(it.name)+'};<\/scr'+'ipt>';var full=head+AGENT_LOCK+'<div id="passportBody" style="display:none">'+AGENT_BAR+body+'</div>'+pp+'<scr'+'ipt>'+AGENT_JS+'<\/scr'+'ipt></body></html>';var fname=(it.name||"agent").replace(/[^a-z0-9]+/gi,"_").replace(/^_|_$/g,"")+"_Career_Passport.html";var bl=new Blob([full],{type:"text/html"});var url=URL.createObjectURL(bl);var a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1500);var s=document.getElementById("saveStatus");if(s)s.textContent="Exported "+fname;}
 
   function seedAgents(){var names=["Alex","Amanda","Erika","Faviola","Johana","Leslie","Lily","Meylann","Perla","Sandy","Trae","Yasmin"];var list=roster();var have={};list.forEach(function(r){have[(r.name||"").toLowerCase()]=true;});var nameIdx=fields().indexOf(document.getElementById("cvName"));var added=false;names.forEach(function(nm,i){if(have[nm.toLowerCase()])return;var id="a"+Date.now()+"_"+i;var v={};if(nameIdx>=0)v[nameIdx]=nm;list.push({id:id,name:nm,flag:""});setAgentData(id,{v:v,name:nm,level:"",sup:"",hire:""});added=true;});if(added)setRoster(list);}
   function showApp(role){role=role||"director";window.__weRole=role;var b=document.body;b.classList.remove("role-manager","role-supervisor","role-director");b.classList.add("role-"+role);try{sessionStorage.setItem("we_role",role);}catch(e){}var brand=document.querySelector("#mgrBar .mb-brand");if(brand)brand.textContent="WE · "+role.toUpperCase();document.getElementById("lockScreen").style.display="none";document.getElementById("mgrBar").style.display="";document.getElementById("dashboard").style.display="";document.getElementById("passportBody").style.display="";bootRoster();startAutoRefresh();}
@@ -2759,7 +2811,7 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     var dt=document.createElement("div");dt.id="dataTab";dt.style.display="none";
     dt.innerHTML=''+
       '<div class="dt-head"><h2>Data tab <span>· manager only · daily scoreboard</span></h2><span id="dtSync" class="dt-sync dt-sync-saved">✓ All changes saved</span><button id="dtBack" class="mb-btn2" type="button">‹ Back to dashboard</button></div>'+
-      '<div class="dt-subtabs"><button class="dt-tab dt-tab-on" data-sub="calls" type="button">Calls</button><button class="dt-tab" data-sub="text" type="button">Text</button><button class="dt-tab" data-sub="email" type="button">Emails</button><button class="dt-tab" data-sub="daily" type="button">Daily</button></div>'+
+      '<div class="dt-subtabs"><button class="dt-tab dt-tab-on" data-sub="calls" type="button">Calls</button><button class="dt-tab" data-sub="text" type="button">Text</button><button class="dt-tab" data-sub="email" type="button">Emails</button><button class="dt-tab" data-sub="daily" type="button">Daily</button><button class="dt-tab" data-sub="news" type="button">Newsfeed</button></div>'+
       '<div id="dtPaneCalls" class="dt-pane">'+
         '<div class="dt-note">Pick a date and enter each agent’s <b>raw counts</b> for that day — the percentages auto-calculate exactly like the scoreboard.</div>'+
         '<div class="dt-daterow"><label>Date&nbsp;</label><input type="date" id="dtDate"> <button class="mb-btn2" id="dtToday" type="button">Today</button> <span class="dt-daynote" id="dtDayNote"></span></div>'+
@@ -2797,6 +2849,12 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         '</div>'+
         '<div id="dlySummary" class="dt-daynote" style="margin-top:14px"></div>'+
         '<div class="dt-scroll"><div id="dlyList"></div></div>'+
+      '</div>'+
+      '<div id="dtPaneNews" class="dt-pane" style="display:none">'+
+        '<div class="dt-note">Write a message and press <b>Send</b>. It goes to the <b>Newsfeed</b> at the top of every agent&rsquo;s passport with an <b>Acknowledge</b> button. After they acknowledge, the button becomes <b>Task complete</b> for when they finish. Both steps are tracked below and on the Team Dashboard.</div>'+
+        '<div class="dly-form"><label class="dly-lab">Message</label><textarea id="nfMsg" class="dly-ta" rows="3" maxlength="1500" placeholder="What do the agents need to know?"></textarea>'+
+        '<div style="margin-top:8px"><button class="mb-btn2" id="nfSend" type="button">Send to all agents</button> <span id="nfSendMsg" class="dt-daynote"></span></div></div>'+
+        '<div class="dt-sub" style="margin-top:18px">Sent <span>(newest first)</span></div><div id="nfSent"></div>'+
       '</div>';
     var dash=document.getElementById("dashboard");dash.parentNode.insertBefore(dt,dash.nextSibling);
     document.getElementById("dtBack").addEventListener("click",showDash);
@@ -2887,10 +2945,11 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     showDataSub("text");
   };
   function showDataSub(which){
-    ["calls","text","email","daily"].forEach(function(k){var p=document.getElementById("dtPane"+k.charAt(0).toUpperCase()+k.slice(1));if(p)p.style.display=(k===which)?"":"none";});
+    ["calls","text","email","daily","news"].forEach(function(k){var p=document.getElementById("dtPane"+k.charAt(0).toUpperCase()+k.slice(1));if(p)p.style.display=(k===which)?"":"none";});
     var dt=document.getElementById("dataTab");if(dt)dt.querySelectorAll(".dt-tab").forEach(function(b){b.classList.toggle("dt-tab-on",b.getAttribute("data-sub")===which);});
     if(which==="calls"){renderDaily();renderGrid();renderDials();}
     else if(which==="daily"){populateDailyAgents();renderDailyList();}
+    else if(which==="news"){try{if(window.__weNewsPane)window.__weNewsPane(true);}catch(e){}}
     else{populateMsgAgents(which);renderMsgLog(which);if(which==="email")renderTeamPlayer();}
   }
   function renderTeamPlayer(){
@@ -4067,6 +4126,145 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     document.addEventListener("click",function(e){if(e.target&&e.target.matches&&e.target.matches(".dash-open"))setTimeout(function(){if(document.body.classList.contains("esc-open"))renderSection(false);},150);});
     setInterval(function(){if(document.hidden||(window.__weShouldPoll&&!window.__weShouldPoll()))return;_cache.at=0;paintChip();if(document.body.classList.contains("esc-open")){var a=document.activeElement;if(!(a&&/ci(Notes|Follow|Type)/.test(a.id||"")))renderSection(true);}},180000);
     var mb=document.getElementById("mgrBar");if(mb)new MutationObserver(function(){paintChip();}).observe(mb,{attributes:true,attributeFilter:["style"]});}
+  if(document.readyState==="loading")window.addEventListener("load",init);else setTimeout(init,0);
+})();
+</script>
+<script>
+/* ===== Newsfeed: leaders send a task from Data > Newsfeed; every agent sees it on their passport cover.
+   Two steps for the agent: "Acknowledge", then the button becomes "Task complete" for when the task is done.
+   Stored in the existing "entries" table (no schema change):
+     "Newsfeed"      one row per agent  (title "Newsfeed · <Role> · <id>", detail = message)
+     "Newsfeed Ack"  agent acknowledged (title "Acknowledged · <id>", detail = id)
+     "Newsfeed Done" agent completed    (title "Completed · <id>",    detail = id)
+   The Team Dashboard shows, per agent, whether they acknowledged and completed the newest task. ===== */
+(function(){
+  "use strict";
+  var SRC="Newsfeed",ACK="Newsfeed Ack",DONE="Newsfeed Done",SEP=" · ";
+  var _busy=false,_cur=null;   // _cur = newest task across the team, for the Team Dashboard
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function pad(n){return (n<10?"0":"")+n;}
+  function today(){var d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+  function ready(){return !!(window.sbReady&&window.sbReady());}
+  function isLiveAgent(){return document.body.classList.contains("liveagent");}
+  function role(){return (window.__weRole||"").toLowerCase();}
+  function roleName(){var r=role()||"manager";return r.charAt(0).toUpperCase()+r.slice(1);}
+  function fmt(fa){var t=Date.parse(fa);if(isNaN(t))return "";var d=new Date(t);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" · "+d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});}
+  function newId(){return "NF"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+  function postId(r){var p=String(r.title||"").split(SEP);return (p[2]||"").trim()||("row"+r.id);}
+  function postBy(r){var p=String(r.title||"").split(SEP);return (p[1]||"").trim()||"Manager";}
+  function refId(r){return String(r.detail||"").trim()||(String(r.title||"").split(SEP)[1]||"").trim();}
+  function curAgent(){if(isLiveAgent()&&window.__weAgentName)return window.__weAgentName;var s=document.getElementById("agentSelect");if(s&&s.value){var o=s.options&&s.options[s.selectedIndex];return (o&&o.text)||s.value;}return "";}
+  function rosterNames(){var s=document.getElementById("agentSelect");if(!s)return[];var seen={},out=[];Array.prototype.slice.call(s.options).forEach(function(o){var n=(o.textContent||"").trim();if(o.value&&n&&!seen[n]){seen[n]=1;out.push(n);}});return out;}
+  // Group raw rows into tasks: {id,by,text,at,agents:[],ack:{name:at},done:{name:at}}, newest first.
+  function group(rows){
+    var posts={},order=[],ack={},done={};
+    (rows||[]).forEach(function(r){
+      if(r.source===ACK){var a=refId(r);(ack[a]=ack[a]||{})[r.agent]=r.filed_at||"";return;}
+      if(r.source===DONE){var d=refId(r);(done[d]=done[d]||{})[r.agent]=r.filed_at||"";return;}
+      if(r.source!==SRC)return;var id=postId(r);
+      if(!posts[id]){posts[id]={id:id,by:postBy(r),text:r.detail||"",at:r.filed_at||"",agents:[]};order.push(id);}
+      if(posts[id].agents.indexOf(r.agent)<0)posts[id].agents.push(r.agent);
+      if(r.filed_at&&r.filed_at<posts[id].at)posts[id].at=r.filed_at;
+    });
+    return order.map(function(id){var p=posts[id];p.ack=ack[id]||{};p.done=done[id]||{};
+      // completing counts as acknowledging too
+      Object.keys(p.done).forEach(function(n){if(p.ack[n]==null)p.ack[n]=p.done[n];});return p;})
+      .sort(function(x,y){return (y.at||"").localeCompare(x.at||"");});
+  }
+
+  /* ---- Agent side: the Newsfeed panel on the passport cover ---- */
+  function renderFeed(){
+    var list=document.getElementById("nfList"),cnt=document.getElementById("nfCount");if(!list)return;
+    var a=curAgent();
+    if(!ready()){list.innerHTML='<div class="nf-empty">The newsfeed shows here when you are online.</div>';if(cnt)cnt.textContent="";return;}
+    if(!a){list.innerHTML='<div class="nf-empty">Pick an agent to see their newsfeed.</div>';if(cnt)cnt.textContent="";return;}
+    window.sbSelect("entries","agent=eq."+encodeURIComponent(a)+"&source=ilike.Newsfeed*&order=filed_at.desc&limit=500").then(function(rows){
+      if(a!==curAgent())return;
+      var posts=group(rows);
+      if(!posts.length){list.innerHTML='<div class="nf-empty">No news yet.</div>';if(cnt)cnt.textContent="";return;}
+      var me=isLiveAgent(),open=0,dis=me?'':' disabled title="Only the agent can press this"';
+      list.innerHTML=posts.map(function(p){var acked=p.ack[a]!=null,done=p.done[a]!=null,btn,note="";if(!done)open++;
+        if(done){btn='<button class="nf-ack done" type="button" disabled>&#10003; Completed</button>';note='Completed '+esc(fmt(p.done[a]));}
+        else if(acked){btn='<button class="nf-ack step2" type="button" data-nf="'+esc(p.id)+'" data-step="done"'+dis+'>Task complete</button>';note='Acknowledged '+esc(fmt(p.ack[a]))+(me?' &mdash; press <b>Task complete</b> when it&rsquo;s done':'');}
+        else btn='<button class="nf-ack" type="button" data-nf="'+esc(p.id)+'" data-step="ack"'+dis+'>Acknowledge</button>';
+        return '<div class="nf-item'+(done?" done":acked?" acked":"")+'"><div class="nf-meta"><b>'+esc(p.by)+'</b> · '+esc(fmt(p.at))+'</div>'+
+          '<div class="nf-text">'+esc(p.text)+'</div>'+btn+(note?'<span class="nf-note">'+note+'</span>':'')+'</div>';}).join("");
+      if(cnt)cnt.textContent=open?(open+" open"):"";
+    }).catch(function(){list.innerHTML='<div class="nf-empty">Could not load the newsfeed.</div>';});
+  }
+  function press(btn){
+    var id=btn.getAttribute("data-nf"),step=btn.getAttribute("data-step"),a=curAgent();if(!id||!a||!isLiveAgent())return;
+    var isDone=step==="done",label=btn.textContent;
+    btn.disabled=true;btn.textContent="Saving…";
+    window.sbInsert("entries",{agent:a,source:isDone?DONE:ACK,entry_date:today(),title:(isDone?"Completed":"Acknowledged")+SEP+id,detail:id}).then(function(r){
+      if(r&&r.ok){renderFeed();}else{btn.disabled=false;btn.textContent=label;alert("Couldn't save. Please try again.");}
+    });
+  }
+
+  /* ---- Leader side: Data tab > Newsfeed, and the Team Dashboard columns ---- */
+  function loadAll(cb){
+    if(!ready()){cb(null);return;}
+    window.sbSelect("entries","source=ilike.Newsfeed*&order=filed_at.desc&limit=5000").then(function(rows){var g=group(rows);_cur=g[0]||null;cb(g);paintDash();}).catch(function(){cb(null);});
+  }
+  function renderPane(){
+    var wrap=document.getElementById("nfSent");if(!wrap)return;
+    if(!ready()){wrap.innerHTML='<div class="qz-empty">Connect to the database to send and track the newsfeed.</div>';return;}
+    loadAll(function(posts){
+      if(!posts){wrap.innerHTML='<div class="qz-empty">Could not load the newsfeed.</div>';return;}
+      if(!posts.length){wrap.innerHTML='<div class="qz-empty">Nothing sent yet.</div>';return;}
+      wrap.innerHTML=posts.slice(0,100).map(function(p,i){var N=p.agents.length;
+        var na=p.agents.filter(function(n){return p.ack[n]!=null;}).length,nd=p.agents.filter(function(n){return p.done[n]!=null;}).length;
+        function rank(n){return p.done[n]!=null?2:p.ack[n]!=null?1:0;}
+        var names=p.agents.slice().sort(function(x,y){return rank(x)-rank(y)||x.localeCompare(y);});
+        return '<div class="nfp-card"><div class="nfp-top"><b>'+esc(p.by)+'</b><span>'+esc(fmt(p.at))+'</span>'+(i===0?'<span class="nfp-curtag">Current task</span>':'')+
+          '<span class="nfp-prog'+(na===N?" all":"")+'">Acknowledged '+na+' / '+N+'</span><span class="nfp-prog'+(nd===N?" all":"")+'">Completed '+nd+' / '+N+'</span></div>'+
+          '<div class="nfp-text">'+esc(p.text)+'</div>'+
+          '<div class="nfp-who">'+names.map(function(n){var k=rank(n);return '<span class="'+(k===2?"ok":k===1?"ack":"")+'" title="'+(k===2?"Completed "+esc(fmt(p.done[n])):k===1?"Acknowledged "+esc(fmt(p.ack[n]))+", not completed yet":"Not acknowledged yet")+'">'+(k===2?"&#10003;&#10003; ":k===1?"&#10003; ":"")+esc(n)+'</span>';}).join("")+'</div>'+
+          '<div class="nfp-key">&#10003; acknowledged &nbsp; &#10003;&#10003; completed</div></div>';}).join("");
+    });
+  }
+  // Team Dashboard: fill the Acknowledged / Completed boxes for the newest task.
+  function paintDash(){
+    var head=document.getElementById("nfDashHead");
+    if(head){head.title=_cur?("Current task ("+fmt(_cur.at)+"): "+_cur.text):"No task sent yet";}
+    document.querySelectorAll("#dashWrap [data-nfbox]").forEach(function(td){
+      var n=td.getAttribute("data-nfname"),kind=td.getAttribute("data-nfbox");
+      if(!_cur||_cur.agents.indexOf(n)<0){td.innerHTML='<span class="nf-box na" title="'+(_cur?"Not sent to this agent":"No task sent yet")+'">&ndash;</span>';return;}
+      var at=(kind==="done"?_cur.done:_cur.ack)[n];
+      td.innerHTML=at!=null?'<span class="nf-box yes" title="'+(kind==="done"?"Completed ":"Acknowledged ")+esc(fmt(at))+'">&#10003;</span>':'<span class="nf-box no" title="'+(kind==="done"?"Not completed yet":"Not acknowledged yet")+'"></span>';
+    });
+  }
+  function send(){
+    var ta=document.getElementById("nfMsg"),msg=document.getElementById("nfSendMsg"),btn=document.getElementById("nfSend");if(!ta||_busy)return;
+    var text=ta.value.trim();
+    if(!text){msg.textContent="Write a message first.";return;}
+    if(!ready()){msg.textContent="Not connected.";return;}
+    var names=rosterNames();if(!names.length){msg.textContent="No agents on the roster.";return;}
+    if(!confirm("Send this to all "+names.length+" agents?"))return;
+    _busy=true;btn.disabled=true;msg.textContent="Sending…";
+    var id=newId(),d=today(),title=SRC+SEP+roleName()+SEP+id;
+    var rows=names.map(function(n){return {agent:n,source:SRC,entry_date:d,title:title,detail:text};});
+    window.sbInsert("entries",rows).then(function(r){
+      _busy=false;btn.disabled=false;
+      if(r&&r.ok){ta.value="";msg.textContent="Sent to "+names.length+" agents.";renderPane();}
+      else msg.textContent="Couldn't send"+(r&&r.status?" (error "+r.status+")":"")+". Please try again.";
+    });
+  }
+  window.__weNewsPane=function(){renderPane();};
+  window.__weNewsRefresh=renderFeed;
+  window.__weNewsDashPaint=function(){paintDash();if(!isLiveAgent())loadAll(function(){});};
+
+  function init(){
+    var list=document.getElementById("nfList");
+    if(list)list.addEventListener("click",function(e){var b=e.target&&e.target.closest&&e.target.closest(".nf-ack[data-nf]");if(b&&!b.disabled)press(b);});
+    document.addEventListener("click",function(e){var t=e.target;if(t&&t.id==="nfSend")send();});
+    var sel=document.getElementById("agentSelect");if(sel)sel.addEventListener("change",function(){setTimeout(renderFeed,120);});
+    document.addEventListener("click",function(e){if(e.target&&e.target.matches&&e.target.matches(".dash-open"))setTimeout(renderFeed,250);});
+    var tries=0,last="";(function first(){var a=curAgent()+"|"+ready();if(a!==last){last=a;renderFeed();}if(++tries<15)setTimeout(first,1500);})();
+    if(!isLiveAgent())loadAll(function(){});
+    setInterval(function(){if(document.hidden||(window.__weShouldPoll&&!window.__weShouldPoll()))return;renderFeed();
+      if(isLiveAgent())return;var p=document.getElementById("dtPaneNews");if(p&&p.offsetParent)renderPane();else loadAll(function(){});},120000);
+  }
   if(document.readyState==="loading")window.addEventListener("load",init);else setTimeout(init,0);
 })();
 </script>
