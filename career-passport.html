@@ -446,10 +446,8 @@
   .dt-daynote{color:var(--muted);font-size:12px;}
   .dt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
   body.trainerview .dt-tab[data-sub="calls"],body.trainerview #dtPaneCalls,body.trainerview #dtBack,body.trainerview #mgrBar,body.trainerview #dashboard,body.trainerview #passportBody,body.trainerview #ppHint,body.trainerview #teamMetrics{display:none!important;}
-  /* role: Manager sees Calls, Text, Email & Daily — hide dials, roster setup */
+  /* role: Manager and Supervisor both see every Data tab (Calls, Text, Email, Daily, Check-ins). Manager: hide dials, roster setup */
   body.role-manager .dt-dials,body.role-manager #addBtn,body.role-manager #renameBtn,body.role-manager #delBtn,body.role-manager #exportBtn,body.role-manager #chgPwBtn,body.role-manager #previewAgentBtn{display:none!important;}
-  /* role: Supervisor owns everything else — hide Text & Email entry */
-  body.role-supervisor .dt-tab[data-sub="text"],body.role-supervisor .dt-tab[data-sub="email"],body.role-supervisor #dtPaneText,body.role-supervisor #dtPaneEmail{display:none!important;}
   body.trainerview .dt-head h2 span{color:#8aa6c9;}
   .dt-subtabs{display:flex;gap:6px;margin:0 0 14px;border-bottom:2px solid var(--line);}
   .dt-tab{background:#eef2f6;color:#3d4750;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;}
@@ -628,7 +626,7 @@
   .ci-more summary{cursor:pointer;font-weight:700;color:#13427a;font-size:13px;}
   .ci-more .ci-week{margin-top:8px;font-size:12px;}
   .ci-chip.done{background:#2e8b57;border-color:#2e8b57;}
-  body.role-supervisor .dt-tab[data-sub="checkins"],body.trainerview .dt-tab[data-sub="checkins"]{display:none!important;}
+  body.trainerview .dt-tab[data-sub="checkins"]{display:none!important;}
   body.liveagent #kbNavLink,body.agentview #kbNavLink,body.agentpv #kbNavLink{display:none!important;}
   body.liveagent #skills,body.agentview #skills,body.agentpv #skills{display:none!important;}
   body.daily-open #dailyPanel{transform:translateX(0);}
@@ -3010,9 +3008,9 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     function rawLab(k){for(var i=0;i<RAW.length;i++)if(RAW[i].k===k)return RAW[i].lab;return k;}
     function pctLab(k){for(var i=0;i<DAYPCT.length;i++)if(DAYPCT[i].k===k)return DAYPCT[i].lab;return k;}
     function pctFmt(v){var s=String(v==null?"":v).trim();if(s===""||/no\s*score/i.test(s))return s;var num=parseFloat(s);return isNaN(num)?s:(num+"%");}
-    // role-based column filter: Manager and Director see every column; Supervisor sees everything except V.Creator (vc, vc2)
+    // role-based column filter: Manager, Supervisor and Director all see every column
     var _role=window.__weRole||"";
-    function colAllowed(col){var isVCraw=(col.raw==="vc"||col.raw==="vc2");if(_role==="manager")return true;if(_role==="supervisor")return !isVCraw;return true;}
+    function colAllowed(col){return true;}
     var DG=DGRID.map(function(g){return {grp:g.grp,cls:g.cls,cols:g.cols.filter(colAllowed)};}).filter(function(g){return g.cols.length;});
     var h='<table class="dt-grid dt-wide"><tr class="grp"><th></th><th></th>'+
       DG.map(function(g){return '<th colspan="'+g.cols.length+'" class="'+g.cls+'">'+g.grp+'</th>';}).join("")+'</tr>';
