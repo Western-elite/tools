@@ -77,7 +77,7 @@ window.DAR_CONFIG = {
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased}
 header{background:var(--navy);color:var(--navy-fg);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
-.bar{max-width:1280px;margin:0 auto;padding-block:12px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.bar{max-width:1440px;margin:0 auto;padding-block:12px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .brand{font-family:'Space Grotesk',Inter,system-ui,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
 .brand small{font-family:Inter,system-ui,sans-serif}
 .kpi .n,.card-h h3,.drop h2{font-family:'Space Grotesk',Inter,system-ui,sans-serif}
@@ -95,7 +95,7 @@ header :focus-visible{outline-color:var(--navy-fg)}
 header .btn.primary{background:var(--navy-fg);border-color:var(--navy-fg);color:var(--navy)}
 .btn.sm{padding:4px 10px;font-size:12px}
 .btn:disabled{opacity:.5;cursor:default}
-main{max-width:1280px;margin:0 auto;padding-block:20px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+main{max-width:1440px;margin:0 auto;padding-block:20px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 .meta{color:var(--muted);font-size:13px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);font-size:12px}
 .pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
@@ -116,7 +116,12 @@ main{max-width:1280px;margin:0 auto;padding-block:20px;padding-left:max(20px,env
 .card-h .hint{color:var(--muted);font-size:12px;flex-basis:100%}
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th,td{padding:8px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
+th{white-space:nowrap}
+td.nw,td.num{white-space:nowrap}
+td .strong{font-weight:600}
+td .sub2{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+td.flags .chip{margin:0 4px 4px 0}
 th{background:var(--surface-2);color:var(--muted);font-weight:600;font-size:12px;position:sticky;top:0}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 tr:last-child td{border-bottom:0}
@@ -143,6 +148,13 @@ input[type=search]{font:inherit;padding:8px 12px;border:1px solid var(--border);
 label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-weight:500}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;display:none;z-index:10}
 .hidden{display:none!important}
+@media (max-width:720px){
+  .tbl-wrap table,.tbl-wrap tbody,.tbl-wrap tr,.tbl-wrap td{display:block}
+  .tbl-wrap thead{display:none}
+  .tbl-wrap tr{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 16px;border-bottom:1px solid var(--border)}
+  .tbl-wrap td{border:0;padding:0;white-space:normal!important;text-align:left}
+  .tbl-wrap td.num{text-align:right}
+}
 @media (max-width:640px){ main,.bar{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))} input[type=search]{min-width:0;width:100%} }
 </style>
 </head>
@@ -365,17 +377,21 @@ function chips(f){
   return (f.cancel?'<span class="chip cancel">Possible cancel</span>':"") + (f.vol?'<span class="chip vol">10+ txns</span>':"") + (f.price?'<span class="chip price">Over $'+CFG.priceThreshold+'</span>':"")
        + (f.code?'<span class="chip code">Code</span>':"") + (f.new?'<span class="chip new">New</span>':"");
 }
+const two = (a, b, cls="") => `<span class="${cls}">${esc(a)}</span>${b ? `<span class="sub2">${esc(b)}</span>` : ""}`;
 function txTable(rows, a, opts = {}){
   if (!rows.length) return '<div class="empty">Nothing flagged.</div>';
   return `<div class="tbl-wrap"><table><thead><tr>
-    <th>AcctNbr</th><th>Customer</th><th>Site address</th>${opts.site2?'<th>SiteName2</th>':""}<th>Contact</th><th>Phone</th><th>Zip</th>
-    ${opts.rep?'<th>Rep</th>':""}<th>Code</th><th class="num">$/Total</th>${opts.flags?'<th>Flags</th>':""}
+    <th>AcctNbr</th><th>Customer / site</th>${opts.site2?'<th>SiteName2</th>':""}<th>Contact</th>
+    <th>${opts.rep?"Zip / rep":"Zip"}</th><th>Code</th><th class="num">$/Total</th>${opts.flags?'<th>Flags</th>':""}
     </tr></thead><tbody>${rows.map(r => `<tr>
-      <td>${esc(r.acct)}</td><td>${esc(r.customer)}</td><td>${esc(r.address)}</td>${opts.site2?`<td><b>${esc(r.site2)}</b></td>`:""}<td>${esc(r.contact)}</td>
-      <td>${esc(r.phone)}</td><td>${esc(r.zip)}</td>${opts.rep?`<td>${esc(repFor(r.zip5))}</td>`:""}
-      <td class="${!CODE_RE.test(r.code)?"codehi":""}">${esc(r.code)}</td>
+      <td class="nw">${esc(r.acct)}</td>
+      <td>${two(r.customer, r.address, "strong")}</td>
+      ${opts.site2?`<td><b>${esc(r.site2)}</b></td>`:""}
+      <td>${two(r.contact, r.phone)}</td>
+      <td class="nw">${two(r.zip, opts.rep ? repFor(r.zip5) : "")}</td>
+      <td class="nw ${!CODE_RE.test(r.code)?"codehi":""}">${esc(r.code)}</td>
       <td class="num ${r.total>CFG.priceThreshold?"hi":""}">${money(r.total)}</td>
-      ${opts.flags?`<td>${chips(a.flagsFor(r))}</td>`:""}</tr>`).join("")}</tbody></table></div>`;
+      ${opts.flags?`<td class="flags">${chips(a.flagsFor(r))}</td>`:""}</tr>`).join("")}</tbody></table></div>`;
 }
 function volTable(list){
   if (!list.length) return '<div class="empty">No account has more than '+CFG.maxTransactions+' transactions.</div>';
@@ -389,12 +405,12 @@ function volTable(list){
 const countCodes = rs => Object.entries(rs.reduce((m,r)=>(m[r.code]=(m[r.code]||0)+1,m),{})).map(([c,n])=>`${c} ×${n}`).join(", ");
 function newTable(list, showMarked){
   if (!list.length) return '<div class="empty">No new accounts on this report.</div>';
-  return `<div class="tbl-wrap"><table><thead><tr><th>AcctNbr</th><th>Customer</th><th>Site address</th><th>Contact</th><th>Phone</th>
-    <th>Zip</th><th>Rep</th><th class="num">Txns</th><th class="num">Total</th><th></th></tr></thead><tbody>
+  return `<div class="tbl-wrap"><table><thead><tr><th>AcctNbr</th><th>Customer / site</th><th>Contact</th>
+    <th>Zip / rep</th><th class="num">Txns</th><th class="num">Total</th><th></th></tr></thead><tbody>
     ${list.map(n => { const marked = notNew.has(n.acct); return `<tr>
-      <td>${esc(n.acct)}</td><td>${esc(n.customer)}</td><td>${esc(n.address)}</td><td>${esc(n.contact)}</td><td>${esc(n.phone)}</td>
-      <td>${esc(n.zip)}</td><td>${esc(repFor(n.zip))}</td><td class="num">${n.rows.length}</td><td class="num">${money(n.total)}</td>
-      <td>${marked ? `<button class="btn sm" data-undo="${esc(n.acct)}">Undo</button>`
+      <td class="nw">${esc(n.acct)}</td><td>${two(n.customer, n.address, "strong")}</td><td>${two(n.contact, n.phone)}</td>
+      <td class="nw">${two(n.zip, repFor(n.zip))}</td><td class="num">${n.rows.length}</td><td class="num">${money(n.total)}</td>
+      <td class="nw act">${marked ? `<button class="btn sm" data-undo="${esc(n.acct)}">Undo</button>`
                    : `<button class="btn sm" data-notnew="${esc(n.acct)}">Not new</button>`}</td></tr>`; }).join("")}
     </tbody></table></div>`;
 }
