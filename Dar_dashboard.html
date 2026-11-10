@@ -39,6 +39,15 @@ window.DAR_CONFIG = {
 
   // Team-wide "not a new account" list, stored in a SharePoint list.
   // siteUrl: leave "" to auto-detect the site this page is hosted on.
+  // Team-wide "not a new account" list, stored in Supabase.
+  // Paste the Project URL and the anon (public) key from Supabase > Project Settings > API.
+  supabase: {
+    url: "https://izwocdxwvkamdqubfzbb.supabase.co",
+    anonKey: "sb_publishable_yonSBJDirkc1dTINETRZuA_vDKwCT87",
+    table: "dar_not_new"
+  },
+
+  // Used only if Supabase is not set up and the page is hosted on SharePoint itself.
   sharePoint: {
     siteUrl: "",
     listTitle: "DAR Not New Accounts"
@@ -223,7 +232,41 @@ function detectSiteUrl(){
   const m = location.pathname.match(/^\/(sites|teams)\/[^/]+/i);
   return location.origin + (m ? m[0] : "");
 }
+async function initSupabase(){
+  const sb = CFG.supabase || {};
+  if (!sb.url || !sb.anonKey) return false;
+  const base = sb.url.replace(/\/$/,"") + "/rest/v1/" + encodeURIComponent(sb.table);
+  // Legacy anon keys are JWTs and go in both headers; newer sb_publishable_ keys go in apikey only
+  const headers = {apikey: sb.anonKey};
+  if (sb.anonKey.startsWith("eyJ")) headers.Authorization = "Bearer " + sb.anonKey;
+  let ids = new Set();
+  const load = async () => {
+    const r = await fetch(base + "?select=acct", {headers});
+    if (!r.ok) throw new Error("Couldn't read the shared not-new list (" + r.status + ")");
+    ids = new Set((await r.json()).map(x => String(x.acct)));
+  };
+  try { await load(); } catch(e){ console.warn(e); return false; }
+  store = {
+    mode: "shared",
+    all: () => new Set(ids),
+    refresh: load,
+    async add(acct){
+      const r = await fetch(base + "?on_conflict=acct", {method:"POST",
+        headers:{...headers, "Content-Type":"application/json", Prefer:"resolution=ignore-duplicates,return=minimal"},
+        body: JSON.stringify({acct})});
+      if (!r.ok) throw new Error("Couldn't save. Try again (" + r.status + ")");
+      ids.add(acct);
+    },
+    async remove(acct){
+      const r = await fetch(base + "?acct=eq." + encodeURIComponent(acct), {method:"DELETE", headers});
+      if (!r.ok) throw new Error("Couldn't undo. Try again (" + r.status + ")");
+      ids.delete(acct);
+    }
+  };
+  return true;
+}
 async function initStore(){
+  if (await initSupabase()) return;
   const site = detectSiteUrl();
   if (site){
     try{
@@ -237,7 +280,7 @@ async function initStore(){
         return (await d.json()).FormDigestValue;
       };
       store = {
-        mode: "sharepoint",
+        mode: "shared",
         all: () => new Set(ids.keys()),
         async add(acct){
           const r = await fetch(`${list}/items`, {method:"POST", credentials:"include",
@@ -436,7 +479,7 @@ function renderDash(a){
       txTable(a.cancel, a, {rep:true, site2:true}))
   +     card("card-new","New accounts", a.newAccts.length,
       `AcctNbr ends in ${CFG.newAccountSuffix}. Mark one “Not new” and it stays off future reports `
-      + (store.mode==="sharepoint" ? "for the whole team." : "<b>on this computer only</b> (SharePoint list not connected)."),
+      + (store.mode==="shared" ? "for the whole team." : "<b>on this computer only</b> (shared list not connected)."),
       newTable(newList), hiddenCount ? `<label class="chk"><input type="checkbox" id="showMarked" ${showMarked?"checked":""}> Show ${hiddenCount} marked not new</label>` : "")
   + card("card-vol","High-volume accounts", a.highVolume.length, `More than ${CFG.maxTransactions} transactions on one account number.`, volTable(a.highVolume))
   + card("card-price","Transactions over "+money(CFG.priceThreshold), a.overPrice.length, "Single transactions, highest first.", txTable(a.overPrice, a, {rep:true}))
@@ -500,6 +543,7 @@ async function loadFile(file){
   try{
     const res = /\.pdf$/i.test(file.name) ? await parsePdf(file) : await parseSheet(file);
     if (!res.rows.length) throw new Error("No transactions found. Is this a DAR with an AcctNbr header?");
+    if (store.refresh){ try { await store.refresh(); notNew = store.all(); } catch {} }
     state.rows = res.rows; state.period = res.period; state.fileName = file.name; state.page = "dash";
     try { localStorage.setItem("dar.last", JSON.stringify({rows:state.rows, period:state.period, fileName:state.fileName})); } catch {}
     render(); toast(res.rows.length + " transactions loaded");
