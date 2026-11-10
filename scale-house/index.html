@@ -890,7 +890,7 @@ function levelPanel(lv){
     var au = h('ul',{class:'items'});
     lv.advance.forEach(function(a){ if(!a.retired) au.appendChild(itemRow(a,0)); });
     frag.appendChild(h('div',{class:'card'},[
-      h('header',{},[ h('h3',{text:'Eligible to move up when'}) ]),
+      h('header',{},[ h('h3',{text:lv.advanceTitle || 'Eligible to move up when'}) ]),
       h('div',{class:'body'},[ au ]),
       signoffStrip(lv.id)
     ]));
