@@ -24,6 +24,10 @@ window.DAR_CONFIG = {
   normalSizes: ["LB", "15", "30", "40", "CONV"],
   normalSuffixes: ["D", "EX", "F"],
 
+  // Other codes that are also standard (not flagged as non-standard).
+  // They are still flagged if they are over the price threshold.
+  extraStandardCodes: ["LBCMD", "LBCMF", "40CONVEX"],
+
   // Possible cancellation = SiteName2 contains one of these words
   // AND the code is a final (ends in F: 40F, 30F, 15F, LBF, LBCMF, CONVF...)
   cancelSiteNames: ["YARD", "OFFICE"],
@@ -255,6 +259,8 @@ const isMrf = r => r.code.includes(String(CFG.mrfCodeText).toUpperCase());
 const salesRows = () => state.rows.filter(r => !isMrf(r));
 const isCancel = r => SITE_RE.test(r.site2) && /F$/.test(r.code);
 const CODE_RE = new RegExp("^(" + CFG.normalSizes.join("|") + ")(" + CFG.normalSuffixes.join("|") + ")$", "i");
+const EXTRA_STD = new Set((CFG.extraStandardCodes || []).map(c => String(c).toUpperCase().replace(/\s+/g,"")));
+const isStdCode = code => CODE_RE.test(code) || EXTRA_STD.has(String(code).toUpperCase().replace(/\s+/g,""));
 
 const FIELDS = ["acct","customer","address","site2","contact","phone","zip","code","total"];
 const HEADER_MAP = { acctnbr:"acct", acct:"acct", accountnumber:"acct", customer:"customer", siteaddress:"address",
@@ -441,7 +447,7 @@ function analyze(){
     .sort((a,b) => b.rows.length - a.rows.length);
   const hvSet = new Set(highVolume.map(h => h.acct));
   const overPrice = rows.filter(r => r.total > CFG.priceThreshold).sort((a,b) => b.total - a.total);
-  const oddCode = rows.filter(r => r.code && !CODE_RE.test(r.code));
+  const oddCode = rows.filter(r => r.code && !isStdCode(r.code));
   const newAll = [...byAcct.entries()].filter(([a]) => a.endsWith(CFG.newAccountSuffix))
     .map(([acct, rs]) => ({acct, rows: rs, customer: rs[0].customer, zip: rs[0].zip5, contact: rs[0].contact, phone: rs[0].phone, address: rs[0].address, total: rs.reduce((s,r)=>s+r.total,0)}));
   const newAccts = newAll.filter(n => !notNew.has(n.acct));
@@ -450,7 +456,7 @@ function analyze(){
   const flagsFor = r => ({
     cancel: isCancel(r),
     vol: hvSet.has(r.acct), price: r.total > CFG.priceThreshold,
-    code: !!r.code && !CODE_RE.test(r.code), new: newSet.has(r.acct)
+    code: !!r.code && !isStdCode(r.code), new: newSet.has(r.acct)
   });
   return {byAcct, cancel, highVolume, overPrice, oddCode, newAll, newAccts, flagsFor};
 }
@@ -475,7 +481,7 @@ function txTable(rows, a, opts = {}){
       ${opts.site2?`<td><b>${esc(r.site2)}</b></td>`:""}
       <td>${two(r.contact, r.phone)}</td>
       <td class="nw">${two(r.zip, opts.rep ? repFor(r.zip5) : "")}</td>
-      <td class="nw ${!opts.plain && !CODE_RE.test(r.code)?"codehi":""}">${esc(r.code)}</td>
+      <td class="nw ${!opts.plain && !isStdCode(r.code)?"codehi":""}">${esc(r.code)}</td>
       <td class="num ${r.total>CFG.priceThreshold?"hi":""}">${money(r.total)}</td>
       ${opts.flags?`<td class="flags">${chips(a.flagsFor(r))}</td>`:""}</tr>`).join("")}</tbody></table></div>`;
 }
@@ -556,7 +562,7 @@ function renderReps(a){
       <div class="kpi alert"><div class="n">${repCancel.length}</div><div class="l">Possible cancellations</div></div>
       <div class="kpi blue"><div class="n">${repVol.length}</div><div class="l">High-volume accounts</div></div>
       <div class="kpi red"><div class="n">${repRows.filter(r=>r.total>CFG.priceThreshold).length}</div><div class="l">Over ${money(CFG.priceThreshold)}</div></div>
-      <div class="kpi amber"><div class="n">${repRows.filter(r=>r.code&&!CODE_RE.test(r.code)).length}</div><div class="l">Non-standard codes</div></div>
+      <div class="kpi amber"><div class="n">${repRows.filter(r=>r.code&&!isStdCode(r.code)).length}</div><div class="l">Non-standard codes</div></div>
       <div class="kpi violet"><div class="n">${repNew.length}</div><div class="l">New accounts</div></div>
     </div>`
     + (state.rep==="Unassigned" && zips.length ? `<div class="meta"><span class="pill warn">These zips have no rep yet: ${zips.join(", ")}</span></div>` : "")
