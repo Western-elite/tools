@@ -28,6 +28,9 @@ window.DAR_CONFIG = {
   // AND the code is a final (ends in F: 40F, 30F, 15F, LBF, LBCMF, CONVF...)
   cancelSiteNames: ["YARD", "OFFICE"],
 
+  // Codes containing this text go to the MRF tab and are left off the Dashboard and By Sales Rep pages
+  mrfCodeText: "MRF",
+
   // New accounts = AcctNbr ending in this
   newAccountSuffix: "00",
 
@@ -137,7 +140,17 @@ main{max-width:1440px;margin:0 auto;padding-block:20px;padding-left:max(20px,env
 .kpi .l{color:var(--muted);font-size:13px;font-weight:500}
 .kpi.red .n{color:var(--red)} .kpi.amber .n{color:var(--amber)} .kpi.blue .n{color:var(--blue)} .kpi.violet .n{color:var(--violet)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
-.card-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 16px;flex-wrap:wrap;cursor:pointer;list-style:none;user-select:none}
+.card-h::-webkit-details-marker{display:none}
+.card-h:hover{background:var(--surface-2)}
+.card[open]>.card-h{border-bottom:1px solid var(--border)}
+.card-h .chev{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px;flex:none}
+.card[open]>.card-h .chev{transform:rotate(45deg) translate(-2px,-2px)}
+.card-h .hint{padding-left:22px}
+.card-tools{display:flex;justify-content:flex-end;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+.meta .spacer{flex:1}
+.allbtns{display:inline-flex;gap:6px;margin-left:auto}
+@media (prefers-reduced-motion: reduce){ .card-h .chev{transition:none} }
 .card-h h3{margin:0;font-size:15px}
 .card-h .count{color:var(--muted);font-weight:500}
 .card-h .hint{color:var(--muted);font-size:12px;flex-basis:100%}
@@ -192,6 +205,7 @@ label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font
     <nav>
       <button data-page="dash" aria-current="page">Dashboard</button>
       <button data-page="reps">By Sales Rep</button>
+      <button data-page="mrf">MRF</button>
     </nav>
     <div class="spacer"></div>
     <button class="btn primary" id="uploadBtn">Upload DAR</button>
@@ -220,6 +234,13 @@ label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font
     </div>
     <div id="repBody"></div>
   </section>
+
+  <section id="page-mrf" class="hidden">
+    <div class="toolbar">
+      <input type="search" id="mrfSearch" placeholder="Search customer, address, code…">
+    </div>
+    <div id="mrfBody"></div>
+  </section>
 </main>
 <div class="toast" id="toast"></div>
 
@@ -230,6 +251,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = n => n.toLocaleString("en-US", {style:"currency", currency:"USD"});
 const SITE_RE = new RegExp("\\b(" + CFG.cancelSiteNames.join("|") + ")\\b", "i");
+const isMrf = r => r.code.includes(String(CFG.mrfCodeText).toUpperCase());
+const salesRows = () => state.rows.filter(r => !isMrf(r));
 const isCancel = r => SITE_RE.test(r.site2) && /F$/.test(r.code);
 const CODE_RE = new RegExp("^(" + CFG.normalSizes.join("|") + ")(" + CFG.normalSuffixes.join("|") + ")$", "i");
 
@@ -410,7 +433,7 @@ async function parsePdf(file){
 
 /* ---------- Analysis ---------- */
 function analyze(){
-  const rows = state.rows;
+  const rows = salesRows();
   const byAcct = new Map();
   rows.forEach(r => { if (!byAcct.has(r.acct)) byAcct.set(r.acct, []); byAcct.get(r.acct).push(r); });
   const highVolume = [...byAcct.entries()].filter(([,rs]) => rs.length > CFG.maxTransactions)
@@ -452,7 +475,7 @@ function txTable(rows, a, opts = {}){
       ${opts.site2?`<td><b>${esc(r.site2)}</b></td>`:""}
       <td>${two(r.contact, r.phone)}</td>
       <td class="nw">${two(r.zip, opts.rep ? repFor(r.zip5) : "")}</td>
-      <td class="nw ${!CODE_RE.test(r.code)?"codehi":""}">${esc(r.code)}</td>
+      <td class="nw ${!opts.plain && !CODE_RE.test(r.code)?"codehi":""}">${esc(r.code)}</td>
       <td class="num ${r.total>CFG.priceThreshold?"hi":""}">${money(r.total)}</td>
       ${opts.flags?`<td class="flags">${chips(a.flagsFor(r))}</td>`:""}</tr>`).join("")}</tbody></table></div>`;
 }
@@ -477,9 +500,14 @@ function newTable(list, showMarked){
                    : `<button class="btn sm" data-notnew="${esc(n.acct)}">Not new</button>`}</td></tr>`; }).join("")}
     </tbody></table></div>`;
 }
+let collapsed = new Set();
+try { collapsed = new Set(JSON.parse(localStorage.getItem("dar.collapsed") || "[]")); } catch {}
+const saveCollapsed = () => { try { localStorage.setItem("dar.collapsed", JSON.stringify([...collapsed])); } catch {} };
 function card(id, title, count, hint, body, extra=""){
-  return `<div class="card" id="${id}"><div class="card-h"><h3>${title} <span class="count">· ${count}</span></h3>
-    <div class="spacer"></div>${extra}<div class="hint">${hint}</div></div>${body}</div>`;
+  return `<details class="card" id="${id}" ${collapsed.has(id) ? "" : "open"}>
+    <summary class="card-h"><span class="chev" aria-hidden="true"></span><h3>${title} <span class="count">· ${count}</span></h3>
+    ${hint ? `<div class="hint">${hint}</div>` : ""}</summary>
+    ${extra ? `<div class="card-tools">${extra}</div>` : ""}${body}</details>`;
 }
 
 let showMarked = false;
@@ -509,7 +537,7 @@ function renderDash(a){
 
 function renderReps(a){
   const groups = new Map();
-  state.rows.forEach(r => { const rep = repFor(r.zip5); if (!groups.has(rep)) groups.set(rep, []); groups.get(rep).push(r); });
+  salesRows().forEach(r => { const rep = repFor(r.zip5); if (!groups.has(rep)) groups.set(rep, []); groups.get(rep).push(r); });
   const names = [...groups.keys()].sort((x,y) => x==="Unassigned" ? 1 : y==="Unassigned" ? -1 : x.localeCompare(y));
   if (!names.includes(state.rep)) state.rep = names[0];
   const flaggedCount = rs => rs.filter(r => Object.values(a.flagsFor(r)).some(Boolean)).length;
@@ -537,24 +565,51 @@ function renderReps(a){
     + card("rep-all", "Activity", rs.length, zips.length && state.rep!=="Unassigned" ? "Zips: " + zips.join(", ") : "", txTable(rs, a, {flags:true}));
 }
 
+function renderMrf(){
+  const all = state.rows.filter(isMrf);
+  let rs = all;
+  const q = $("#mrfSearch").value.trim().toLowerCase();
+  if (q) rs = rs.filter(r => [r.acct,r.customer,r.address,r.site2,r.contact,r.code,r.zip].join(" ").toLowerCase().includes(q));
+  const accts = new Set(all.map(r => r.acct));
+  const byCode = Object.entries(all.reduce((m,r) => (m[r.code] = (m[r.code]||0) + 1, m), {})).sort((x,y) => y[1]-x[1]);
+  $("#mrfBody").innerHTML =
+    `<div class="kpis">
+      <div class="kpi blue"><div class="n">${all.length}</div><div class="l">MRF transactions</div></div>
+      <div class="kpi"><div class="n">${accts.size}</div><div class="l">Accounts</div></div>
+      <div class="kpi"><div class="n">${money(all.reduce((t,r) => t + r.total, 0))}</div><div class="l">Total</div></div>
+    </div>`
+    + (byCode.length ? `<div class="reps">${byCode.map(([c,n]) => `<span class="pill">${esc(c)} <b>${n}</b></span>`).join("")}</div>` : "")
+    + card("mrf-all", "MRF activity", rs.length, `Any code containing “${esc(CFG.mrfCodeText)}”. These rows are left off the Dashboard and By Sales Rep pages.`,
+        txTable(rs, null, {rep:true, site2:true, plain:true}));
+}
+
 function render(){
   const has = state.rows.length > 0;
   $("#dropZone").classList.toggle("hidden", has);
   document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-current", b.dataset.page===state.page ? "page" : "false"));
   $("#page-dash").classList.toggle("hidden", !has || state.page!=="dash");
   $("#page-reps").classList.toggle("hidden", !has || state.page!=="reps");
+  $("#page-mrf").classList.toggle("hidden", !has || state.page!=="mrf");
   if (!has){ $("#meta").innerHTML = store?.mode==="local" ? "" : ""; return; }
   const a = analyze();
-  const sections = [...new Set(state.rows.map(r => r.section).filter(Boolean))];
+  const mrfCount = state.rows.filter(isMrf).length;
+  document.querySelector('nav button[data-page="mrf"]').textContent = mrfCount ? `MRF (${mrfCount})` : "MRF";
   $("#meta").innerHTML = `<span class="pill">${esc(state.fileName)}</span>`
     + (state.period ? `<span>Period: <b>${esc(state.period)}</b></span>` : "")
-    + `<span>${state.rows.length.toLocaleString()} transactions · ${a.byAcct.size.toLocaleString()} accounts</span>`
+    + `<span>${(state.rows.length - mrfCount).toLocaleString()} transactions · ${a.byAcct.size.toLocaleString()} accounts</span>`
+    + (mrfCount ? `<span>${mrfCount.toLocaleString()} MRF on the MRF tab</span>` : "")
     + (Object.keys(CFG.zipToRep).length ? "" : `<span class="pill warn">Zip-to-rep list not set up yet</span>`)
-    + (store.mode==="local" ? `<span class="pill warn">“Not new” saves to this computer only</span>` : "");
-  if (state.page==="dash") renderDash(a); else renderReps(a);
+    + (store.mode==="local" ? `<span class="pill warn">“Not new” saves to this computer only</span>` : "")
+    + `<span class="spacer"></span><span class="allbtns"><button class="btn sm" data-all="open">Expand all</button><button class="btn sm" data-all="close">Collapse all</button></span>`;
+  if (state.page==="dash") renderDash(a); else if (state.page==="reps") renderReps(a); else renderMrf();
 }
 
 /* ---------- Events ---------- */
+document.addEventListener("toggle", e => {
+  const d = e.target; if (!d.matches || !d.matches("details.card")) return;
+  if (d.open) collapsed.delete(d.id); else collapsed.add(d.id);
+  saveCollapsed();
+}, true);
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",2600); }
 
 async function loadFile(file){
@@ -578,11 +633,12 @@ $("#file").onchange = e => { loadFile(e.target.files[0]); e.target.value = ""; }
 ["dragleave","drop"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); $("#dropZone").classList.remove("over"); }));
 document.addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => { state.page = b.dataset.page; render(); });
-$("#repSearch").oninput = render; $("#flaggedOnly").onchange = render;
+$("#repSearch").oninput = render; $("#mrfSearch").oninput = render; $("#flaggedOnly").onchange = render;
 
 document.addEventListener("click", async e => {
   const t = e.target.closest("button, input"); if (!t) return;
-  if (t.dataset.jump){ document.getElementById(t.dataset.jump)?.scrollIntoView({behavior:"smooth", block:"start"}); }
+  if (t.dataset.jump){ const el = document.getElementById(t.dataset.jump); if (el){ el.open = true; el.scrollIntoView({behavior:"smooth", block:"start"}); } }
+  if (t.dataset.all){ document.querySelectorAll("details.card").forEach(d => d.open = t.dataset.all === "open"); }
   if (t.dataset.rep){ state.rep = t.dataset.rep; render(); }
   if (t.id === "showMarked"){ showMarked = t.checked; render(); }
   const acct = t.dataset.notnew || t.dataset.undo;
