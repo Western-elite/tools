@@ -72,6 +72,9 @@ window.DAR_CONFIG = {
     table: "dar_not_new"
   },
 
+  // Uploaded DARs stay available to everyone for this many days (the newest one is always kept)
+  keepDays: 7,
+
   // Only emails at this domain can sign in (email only, no password)
   allowedEmailDomain: "westernelite.com"
 };
@@ -186,6 +189,21 @@ tbody tr:hover td{background:var(--surface-2)}
 .signin label{font-weight:600;font-size:13px}
 .signin input{font:inherit;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
 .signin .btn{margin-top:8px;padding:10px 14px}
+.viewing{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end;justify-content:space-between;background:var(--accent-soft);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.viewing .v-main{min-width:0;display:flex;flex-direction:column;gap:4px}
+.viewing .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;gap:8px;align-items:center}
+.viewing .v-title{font-family:'Space Grotesk',Inter,system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.15;text-wrap:balance}
+.viewing .v-sub{color:var(--muted);font-size:13px}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:none}
+.tag.latest{background:var(--accent);color:var(--on-accent)}
+.tag.older{background:var(--amber-soft);color:var(--amber)}
+.viewing .v-ctrl{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end}
+.viewing .fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);min-width:0}
+.viewing select,.viewing input[type=date]{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);max-width:100%}
+.viewing select{min-width:240px}
+.viewing .range{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.newer{display:flex;gap:10px;align-items:center;flex-basis:100%;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;font-weight:600}
+@media (max-width:640px){ .viewing select{min-width:0;width:100%} .viewing .v-ctrl,.viewing .fld{width:100%} .viewing .v-title{font-size:22px} }
 .signin .err{color:var(--red);font-weight:500;min-height:1.4em;margin:0}
 .chip.cancel{background:var(--red);color:var(--surface)}
 .kpi.alert{background:var(--red-soft);border-color:var(--red)}
@@ -242,6 +260,7 @@ label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font
     </form>
   </section>
 
+  <section class="viewing hidden" id="viewing" aria-live="polite"></section>
   <div class="meta" id="meta"></div>
 
   <section id="dropZone" class="drop" tabindex="0">
@@ -384,34 +403,105 @@ function priceKeys(rows){
     return {acct: x.acct, code: x.code, customer: x.customer, price: best};
   });
 }
-// Compare this DAR with earlier ones, then save it to the history
-async function syncHistory(){
+/* ---------- Shared DARs ---------- */
+const packRows = rows => rows.map(r => [r.acct, r.customer, r.address, r.site2, r.contact, r.phone, r.zip, r.code, r.total, r.section]);
+const unpackRows = arr => (arr || []).map(a => cleanRow({acct:a[0], customer:a[1], address:a[2], site2:a[3], contact:a[4], phone:a[5], zip:a[6], code:a[7], total:a[8], section:a[9]}));
+const DEMO = () => !sb && Array.isArray(window.DAR_DEMO_REPORTS);
+const shared = () => (!!sb && !!user) || DEMO();
+let reports = [];   // saved DARs, newest first: {id, file_name, period_start, period_end, row_count, uploaded_by, uploaded_at}
+
+const reportsApi = {
+  async list(){
+    if (DEMO()) return window.DAR_DEMO_REPORTS.map(({dar_rows, ...m}) => m);
+    const { data, error } = await sb.from("dar_uploads")
+      .select("id,file_name,period_start,period_end,row_count,uploaded_by,uploaded_at")
+      .not("dar_rows", "is", null)
+      .order("period_end", {ascending:false}).order("uploaded_at", {ascending:false});
+    if (error) throw error;
+    return data;
+  },
+  async rows(ids){
+    if (DEMO()) return window.DAR_DEMO_REPORTS.filter(r => ids.includes(r.id));
+    const { data, error } = await sb.from("dar_uploads").select("id,dar_rows").in("id", ids);
+    if (error) throw error;
+    return data;
+  },
+  // Last price of each account + code on DARs that ended before `before`
+  async previous(before, accts){
+    if (DEMO()){
+      const older = window.DAR_DEMO_REPORTS.filter(r => r.period_end < before).sort((x, y) => x.period_end.localeCompare(y.period_end));
+      const latest = {};
+      older.forEach(r => priceKeys(unpackRows(r.dar_rows)).forEach(p => { latest[p.acct + "|" + p.code] = {...p, period_end: r.period_end}; }));
+      return {uploads: older.length, prices: Object.values(latest)};
+    }
+    const { data, error } = await sb.rpc("dar_previous_prices", {p_before: before, p_accts: accts});
+    if (error) throw error;
+    return data || {uploads: 0, prices: []};
+  }
+};
+
+// Save an uploaded DAR for the whole team. Returns its id.
+async function saveUpload(){
   const per = parsePeriod(state.period);
   const start = per?.start || todayIso(), end = per?.end || todayIso();
   const prices = priceKeys(state.rows);
   const fingerprint = hashStr(start + end + "\n" + state.rows.map(r => [r.acct, r.code, r.total, r.address].join("~")).sort().join("\n"));
-
-  const { data: past, error: e1 } = await sb.rpc("dar_previous_prices", {p_before: end, p_accts: [...new Set(prices.map(p => p.acct))]});
+  const packed = packRows(state.rows);
+  const meta = {file_name: state.fileName, period_start: start, period_end: end, row_count: state.rows.length, uploaded_by: user?.email || null};
+  const { data: up, error: e1 } = await sb.from("dar_uploads")
+    .upsert({fingerprint, ...meta, dar_rows: packed}, {onConflict: "fingerprint", ignoreDuplicates: true}).select("id");
   if (e1) throw e1;
-  const prev = {};
-  (past?.prices || []).forEach(p => { prev[p.acct + "|" + p.code] = {price: Number(p.price), period_end: p.period_end}; });
-
-  const { data: up, error: e2 } = await sb.from("dar_uploads")
-    .upsert({fingerprint, file_name: state.fileName, period_start: start, period_end: end, row_count: state.rows.length, uploaded_by: user?.email || null},
-            {onConflict: "fingerprint", ignoreDuplicates: true})
-    .select("id");
-  if (e2) throw e2;
-  const already = !up?.length;
-  if (!already){
-    const id = up[0].id;
+  let id, already = false;
+  if (up?.length){
+    id = up[0].id;
     for (let i = 0; i < prices.length; i += 500){
       const { error } = await sb.from("dar_prices").insert(prices.slice(i, i + 500).map(p =>
         ({upload_id: id, acct: p.acct, code: p.code, price: p.price, customer: p.customer, period_end: end})));
       if (error) throw error;
     }
+  } else {
+    // Same DAR uploaded before: refresh it so it shows for another full week
+    already = true;
+    const { data: ex, error: e2 } = await sb.from("dar_uploads").select("id").eq("fingerprint", fingerprint).single();
+    if (e2) throw e2;
+    id = ex.id;
+    await sb.from("dar_uploads").update({dar_rows: packed, uploaded_at: new Date().toISOString(), uploaded_by: meta.uploaded_by}).eq("id", id);
   }
-  return {prev, history: {earlier: past?.uploads || 0, already, undated: !per}};
+  try { await sb.rpc("dar_cleanup", {p_keep_days: CFG.keepDays}); } catch {}
+  return {id, already, undated: !per};
 }
+
+// DARs whose dates overlap a range. When two overlap each other, the newer upload wins so nothing is counted twice.
+function pickRange(from, to){
+  const hits = reports.filter(r => r.period_start <= to && r.period_end >= from)
+    .sort((x, y) => String(y.uploaded_at).localeCompare(String(x.uploaded_at)));
+  const chosen = [], skipped = [];
+  hits.forEach(r => (chosen.some(c => c.period_start <= r.period_end && c.period_end >= r.period_start) ? skipped : chosen).push(r));
+  chosen.sort((x, y) => x.period_start.localeCompare(y.period_start));
+  return {chosen, skipped};
+}
+
+// Load saved DAR(s) into the dashboard
+async function viewReports(ids, extra = {}){
+  const metas = reports.filter(r => ids.includes(r.id)).sort((x, y) => x.period_start.localeCompare(y.period_start));
+  const got = await reportsApi.rows(ids);
+  state.rows = got.flatMap(g => unpackRows(g.dar_rows));
+  const start = metas.map(m => m.period_start).sort()[0], end = metas.map(m => m.period_end).sort().slice(-1)[0];
+  state.view = {ids, start, end, metas, skipped: extra.skipped || []};
+  state.fileName = metas.length === 1 ? metas[0].file_name : `${metas.length} DARs combined`;
+  state.period = "";
+  state.prev = {}; state.history = null;
+  try{
+    const before = metas.map(m => m.period_end).sort()[0];
+    const past = await reportsApi.previous(before, [...new Set(state.rows.map(r => r.acct))]);
+    (past.prices || []).forEach(p => { state.prev[p.acct + "|" + p.code] = {price: Number(p.price), period_end: p.period_end}; });
+    state.history = {earlier: past.uploads || 0};
+  }catch(err){ console.error(err); state.history = {error: err.message || "unknown error"}; }
+  $("#dFrom") && ($("#dFrom").value = start); $("#dTo") && ($("#dTo").value = end);
+  state.loading = false;
+  render();
+}
+async function refreshReports(){ reports = await reportsApi.list(); }
 
 /* ---------- Parsing ---------- */
 function parseMoney(v){
@@ -570,13 +660,10 @@ function chgTable(list){
 function historyNote(){
   const h = state.history;
   const rule = "Same account and code, compared with the last earlier DAR it appeared on. $0 rows are skipped.";
-  if (!h) return sb ? "Upload a DAR to compare prices with earlier reports." : "Price history needs sign-in, which isn't set up on this copy.";
-  if (h.demo) return "Example data. The live app compares each upload with earlier DARs your team has uploaded.";
-  if (h.error) return `Couldn't reach the price history (${esc(h.error)}). Upload again to retry.`;
-  if (!h.earlier) return "This is the first DAR in the history. Price changes will show starting with the next upload.";
-  return `Compared with ${h.earlier} earlier DAR${h.earlier === 1 ? "" : "s"}. ${rule}`
-    + (h.already ? " This exact DAR was uploaded before, so it wasn't saved twice." : "")
-    + (h.undated ? " No report period was found in the file, so it was dated today." : "");
+  if (!h) return shared() ? "Loading price history…" : "Price history needs the shared connection, which isn't set up on this copy.";
+  if (h.error) return `Couldn't reach the price history (${esc(h.error)}). Reload the page to retry.`;
+  if (!h.earlier) return "No earlier DAR to compare with yet. Price changes will show once a later DAR is uploaded.";
+  return `Compared with ${h.earlier} earlier DAR${h.earlier === 1 ? "" : "s"}. ${rule}`;
 }
 const countCodes = rs => Object.entries(rs.reduce((m,r)=>(m[r.code]=(m[r.code]||0)+1,m),{})).map(([c,n])=>`${c} ×${n}`).join(", ");
 function newTable(list, showMarked){
@@ -677,6 +764,56 @@ function renderMrf(){
         txTable(rs, null, {rep:true, site2:true, plain:true}));
 }
 
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtRange(a, b){
+  const p = iso => iso.split("-").map(Number);
+  if (!a) return "";
+  const [y1,m1,d1] = p(a), [y2,m2,d2] = p(b || a);
+  if (a === (b || a)) return `${MON[m1-1]} ${d1}, ${y1}`;
+  return y1 === y2 ? `${MON[m1-1]} ${d1} – ${MON[m2-1]} ${d2}, ${y2}` : `${MON[m1-1]} ${d1}, ${y1} – ${MON[m2-1]} ${d2}, ${y2}`;
+}
+const fmtWhen = ts => ts ? new Date(ts).toLocaleString("en-US", {weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}) : "";
+let newerId = null;
+function renderViewing(){
+  const el = $("#viewing");
+  if (!state.rows.length){ el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  const v = state.view;
+  if (!v){
+    // Not shared: a file opened on this computer only
+    const per = parsePeriod(state.period);
+    el.innerHTML = `<div class="v-main"><div class="eyebrow">Viewing DAR</div>
+      <div class="v-title">${per ? esc(fmtRange(per.start, per.end)) : esc(state.fileName)}</div>
+      <div class="v-sub">${esc(state.fileName)}${shared() ? "" : " · Only on this computer (not shared)"}</div></div>`;
+    return;
+  }
+  const latest = reports[0];
+  const isLatest = v.ids.length === 1 && latest && v.ids[0] === latest.id;
+  const one = v.metas.length === 1 ? v.metas[0] : null;
+  const sub = one
+    ? `Uploaded by ${esc(one.uploaded_by || "unknown")} · ${esc(fmtWhen(one.uploaded_at))} · ${esc(one.file_name || "")}`
+    : `${v.metas.length} DARs combined: ${v.metas.map(m => esc(fmtRange(m.period_start, m.period_end))).join(", ")}`
+      + (v.skipped.length ? ` · ${v.skipped.length} older upload${v.skipped.length === 1 ? "" : "s"} of the same dates left out` : "");
+  const opts = reports.map(r => `<option value="${r.id}" ${v.ids.length === 1 && v.ids[0] === r.id ? "selected" : ""}>${esc(fmtRange(r.period_start, r.period_end))}${r === latest ? " (latest)" : ""} · ${esc((r.uploaded_by || "").split("@")[0])}</option>`).join("");
+  const minD = reports.map(r => r.period_start).sort()[0] || "", maxD = reports.map(r => r.period_end).sort().slice(-1)[0] || "";
+  el.innerHTML = `<div class="v-main">
+      <div class="eyebrow">Viewing DAR ${isLatest ? '<span class="tag latest">Latest</span>' : v.ids.length > 1 ? '<span class="tag older">Date range</span>' : '<span class="tag older">Older report</span>'}</div>
+      <div class="v-title">${esc(fmtRange(v.start, v.end))}</div>
+      <div class="v-sub">${sub}</div>
+    </div>
+    <div class="v-ctrl">
+      <label class="fld" for="darPick">Saved DARs (last ${CFG.keepDays} days)
+        <select id="darPick">${v.ids.length > 1 ? '<option selected disabled>Date range</option>' : ""}${opts}</select></label>
+      <div class="range">
+        <label class="fld" for="dFrom">From<input type="date" id="dFrom" value="${v.start}" min="${minD}" max="${maxD}"></label>
+        <label class="fld" for="dTo">To<input type="date" id="dTo" value="${v.end}" min="${minD}" max="${maxD}"></label>
+        <button class="btn sm" id="dGo">Show</button>
+      </div>
+      ${isLatest ? "" : '<button class="btn sm primary" id="goLatest">Go to latest</button>'}
+    </div>
+    ${newerId ? `<div class="newer">A newer DAR was uploaded. <button class="btn sm primary" id="showNewer">Show it</button></div>` : ""}`;
+}
+
 function render(){
   const locked = needsSignIn();
   $("#signin").classList.toggle("hidden", !locked);
@@ -684,9 +821,13 @@ function render(){
   $("nav").classList.toggle("hidden", locked);
   $("#who").classList.toggle("hidden", !user); $("#signOutBtn").classList.toggle("hidden", !user);
   $("#who").textContent = user?.email || "";
-  if (locked){ ["#dropZone","#page-dash","#page-reps","#page-mrf"].forEach(id => $(id).classList.add("hidden")); $("#meta").innerHTML = ""; return; }
+  if (locked || state.loading){
+    ["#dropZone","#page-dash","#page-reps","#page-mrf","#viewing"].forEach(id => $(id).classList.add("hidden"));
+    $("#meta").innerHTML = state.loading && !locked ? "<span>Loading the latest DAR…</span>" : ""; return;
+  }
   const has = state.rows.length > 0;
   $("#dropZone").classList.toggle("hidden", has);
+  renderViewing();
   document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-current", b.dataset.page===state.page ? "page" : "false"));
   $("#page-dash").classList.toggle("hidden", !has || state.page!=="dash");
   $("#page-reps").classList.toggle("hidden", !has || state.page!=="reps");
@@ -695,9 +836,7 @@ function render(){
   const a = analyze();
   const mrfCount = state.rows.filter(isMrf).length;
   document.querySelector('nav button[data-page="mrf"]').textContent = mrfCount ? `MRF (${mrfCount})` : "MRF";
-  $("#meta").innerHTML = `<span class="pill">${esc(state.fileName)}</span>`
-    + (state.period ? `<span>Period: <b>${esc(state.period)}</b></span>` : "")
-    + `<span>${(state.rows.length - mrfCount).toLocaleString()} transactions · ${a.byAcct.size.toLocaleString()} accounts</span>`
+  $("#meta").innerHTML = `<span>${(state.rows.length - mrfCount).toLocaleString()} transactions · ${a.byAcct.size.toLocaleString()} accounts</span>`
     + (mrfCount ? `<span>${mrfCount.toLocaleString()} MRF on the MRF tab</span>` : "")
     + (Object.keys(CFG.zipToRep).length ? "" : `<span class="pill warn">Zip-to-rep list not set up yet</span>`)
     + (store.mode==="local" ? `<span class="pill warn">“Not new” saves to this computer only</span>` : "")
@@ -721,13 +860,23 @@ async function loadFile(file){
     if (!res.rows.length) throw new Error("No transactions found. Is this a DAR with an AcctNbr header?");
     if (store.refresh){ try { await store.refresh(); notNew = store.all(); } catch {} }
     state.rows = res.rows; state.period = res.period; state.fileName = file.name; state.page = "dash";
-    state.prev = {}; state.history = null;
+    state.prev = {}; state.history = null; state.view = null; newerId = null;
     if (sb && user){
-      toast("Checking price history…");
-      try { Object.assign(state, await syncHistory()); }
-      catch(err){ console.error(err); state.history = {error: err.message || "unknown error"}; }
+      toast("Saving for the team…");
+      try{
+        const saved = await saveUpload();
+        await refreshReports();
+        await viewReports([saved.id]);
+        toast(saved.already ? "This DAR was already uploaded. Showing the saved copy."
+          : saved.undated ? "Saved for the team. No report dates were found in the file, so it's dated today."
+          : `Saved for the team · ${res.rows.length} transactions`);
+      }catch(err){
+        console.error(err); state.history = {error: err.message || "unknown error"};
+        render(); toast("Couldn't save for the team: " + (err.message || "unknown error") + ". Showing it on this computer only.");
+      }
+      return;
     }
-    try { localStorage.setItem("dar.last", JSON.stringify({rows:state.rows, period:state.period, fileName:state.fileName, prev:state.prev, history:state.history})); } catch {}
+    try { localStorage.setItem("dar.last", JSON.stringify({rows:state.rows, period:state.period, fileName:state.fileName})); } catch {}
     render(); toast(res.rows.length + " transactions loaded");
   }catch(e){ console.error(e); toast(e.message || "Couldn't read that file"); }
 }
@@ -742,8 +891,22 @@ document.addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => { state.page = b.dataset.page; render(); });
 $("#repSearch").oninput = render; $("#mrfSearch").oninput = render; $("#flaggedOnly").onchange = render;
 
+document.addEventListener("change", async e => {
+  if (e.target.id === "darPick"){ newerId = null; await viewReports([Number(e.target.value)]); }
+});
 document.addEventListener("click", async e => {
   const t = e.target.closest("button, input"); if (!t) return;
+  if (t.id === "goLatest" || t.id === "showNewer"){ newerId = null; if (reports[0]) await viewReports([reports[0].id]); return; }
+  if (t.id === "dGo"){
+    let from = $("#dFrom").value, to = $("#dTo").value;
+    if (!from || !to) return toast("Pick a From and To date.");
+    if (from > to) [from, to] = [to, from];
+    const { chosen, skipped } = pickRange(from, to);
+    if (!chosen.length) return toast(`No DAR saved for ${fmtRange(from, to)}. Saved DARs cover the last ${CFG.keepDays} days of uploads.`);
+    newerId = null;
+    await viewReports(chosen.map(r => r.id), {skipped});
+    return;
+  }
   if (t.dataset.jump){ const el = document.getElementById(t.dataset.jump); if (el){ el.open = true; el.scrollIntoView({behavior:"smooth", block:"start"}); } }
   if (t.dataset.all){ document.querySelectorAll("details.card").forEach(d => d.open = t.dataset.all === "open"); }
   if (t.dataset.rep){ state.rep = t.dataset.rep; render(); }
@@ -768,22 +931,39 @@ $("#signinForm").onsubmit = async e => {
   err(""); $("#siBtn").disabled = true;
   try { localStorage.setItem(EMAIL_KEY, email); } catch {}
   user = {email};
-  await initStore(); notNew = store.all(); $("#siBtn").disabled = false; render();
+  await initStore(); notNew = store.all(); $("#siBtn").disabled = false;
+  await openLatest();
 };
 $("#signOutBtn").onclick = async () => {
   user = null;
   try { localStorage.removeItem(EMAIL_KEY); localStorage.removeItem("dar.last"); } catch {}
-  Object.assign(state, {rows: [], period: "", fileName: "", prev: {}, history: null});
+  Object.assign(state, {rows: [], period: "", fileName: "", prev: {}, history: null, view: null});
   render();
 };
+async function openLatest(){
+  state.loading = true; render();
+  try{
+    await refreshReports();
+    if (reports.length){ await viewReports([reports[0].id]); return; }
+  }catch(err){ console.error(err); toast("Couldn't load saved DARs: " + (err.message || "unknown error")); }
+  state.loading = false; render();
+}
+// When someone comes back to the tab, check for a newer DAR
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState !== "visible" || !shared() || !state.view) return;
+  try{
+    const before = reports[0]?.id; await refreshReports();
+    if (reports[0] && reports[0].id !== before && !state.view.ids.includes(reports[0].id)){ newerId = reports[0].id; render(); }
+  }catch{}
+});
 
 (async () => {
   await initAuth();
   await initStore();
   notNew = store.all();
+  if (shared()){ await openLatest(); return; }
+  if (needsSignIn()){ render(); return; }
   try { const last = JSON.parse(localStorage.getItem("dar.last") || "null"); if (last?.rows?.length) Object.assign(state, last); } catch {}
-  if (!state.rows.length && window.DAR_SAMPLE) Object.assign(state, {rows: window.DAR_SAMPLE.map(cleanRow), period: "11/6/2026 to 11/8/2026", fileName: "Example data · upload a DAR to replace",
-    prev: window.DAR_DEMO_PREV || {}, history: window.DAR_DEMO_PREV ? {demo: true} : null});
   render();
 })();
 })();
