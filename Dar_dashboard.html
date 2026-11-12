@@ -140,7 +140,7 @@ main{max-width:1440px;margin:0 auto;padding-block:20px;padding-left:max(20px,env
 .kpi .n{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .kpi .l{color:var(--muted);font-size:13px;font-weight:500}
 .kpi.red .n{color:var(--red)} .kpi.amber .n{color:var(--amber)} .kpi.blue .n{color:var(--blue)} .kpi.violet .n{color:var(--violet)}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.card{scroll-margin-top:calc(84px + env(safe-area-inset-top,0px));background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
 .card-h{display:flex;align-items:center;gap:10px;padding:14px 16px;flex-wrap:wrap;cursor:pointer;list-style:none;user-select:none}
 .card-h::-webkit-details-marker{display:none}
 .card-h:hover{background:var(--surface-2)}
@@ -256,11 +256,13 @@ label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font
 
   <section id="page-reps" class="hidden">
     <div class="reps" id="repTabs"></div>
+    <div class="kpis" id="repKpis"></div>
+    <div id="repCards"></div>
     <div class="toolbar">
-      <input type="search" id="repSearch" placeholder="Search customer, address, code…">
+      <input type="search" id="repSearch" placeholder="Search this zone's activity…">
       <label class="chk"><input type="checkbox" id="flaggedOnly"> Flagged only</label>
     </div>
-    <div id="repBody"></div>
+    <div id="repActivity"></div>
   </section>
 
   <section id="page-mrf" class="hidden">
@@ -495,8 +497,7 @@ async function parsePdf(file){
 }
 
 /* ---------- Analysis ---------- */
-function analyze(){
-  const rows = salesRows();
+function analyze(rows = salesRows()){
   const byAcct = new Map();
   rows.forEach(r => { if (!byAcct.has(r.acct)) byAcct.set(r.acct, []); byAcct.get(r.acct).push(r); });
   const highVolume = [...byAcct.entries()].filter(([,rs]) => rs.length > CFG.maxTransactions)
@@ -600,63 +601,62 @@ function card(id, title, count, hint, body, extra=""){
 }
 
 let showMarked = false;
-function renderDash(a){
-  $("#kpis").innerHTML = [
+// The same tiles and sections, used by the Dashboard (all rows) and each rep's page (that zone's rows).
+// p is the id prefix so the two pages never share ids.
+function sectionsHtml(a, p){
+  const kpis = [
     ["cancel","alert",a.cancel.length,"Possible cancellations"],
     ["chg","brand",a.changes.length,"Price changes"],
     ["vol","blue",a.highVolume.length,"Accounts with "+CFG.maxTransactions+"+ transactions"],
     ["price","red",a.overPrice.length,"Transactions over "+money(CFG.priceThreshold).replace(".00","")],
     ["code","amber",a.oddCode.length,"Non-standard codes"],
     ["new","violet",a.newAccts.length,"New accounts"]
-  ].map(([t,c,n,l]) => `<button class="kpi ${c}" data-jump="card-${t}"><div class="n">${n}</div><div class="l">${l}</div></button>`).join("");
+  ].map(([t,c,n,l]) => `<button class="kpi ${c}" data-jump="${p}-${t}"><div class="n">${n}</div><div class="l">${l}</div></button>`).join("");
   const newList = showMarked ? a.newAll : a.newAccts;
   const hiddenCount = a.newAll.length - a.newAccts.length;
-  $("#dashCards").innerHTML =
-    card("card-cancel","Possible cancellations", a.cancel.length,
+  const cards =
+    card(p+"-cancel","Possible cancellations", a.cancel.length,
       `SiteName2 is ${CFG.cancelSiteNames.join(" or ")} and the code is a final (ends in F). The customer may be ending service.`,
       txTable(a.cancel, a, {rep:true, site2:true}))
-  + card("card-chg","Price changes", a.changes.length, historyNote(), chgTable(a.changes))
-  + card("card-new","New accounts", a.newAccts.length,
+  + card(p+"-chg","Price changes", a.changes.length, historyNote(), chgTable(a.changes))
+  + card(p+"-new","New accounts", a.newAccts.length,
       `AcctNbr ends in ${CFG.newAccountSuffix}. Mark one “Not new” and it stays off future reports `
       + (store.mode==="shared" ? "for the whole team." : "<b>on this computer only</b> (shared list not connected)."),
-      newTable(newList), hiddenCount ? `<label class="chk"><input type="checkbox" id="showMarked" ${showMarked?"checked":""}> Show ${hiddenCount} marked not new</label>` : "")
-  + card("card-vol","High-volume accounts", a.highVolume.length, `More than ${CFG.maxTransactions} transactions on one account number.`, volTable(a.highVolume))
-  + card("card-price","Transactions over "+money(CFG.priceThreshold), a.overPrice.length, "Single transactions, highest first.", txTable(a.overPrice, a, {rep:true}))
-  + card("card-code","Non-standard codes", a.oddCode.length, `Normal codes are ${CFG.normalSizes.join(", ")} + ${CFG.normalSuffixes.join(" / ")} (e.g. 40EX, CONVF). Everything else shows here.`,
+      newTable(newList), hiddenCount ? `<label class="chk"><input type="checkbox" data-showmarked ${showMarked?"checked":""}> Show ${hiddenCount} marked not new</label>` : "")
+  + card(p+"-vol","High-volume accounts", a.highVolume.length, `More than ${CFG.maxTransactions} transactions on one account number.`, volTable(a.highVolume))
+  + card(p+"-price","Transactions over "+money(CFG.priceThreshold), a.overPrice.length, "Single transactions, highest first.", txTable(a.overPrice, a, {rep:true}))
+  + card(p+"-code","Non-standard codes", a.oddCode.length, `Normal codes are ${CFG.normalSizes.join(", ")} + ${CFG.normalSuffixes.join(" / ")} (e.g. 40EX, CONVF), plus ${(CFG.extraStandardCodes||[]).join(", ")}. Everything else shows here.`,
       txTable(a.oddCode, a, {rep:true}));
+  return {kpis, cards};
+}
+function renderDash(a){
+  const h = sectionsHtml(a, "card");
+  $("#kpis").innerHTML = h.kpis; $("#dashCards").innerHTML = h.cards;
 }
 
-function renderReps(a){
+function renderReps(){
   const groups = new Map();
   salesRows().forEach(r => { const rep = repFor(r.zip5); if (!groups.has(rep)) groups.set(rep, []); groups.get(rep).push(r); });
   const names = [...groups.keys()].sort((x,y) => x==="Unassigned" ? 1 : y==="Unassigned" ? -1 : x.localeCompare(y));
   if (!names.includes(state.rep)) state.rep = names[0];
-  const flaggedCount = rs => rs.filter(r => Object.values(a.flagsFor(r)).some(Boolean)).length;
-  $("#repTabs").innerHTML = names.map(n => `<button data-rep="${esc(n)}" aria-pressed="${n===state.rep}">${esc(n)}<span class="c">${flaggedCount(groups.get(n))} flagged</span></button>`).join("");
-  let rs = groups.get(state.rep) || [];
+  const per = new Map(names.map(n => [n, analyze(groups.get(n))]));
+  const flaggedCount = n => groups.get(n).filter(r => Object.values(per.get(n).flagsFor(r)).some(Boolean)).length;
+  $("#repTabs").innerHTML = names.map(n => `<button data-rep="${esc(n)}" aria-pressed="${n===state.rep}">${esc(n)}<span class="c">${flaggedCount(n)} flagged</span></button>`).join("");
+
+  const repRows = groups.get(state.rep) || [];
+  const a = per.get(state.rep);
+  if (!a){ $("#repKpis").innerHTML = ""; $("#repCards").innerHTML = ""; $("#repActivity").innerHTML = ""; return; }
+  const h = sectionsHtml(a, "rep");
+  $("#repKpis").innerHTML = h.kpis;
+  $("#repCards").innerHTML = h.cards;
+
+  let rs = repRows;
   const q = $("#repSearch").value.trim().toLowerCase();
   if (q) rs = rs.filter(r => [r.acct,r.customer,r.address,r.site2,r.contact,r.code,r.zip].join(" ").toLowerCase().includes(q));
   if ($("#flaggedOnly").checked) rs = rs.filter(r => Object.values(a.flagsFor(r)).some(Boolean));
-  const repRows = groups.get(state.rep) || [];
   const zips = [...new Set(repRows.map(r => r.zip5).filter(Boolean))].sort();
-  const repNew = a.newAccts.filter(n => repFor(n.zip) === state.rep);
-  const repVol = a.highVolume.filter(h => repFor(h.zip) === state.rep);
-  const repCancel = repRows.filter(isCancel);
-  const repChg = a.changes.filter(c => repFor(c.row?.zip5) === state.rep);
-  $("#repBody").innerHTML =
-    `<div class="kpis">
-      <div class="kpi alert"><div class="n">${repCancel.length}</div><div class="l">Possible cancellations</div></div>
-      <div class="kpi brand"><div class="n">${repChg.length}</div><div class="l">Price changes</div></div>
-      <div class="kpi blue"><div class="n">${repVol.length}</div><div class="l">High-volume accounts</div></div>
-      <div class="kpi red"><div class="n">${repRows.filter(r=>r.total>CFG.priceThreshold).length}</div><div class="l">Over ${money(CFG.priceThreshold)}</div></div>
-      <div class="kpi amber"><div class="n">${repRows.filter(r=>r.code&&!isStdCode(r.code)).length}</div><div class="l">Non-standard codes</div></div>
-      <div class="kpi violet"><div class="n">${repNew.length}</div><div class="l">New accounts</div></div>
-    </div>`
-    + (state.rep==="Unassigned" && zips.length ? `<div class="meta"><span class="pill warn">These zips have no rep yet: ${zips.join(", ")}</span></div>` : "")
-    + (repCancel.length ? card("rep-cancel","Possible cancellations", repCancel.length, "", txTable(repCancel, a, {site2:true})) : "")
-    + (repChg.length ? card("rep-chg","Price changes", repChg.length, "", chgTable(repChg)) : "")
-    + (repNew.length ? card("rep-new","New accounts", repNew.length, "", newTable(repNew)) : "")
-    + card("rep-all", "Activity", rs.length, zips.length && state.rep!=="Unassigned" ? "Zips: " + zips.join(", ") : "", txTable(rs, a, {flags:true}));
+  $("#repActivity").innerHTML = card("rep-all", `All activity for ${esc(state.rep)}`, rs.length,
+    zips.length ? "Zips on this report: " + zips.join(", ") : "", txTable(rs, a, {flags:true}));
 }
 
 function renderMrf(){
@@ -702,7 +702,7 @@ function render(){
     + (Object.keys(CFG.zipToRep).length ? "" : `<span class="pill warn">Zip-to-rep list not set up yet</span>`)
     + (store.mode==="local" ? `<span class="pill warn">“Not new” saves to this computer only</span>` : "")
     + `<span class="spacer"></span><span class="allbtns"><button class="btn sm" data-all="open">Expand all</button><button class="btn sm" data-all="close">Collapse all</button></span>`;
-  if (state.page==="dash") renderDash(a); else if (state.page==="reps") renderReps(a); else renderMrf();
+  if (state.page==="dash") renderDash(a); else if (state.page==="reps") renderReps(); else renderMrf();
 }
 
 /* ---------- Events ---------- */
@@ -747,7 +747,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.jump){ const el = document.getElementById(t.dataset.jump); if (el){ el.open = true; el.scrollIntoView({behavior:"smooth", block:"start"}); } }
   if (t.dataset.all){ document.querySelectorAll("details.card").forEach(d => d.open = t.dataset.all === "open"); }
   if (t.dataset.rep){ state.rep = t.dataset.rep; render(); }
-  if (t.id === "showMarked"){ showMarked = t.checked; render(); }
+  if (t.hasAttribute("data-showmarked")){ showMarked = t.checked; render(); }
   const acct = t.dataset.notnew || t.dataset.undo;
   if (acct){
     t.disabled = true;
