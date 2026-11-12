@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script>
 /* =====================================================================
    CONFIG — edit this block to change rules, reps, and storage.
@@ -59,24 +60,20 @@ window.DAR_CONFIG = {
     "89158": "Zone 4 · Mike", "89169": "Zone 4 · Mike"
   },
 
-  // Any zip outside Nevada (not 889xx/89xxx) goes to this rep
-  outOfStateRep: "Zone 5 · Candice & SDRS",
+  // Any zip not listed above (including out-of-state and blank) goes to this zone
+  defaultRep: "Zone 5 · Candice & SDRS",
 
-  // Team-wide "not a new account" list, stored in a SharePoint list.
-  // siteUrl: leave "" to auto-detect the site this page is hosted on.
-  // Team-wide "not a new account" list, stored in Supabase.
-  // Paste the Project URL and the anon (public) key from Supabase > Project Settings > API.
+  // Supabase: sign-in, the shared "not new" list, and price history.
+  // Project URL and publishable key from Supabase > Project Settings > API Keys.
+  // Leave url blank to run without sign-in (marks save to each browser, no price history).
   supabase: {
     url: "https://izwocdxwvkamdqubfzbb.supabase.co",
     anonKey: "sb_publishable_yonSBJDirkc1dTINETRZuA_vDKwCT87",
     table: "dar_not_new"
   },
 
-  // Used only if Supabase is not set up and the page is hosted on SharePoint itself.
-  sharePoint: {
-    siteUrl: "",
-    listTitle: "DAR Not New Accounts"
-  }
+  // Only emails at this domain can sign in (email only, no password)
+  allowedEmailDomain: "westernelite.com"
 };
 </script>
 <style>
@@ -176,6 +173,20 @@ tbody tr:hover td{background:var(--surface-2)}
 .chip.price{background:var(--red-soft);color:var(--red)}
 .chip.code{background:var(--amber-soft);color:var(--amber)}
 .chip.new{background:var(--violet-soft);color:var(--violet)}
+.chip.chg{background:var(--accent-soft);color:var(--accent)}
+.kpi.brand .n{color:var(--accent)}
+.up{color:var(--red);font-weight:600}
+.down{color:var(--blue);font-weight:600}
+.who{color:var(--navy-muted);font-size:12px;font-weight:500}
+.btn.ghost{background:transparent;border-color:var(--navy-muted);color:var(--navy-fg)}
+.signin{display:flex;justify-content:center;padding-block:48px}
+.signin form{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:10px}
+.signin h2{margin:0;font-family:'Space Grotesk',Inter,system-ui,sans-serif;font-size:20px}
+.signin p{margin:0 0 6px;color:var(--muted)}
+.signin label{font-weight:600;font-size:13px}
+.signin input{font:inherit;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+.signin .btn{margin-top:8px;padding:10px 14px}
+.signin .err{color:var(--red);font-weight:500;min-height:1.4em;margin:0}
 .chip.cancel{background:var(--red);color:var(--surface)}
 .kpi.alert{background:var(--red-soft);border-color:var(--red)}
 .kpi.alert .n{color:var(--red)}
@@ -212,12 +223,25 @@ label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font
       <button data-page="mrf">MRF</button>
     </nav>
     <div class="spacer"></div>
+    <span class="who hidden" id="who"></span>
+    <button class="btn ghost sm hidden" id="signOutBtn">Sign out</button>
     <button class="btn primary" id="uploadBtn">Upload DAR</button>
     <input type="file" id="file" accept=".pdf,.xlsx,.xls,.csv" class="hidden">
   </div>
 </header>
 
 <main>
+  <section id="signin" class="signin hidden">
+    <form id="signinForm" novalidate>
+      <h2>Sign in</h2>
+      <p>Enter your Western Elite email. You'll only need to do this once on this computer.</p>
+      <label for="siEmail">Work email</label>
+      <input id="siEmail" type="email" autocomplete="email" placeholder="name@westernelite.com" required>
+      <button class="btn primary" type="submit" id="siBtn">Continue</button>
+      <p class="err" id="siErr" role="alert"></p>
+    </form>
+  </section>
+
   <div class="meta" id="meta"></div>
 
   <section id="dropZone" class="drop" tabindex="0">
@@ -271,81 +295,53 @@ let state = { rows: [], fileName: "", period: "", page: "dash", rep: null };
 let notNew = new Set();
 let store = null;
 
-/* ---------- Storage for "not a new account" ---------- */
-function detectSiteUrl(){
-  if (CFG.sharePoint.siteUrl) return CFG.sharePoint.siteUrl.replace(/\/$/,"");
-  if (window._spPageContextInfo?.webAbsoluteUrl) return _spPageContextInfo.webAbsoluteUrl;
-  if (!/sharepoint\.com$/i.test(location.hostname)) return null;
-  const m = location.pathname.match(/^\/(sites|teams)\/[^/]+/i);
-  return location.origin + (m ? m[0] : "");
+/* ---------- Sign-in + shared data (Supabase) ---------- */
+const SB_WANTED = !!(CFG.supabase?.url && CFG.supabase?.anonKey);
+let sb = null, user = null;
+const domainOk = email => !CFG.allowedEmailDomain || String(email||"").toLowerCase().endsWith("@" + CFG.allowedEmailDomain.toLowerCase());
+const needsSignIn = () => !!sb && !user;
+
+// Email-only sign-in: the email is remembered in this browser and recorded on each upload. No password, no email check.
+const EMAIL_KEY = "dar.email";
+async function initAuth(){
+  if (!SB_WANTED) return;
+  if (!window.supabase?.createClient){ setTimeout(() => toast("Couldn't connect to the shared data. Check your connection and reload."), 300); return; }
+  sb = window.supabase.createClient(CFG.supabase.url, CFG.supabase.anonKey, {auth:{persistSession:false, autoRefreshToken:false}});
+  let email = ""; try { email = localStorage.getItem(EMAIL_KEY) || ""; } catch {}
+  user = email && domainOk(email) ? {email} : null;
 }
-async function initSupabase(){
-  const sb = CFG.supabase || {};
-  if (!sb.url || !sb.anonKey) return false;
-  const base = sb.url.replace(/\/$/,"") + "/rest/v1/" + encodeURIComponent(sb.table);
-  // Legacy anon keys are JWTs and go in both headers; newer sb_publishable_ keys go in apikey only
-  const headers = {apikey: sb.anonKey};
-  if (sb.anonKey.startsWith("eyJ")) headers.Authorization = "Bearer " + sb.anonKey;
-  let ids = new Set();
-  const load = async () => {
-    const r = await fetch(base + "?select=acct", {headers});
-    if (!r.ok) throw new Error("Couldn't read the shared not-new list (" + r.status + ")");
-    ids = new Set((await r.json()).map(x => String(x.acct)));
-  };
-  try { await load(); } catch(e){ console.warn(e); return false; }
-  store = {
-    mode: "shared",
-    all: () => new Set(ids),
-    refresh: load,
-    async add(acct){
-      const r = await fetch(base + "?on_conflict=acct", {method:"POST",
-        headers:{...headers, "Content-Type":"application/json", Prefer:"resolution=ignore-duplicates,return=minimal"},
-        body: JSON.stringify({acct})});
-      if (!r.ok) throw new Error("Couldn't save. Try again (" + r.status + ")");
-      ids.add(acct);
-    },
-    async remove(acct){
-      const r = await fetch(base + "?acct=eq." + encodeURIComponent(acct), {method:"DELETE", headers});
-      if (!r.ok) throw new Error("Couldn't undo. Try again (" + r.status + ")");
-      ids.delete(acct);
-    }
-  };
-  return true;
+
+// Read every row of a table, 1000 at a time (Supabase caps each request at 1000)
+async function readAll(table, cols){
+  let out = [];
+  for (let from = 0; ; from += 1000){
+    const { data, error } = await sb.from(table).select(cols).range(from, from + 999);
+    if (error) throw error;
+    out = out.concat(data);
+    if (data.length < 1000) return out;
+  }
 }
+
 async function initStore(){
-  if (await initSupabase()) return;
-  const site = detectSiteUrl();
-  if (site){
+  if (sb && user){
+    const T = CFG.supabase.table;
+    let ids = new Set();
+    const load = async () => { ids = new Set((await readAll(T, "acct")).map(x => String(x.acct))); };
     try{
-      const list = `${site}/_api/web/lists/getbytitle('${encodeURIComponent(CFG.sharePoint.listTitle)}')`;
-      const r = await fetch(`${list}/items?$select=Id,Title&$top=5000`, {headers:{Accept:"application/json;odata=nometadata"}, credentials:"include"});
-      if (!r.ok) throw new Error("List not reachable (" + r.status + ")");
-      const data = await r.json();
-      const ids = new Map(data.value.map(i => [String(i.Title).trim(), i.Id]));
-      const digest = async () => {
-        const d = await fetch(`${site}/_api/contextinfo`, {method:"POST", headers:{Accept:"application/json;odata=nometadata"}, credentials:"include"});
-        return (await d.json()).FormDigestValue;
-      };
-      store = {
-        mode: "shared",
-        all: () => new Set(ids.keys()),
+      await load();
+      store = { mode: "shared", all: () => new Set(ids), refresh: load,
         async add(acct){
-          const r = await fetch(`${list}/items`, {method:"POST", credentials:"include",
-            headers:{Accept:"application/json;odata=nometadata","Content-Type":"application/json;odata=nometadata","X-RequestDigest":await digest()},
-            body: JSON.stringify({Title: acct})});
-          if (!r.ok) throw new Error("Save failed (" + r.status + ")");
-          ids.set(acct, (await r.json()).Id);
+          const { error } = await sb.from(T).upsert({acct}, {onConflict:"acct", ignoreDuplicates:true});
+          if (error) throw new Error("Couldn't save: " + error.message);
+          ids.add(acct);
         },
         async remove(acct){
-          const id = ids.get(acct); if (!id) return;
-          const r = await fetch(`${list}/items(${id})`, {method:"POST", credentials:"include",
-            headers:{Accept:"application/json;odata=nometadata","X-RequestDigest":await digest(),"IF-MATCH":"*","X-HTTP-Method":"DELETE"}});
-          if (!r.ok) throw new Error("Undo failed (" + r.status + ")");
+          const { error } = await sb.from(T).delete().eq("acct", acct);
+          if (error) throw new Error("Couldn't undo: " + error.message);
           ids.delete(acct);
-        }
-      };
+        } };
       return;
-    }catch(e){ console.warn("SharePoint list unavailable, using this browser instead:", e); }
+    }catch(e){ console.warn("Shared not-new list unavailable:", e); }
   }
   const KEY = "dar.notNew";
   const read = () => { try { return new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch { return new Set(); } };
@@ -353,6 +349,66 @@ async function initStore(){
   store = { mode:"local", all: read,
     async add(a){ const s = read(); s.add(a); write(s); },
     async remove(a){ const s = read(); s.delete(a); write(s); } };
+}
+
+/* ---------- Price history ---------- */
+const pad2 = n => String(n).padStart(2, "0");
+function parsePeriod(p){
+  const m = String(p||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*to\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  return m ? {start: `${m[3]}-${pad2(m[1])}-${pad2(m[2])}`, end: `${m[6]}-${pad2(m[4])}-${pad2(m[5])}`} : null;
+}
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
+const fmtDate = iso => { const [y,m,d] = String(iso||"").split("-"); return y ? `${+m}/${+d}/${y}` : ""; };
+function hashStr(str){
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++){ const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, "0") + (h1 >>> 0).toString(16).padStart(8, "0");
+}
+// One price per account + code in a DAR: the most common amount above $0 (the higher one on a tie)
+function priceKeys(rows){
+  const m = new Map();
+  rows.forEach(r => {
+    if (!(r.total > 0) || !r.code) return;
+    const k = r.acct + "|" + r.code;
+    if (!m.has(k)) m.set(k, {acct: r.acct, code: r.code, customer: r.customer, counts: new Map()});
+    const c = m.get(k).counts, v = Math.round(r.total * 100) / 100;
+    c.set(v, (c.get(v) || 0) + 1);
+  });
+  return [...m.values()].map(x => {
+    let best = null, bn = -1;
+    x.counts.forEach((n, v) => { if (n > bn || (n === bn && v > best)){ best = v; bn = n; } });
+    return {acct: x.acct, code: x.code, customer: x.customer, price: best};
+  });
+}
+// Compare this DAR with earlier ones, then save it to the history
+async function syncHistory(){
+  const per = parsePeriod(state.period);
+  const start = per?.start || todayIso(), end = per?.end || todayIso();
+  const prices = priceKeys(state.rows);
+  const fingerprint = hashStr(start + end + "\n" + state.rows.map(r => [r.acct, r.code, r.total, r.address].join("~")).sort().join("\n"));
+
+  const { data: past, error: e1 } = await sb.rpc("dar_previous_prices", {p_before: end, p_accts: [...new Set(prices.map(p => p.acct))]});
+  if (e1) throw e1;
+  const prev = {};
+  (past?.prices || []).forEach(p => { prev[p.acct + "|" + p.code] = {price: Number(p.price), period_end: p.period_end}; });
+
+  const { data: up, error: e2 } = await sb.from("dar_uploads")
+    .upsert({fingerprint, file_name: state.fileName, period_start: start, period_end: end, row_count: state.rows.length, uploaded_by: user?.email || null},
+            {onConflict: "fingerprint", ignoreDuplicates: true})
+    .select("id");
+  if (e2) throw e2;
+  const already = !up?.length;
+  if (!already){
+    const id = up[0].id;
+    for (let i = 0; i < prices.length; i += 500){
+      const { error } = await sb.from("dar_prices").insert(prices.slice(i, i + 500).map(p =>
+        ({upload_id: id, acct: p.acct, code: p.code, price: p.price, customer: p.customer, period_end: end})));
+      if (error) throw error;
+    }
+  }
+  return {prev, history: {earlier: past?.uploads || 0, already, undated: !per}};
 }
 
 /* ---------- Parsing ---------- */
@@ -380,11 +436,12 @@ function cleanRow(r){
 async function parseSheet(file){
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, {type:"array", raw: /\.csv$/i.test(file.name)});
-  const rows = [];
+  const rows = []; let period = "";
   wb.SheetNames.forEach(name => {
     const grid = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:""});
     let cols = null, section = "";
     for (const line of grid){
+      if (!period){ const m = line.join(" ").match(/(\d{1,2}\/\d{1,2}\/\d{4}\s*to\s*\d{1,2}\/\d{1,2}\/\d{4})/i); if (m) period = m[1]; }
       const keys = line.map(c => HEADER_MAP[normHeader(c)]);
       if (keys.includes("acct") && keys.includes("code")){ cols = keys; continue; }
       if (!cols) continue;
@@ -395,7 +452,7 @@ async function parseSheet(file){
       else if (acct && line.filter(c => String(c).trim()).length === 1) section = acct;
     }
   });
-  return {rows, period: ""};
+  return {rows, period};
 }
 
 async function parsePdf(file){
@@ -453,20 +510,24 @@ function analyze(){
   const newAccts = newAll.filter(n => !notNew.has(n.acct));
   const newSet = new Set(newAccts.map(n => n.acct));
   const cancel = rows.filter(isCancel);
+  const prev = state.prev || {};
+  const changes = priceKeys(rows).filter(p => { const q = prev[p.acct + "|" + p.code]; return q && Math.abs(q.price - p.price) >= 0.01; })
+    .map(p => { const q = prev[p.acct + "|" + p.code];
+      return {...p, was: q.price, wasDate: q.period_end, diff: p.price - q.price, row: rows.find(r => r.acct === p.acct && r.code === p.code)}; })
+    .sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
+  const chgSet = new Set(changes.map(c => c.acct + "|" + c.code));
   const flagsFor = r => ({
-    cancel: isCancel(r),
+    cancel: isCancel(r), chg: chgSet.has(r.acct + "|" + r.code),
     vol: hvSet.has(r.acct), price: r.total > CFG.priceThreshold,
     code: !!r.code && !isStdCode(r.code), new: newSet.has(r.acct)
   });
-  return {byAcct, cancel, highVolume, overPrice, oddCode, newAll, newAccts, flagsFor};
+  return {byAcct, cancel, changes, highVolume, overPrice, oddCode, newAll, newAccts, flagsFor};
 }
-const repFor = zip5 => CFG.zipToRep[zip5]
-  || (zip5 && !/^(889|89)/.test(zip5) && CFG.outOfStateRep)
-  || "Unassigned";
+const repFor = zip5 => CFG.zipToRep[zip5] || CFG.defaultRep || "Unassigned";
 
 /* ---------- Rendering ---------- */
 function chips(f){
-  return (f.cancel?'<span class="chip cancel">Possible cancel</span>':"") + (f.vol?'<span class="chip vol">10+ txns</span>':"") + (f.price?'<span class="chip price">Over $'+CFG.priceThreshold+'</span>':"")
+  return (f.cancel?'<span class="chip cancel">Possible cancel</span>':"") + (f.chg?'<span class="chip chg">Price change</span>':"") + (f.vol?'<span class="chip vol">10+ txns</span>':"") + (f.price?'<span class="chip price">Over $'+CFG.priceThreshold+'</span>':"")
        + (f.code?'<span class="chip code">Code</span>':"") + (f.new?'<span class="chip new">New</span>':"");
 }
 const two = (a, b, cls="") => `<span class="${cls}">${esc(a)}</span>${b ? `<span class="sub2">${esc(b)}</span>` : ""}`;
@@ -494,6 +555,28 @@ function volTable(list){
       <td><details class="sub"><summary>Codes</summary>${esc(countCodes(h.rows))}</details></td></tr>`).join("")}
     </tbody></table></div>`;
 }
+function chgTable(list){
+  if (!list.length) return '<div class="empty">No price changes.</div>';
+  return `<div class="tbl-wrap"><table><thead><tr><th>AcctNbr</th><th>Customer / site</th><th>Zip / rep</th><th>Code</th>
+    <th class="num">Was</th><th class="num">Now</th><th class="num">Change</th></tr></thead><tbody>
+    ${list.map(c => { const r = c.row || {}; const pct = c.was ? (c.diff / c.was * 100) : 0; return `<tr>
+      <td class="nw">${esc(c.acct)}</td><td>${two(r.customer || c.customer, r.address, "strong")}</td>
+      <td class="nw">${two(r.zip, repFor(r.zip5))}</td><td class="nw">${esc(c.code)}</td>
+      <td class="num">${two(money(c.was), fmtDate(c.wasDate))}</td><td class="num"><b>${money(c.price)}</b></td>
+      <td class="num ${c.diff > 0 ? "up" : "down"}">${c.diff > 0 ? "▲" : "▼"} ${money(Math.abs(c.diff))}<span class="sub2">${pct > 0 ? "+" : ""}${pct.toFixed(1)}%</span></td></tr>`; }).join("")}
+    </tbody></table></div>`;
+}
+function historyNote(){
+  const h = state.history;
+  const rule = "Same account and code, compared with the last earlier DAR it appeared on. $0 rows are skipped.";
+  if (!h) return sb ? "Upload a DAR to compare prices with earlier reports." : "Price history needs sign-in, which isn't set up on this copy.";
+  if (h.demo) return "Example data. The live app compares each upload with earlier DARs your team has uploaded.";
+  if (h.error) return `Couldn't reach the price history (${esc(h.error)}). Upload again to retry.`;
+  if (!h.earlier) return "This is the first DAR in the history. Price changes will show starting with the next upload.";
+  return `Compared with ${h.earlier} earlier DAR${h.earlier === 1 ? "" : "s"}. ${rule}`
+    + (h.already ? " This exact DAR was uploaded before, so it wasn't saved twice." : "")
+    + (h.undated ? " No report period was found in the file, so it was dated today." : "");
+}
 const countCodes = rs => Object.entries(rs.reduce((m,r)=>(m[r.code]=(m[r.code]||0)+1,m),{})).map(([c,n])=>`${c} ×${n}`).join(", ");
 function newTable(list, showMarked){
   if (!list.length) return '<div class="empty">No new accounts on this report.</div>';
@@ -520,6 +603,7 @@ let showMarked = false;
 function renderDash(a){
   $("#kpis").innerHTML = [
     ["cancel","alert",a.cancel.length,"Possible cancellations"],
+    ["chg","brand",a.changes.length,"Price changes"],
     ["vol","blue",a.highVolume.length,"Accounts with "+CFG.maxTransactions+"+ transactions"],
     ["price","red",a.overPrice.length,"Transactions over "+money(CFG.priceThreshold).replace(".00","")],
     ["code","amber",a.oddCode.length,"Non-standard codes"],
@@ -531,7 +615,8 @@ function renderDash(a){
     card("card-cancel","Possible cancellations", a.cancel.length,
       `SiteName2 is ${CFG.cancelSiteNames.join(" or ")} and the code is a final (ends in F). The customer may be ending service.`,
       txTable(a.cancel, a, {rep:true, site2:true}))
-  +     card("card-new","New accounts", a.newAccts.length,
+  + card("card-chg","Price changes", a.changes.length, historyNote(), chgTable(a.changes))
+  + card("card-new","New accounts", a.newAccts.length,
       `AcctNbr ends in ${CFG.newAccountSuffix}. Mark one “Not new” and it stays off future reports `
       + (store.mode==="shared" ? "for the whole team." : "<b>on this computer only</b> (shared list not connected)."),
       newTable(newList), hiddenCount ? `<label class="chk"><input type="checkbox" id="showMarked" ${showMarked?"checked":""}> Show ${hiddenCount} marked not new</label>` : "")
@@ -557,9 +642,11 @@ function renderReps(a){
   const repNew = a.newAccts.filter(n => repFor(n.zip) === state.rep);
   const repVol = a.highVolume.filter(h => repFor(h.zip) === state.rep);
   const repCancel = repRows.filter(isCancel);
+  const repChg = a.changes.filter(c => repFor(c.row?.zip5) === state.rep);
   $("#repBody").innerHTML =
     `<div class="kpis">
       <div class="kpi alert"><div class="n">${repCancel.length}</div><div class="l">Possible cancellations</div></div>
+      <div class="kpi brand"><div class="n">${repChg.length}</div><div class="l">Price changes</div></div>
       <div class="kpi blue"><div class="n">${repVol.length}</div><div class="l">High-volume accounts</div></div>
       <div class="kpi red"><div class="n">${repRows.filter(r=>r.total>CFG.priceThreshold).length}</div><div class="l">Over ${money(CFG.priceThreshold)}</div></div>
       <div class="kpi amber"><div class="n">${repRows.filter(r=>r.code&&!isStdCode(r.code)).length}</div><div class="l">Non-standard codes</div></div>
@@ -567,6 +654,7 @@ function renderReps(a){
     </div>`
     + (state.rep==="Unassigned" && zips.length ? `<div class="meta"><span class="pill warn">These zips have no rep yet: ${zips.join(", ")}</span></div>` : "")
     + (repCancel.length ? card("rep-cancel","Possible cancellations", repCancel.length, "", txTable(repCancel, a, {site2:true})) : "")
+    + (repChg.length ? card("rep-chg","Price changes", repChg.length, "", chgTable(repChg)) : "")
     + (repNew.length ? card("rep-new","New accounts", repNew.length, "", newTable(repNew)) : "")
     + card("rep-all", "Activity", rs.length, zips.length && state.rep!=="Unassigned" ? "Zips: " + zips.join(", ") : "", txTable(rs, a, {flags:true}));
 }
@@ -590,6 +678,13 @@ function renderMrf(){
 }
 
 function render(){
+  const locked = needsSignIn();
+  $("#signin").classList.toggle("hidden", !locked);
+  $("#uploadBtn").classList.toggle("hidden", locked);
+  $("nav").classList.toggle("hidden", locked);
+  $("#who").classList.toggle("hidden", !user); $("#signOutBtn").classList.toggle("hidden", !user);
+  $("#who").textContent = user?.email || "";
+  if (locked){ ["#dropZone","#page-dash","#page-reps","#page-mrf"].forEach(id => $(id).classList.add("hidden")); $("#meta").innerHTML = ""; return; }
   const has = state.rows.length > 0;
   $("#dropZone").classList.toggle("hidden", has);
   document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-current", b.dataset.page===state.page ? "page" : "false"));
@@ -626,7 +721,13 @@ async function loadFile(file){
     if (!res.rows.length) throw new Error("No transactions found. Is this a DAR with an AcctNbr header?");
     if (store.refresh){ try { await store.refresh(); notNew = store.all(); } catch {} }
     state.rows = res.rows; state.period = res.period; state.fileName = file.name; state.page = "dash";
-    try { localStorage.setItem("dar.last", JSON.stringify({rows:state.rows, period:state.period, fileName:state.fileName})); } catch {}
+    state.prev = {}; state.history = null;
+    if (sb && user){
+      toast("Checking price history…");
+      try { Object.assign(state, await syncHistory()); }
+      catch(err){ console.error(err); state.history = {error: err.message || "unknown error"}; }
+    }
+    try { localStorage.setItem("dar.last", JSON.stringify({rows:state.rows, period:state.period, fileName:state.fileName, prev:state.prev, history:state.history})); } catch {}
     render(); toast(res.rows.length + " transactions loaded");
   }catch(e){ console.error(e); toast(e.message || "Couldn't read that file"); }
 }
@@ -658,11 +759,31 @@ document.addEventListener("click", async e => {
   }
 });
 
+$("#signinForm").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("#siEmail").value.trim().toLowerCase();
+  const err = m => $("#siErr").textContent = m;
+  if (!/^[^@\s]+@[^@\s]+$/.test(email)) return err("Enter your work email.");
+  if (!domainOk(email)) return err(`Use your @${CFG.allowedEmailDomain} email.`);
+  err(""); $("#siBtn").disabled = true;
+  try { localStorage.setItem(EMAIL_KEY, email); } catch {}
+  user = {email};
+  await initStore(); notNew = store.all(); $("#siBtn").disabled = false; render();
+};
+$("#signOutBtn").onclick = async () => {
+  user = null;
+  try { localStorage.removeItem(EMAIL_KEY); localStorage.removeItem("dar.last"); } catch {}
+  Object.assign(state, {rows: [], period: "", fileName: "", prev: {}, history: null});
+  render();
+};
+
 (async () => {
+  await initAuth();
   await initStore();
   notNew = store.all();
   try { const last = JSON.parse(localStorage.getItem("dar.last") || "null"); if (last?.rows?.length) Object.assign(state, last); } catch {}
-  if (!state.rows.length && window.DAR_SAMPLE) Object.assign(state, {rows: window.DAR_SAMPLE.map(cleanRow), period: "11/6/2026 to 11/8/2026", fileName: "Example data · upload a DAR to replace"});
+  if (!state.rows.length && window.DAR_SAMPLE) Object.assign(state, {rows: window.DAR_SAMPLE.map(cleanRow), period: "11/6/2026 to 11/8/2026", fileName: "Example data · upload a DAR to replace",
+    prev: window.DAR_DEMO_PREV || {}, history: window.DAR_DEMO_PREV ? {demo: true} : null});
   render();
 })();
 })();
