@@ -23,7 +23,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
 - Why: dark text #18232d on #b07f24 is 4.49:1. On #b17f24 it is 4.50:1.
 
@@ -35,7 +35,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
 - Why: same rule as change 1. Every module repeats this CSS and it applies page-wide, so every copy has to change.
 
@@ -47,7 +47,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
 - Why: same as change 1.
 
@@ -59,7 +59,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
 - Why: same as change 1.
 
@@ -95,7 +95,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 
 ## Not fixed here
 - **Not visible (truncated) â€” check by hand:** code module #5 (MATERIAL ROUTER) from its base64 image onward, and all later code modules (about sections 06â€“17).
-  - In each one, Ctrl+F `#b07f24` and apply the same hover replacement (#b17f24). The rule applies page-wide and the last copy on the page wins, so one missed copy keeps the failing hover.
+  - In each one, Ctrl+F `#b07f24` and apply the same hover replacement (#b28025). The rule applies page-wide and the last copy on the page wins, so one missed copy keeps the failing hover.
   - Also check those modules for: any extra `<h1>` (demote to `<h2>`), vague links ("Learn more", "Full answer â†’", repeated identical buttons), "Ã—" close buttons with no aria-label, â˜Ž/âœ“ symbols in the HTML, and iframes (map/video) with no `title`.
 - **CSS checkmarks:** modules #1 and #2 add a âœ“ to each hero badge with `.wecd-badges span::before { content: "\2713"; }`. Some screen readers announce it. The fix would be CSS (`content: "\2713" / "";`), and only the gold-hover CSS is in scope, so this is left for Paul/Echo to decide.
 - **Divi text/video modules (non-code):** none in the visible part. Anything outside code modules â†’ Echo.
