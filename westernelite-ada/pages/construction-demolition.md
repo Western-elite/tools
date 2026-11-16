@@ -9,9 +9,10 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ## Contrast calculation (item 5)
 - Text #18232d: relative luminance 0.01586.
 - Old hover #b07f24: luminance 0.24536 â†’ **4.49:1 (4.485), fails AA**.
-- New hover **#b17f24** (red channel +1): luminance 0.24653 â†’ **4.50:1 (4.503), passes AA**. This is the closest lightened gold that reaches 4.5:1.
-- If Paul wants more margin, **#b28025** gives 4.56:1. It looks the same to the eye. To use it, swap it in for #b17f24 in every REPLACE below.
+- Smallest fix **#b17f24** (red channel +1): luminance 0.24653 â†’ 4.50:1 (4.503), passes AA with almost no margin.
+- **Chosen hover: #b28025 â†’ 4.56:1.** Paul picked this for more margin (2026-11-16). It looks the same to the eye. Every REPLACE below uses it.
 - The calculation uses the WCAG 2.1 relative-luminance formula: (L1+0.05)/(L2+0.05).
+- **Before pasting, confirm it:** these ratios were worked out by hand. Put text #18232d on background #b28025 into a contrast checker (for example WebAIM's). It should show about 4.56:1 and pass AA for normal text. If it shows below 4.5:1, stop and tell Paul. Do not paste.
 
 ## Changes
 
@@ -25,7 +26,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```html
 .wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
-- Why: dark text #18232d on #b07f24 is 4.49:1. On #b17f24 it is 4.50:1.
+- Why: dark text #18232d on #b07f24 is 4.49:1. On #b28025 it is 4.56:1.
 
 ### 2. Gold button hover contrast â€” WCAG 1.4.3
 - Module: Code module #2. First line: `SECTION 02 of 17 - HERO (TABLET / PHONE)`. Visible at 979px and below (tablet and phone).
