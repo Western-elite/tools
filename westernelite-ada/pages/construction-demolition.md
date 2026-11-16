@@ -9,9 +9,10 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ## Contrast calculation (item 5)
 - Text #18232d: relative luminance 0.01586.
 - Old hover #b07f24: luminance 0.24536 â†’ **4.49:1 (4.485), fails AA**.
-- New hover **#b17f24** (red channel +1): luminance 0.24653 â†’ **4.50:1 (4.503), passes AA**. This is the closest lightened gold that reaches 4.5:1.
-- If Paul wants more margin, **#b28025** gives 4.56:1. It looks the same to the eye. To use it, swap it in for #b17f24 in every REPLACE below.
+- Smallest fix **#b17f24** (red channel +1): luminance 0.24653 â†’ 4.50:1 (4.503), passes AA with almost no margin.
+- **Chosen hover: #b28025 â†’ 4.56:1.** Paul picked this for more margin (2026-11-16). It looks the same to the eye. Every REPLACE below uses it.
 - The calculation uses the WCAG 2.1 relative-luminance formula: (L1+0.05)/(L2+0.05).
+- **Before pasting, confirm it:** these ratios were worked out by hand. Put text #18232d on background #b28025 into a contrast checker (for example WebAIM's). It should show about 4.56:1 and pass AA for normal text. If it shows below 4.5:1, stop and tell Paul. Do not paste.
 
 ## Changes
 
@@ -23,9 +24,9 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
-- Why: dark text #18232d on #b07f24 is 4.49:1. On #b17f24 it is 4.50:1.
+- Why: dark text #18232d on #b07f24 is 4.49:1. On #b28025 it is 4.56:1.
 
 ### 2. Gold button hover contrast â€” WCAG 1.4.3
 - Module: Code module #2. First line: `SECTION 02 of 17 - HERO (TABLET / PHONE)`. Visible at 979px and below (tablet and phone).
@@ -35,7 +36,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
 - Why: same rule as change 1. Every module repeats this CSS and it applies page-wide, so every copy has to change.
 
@@ -47,7 +48,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
 - Why: same as change 1.
 
@@ -59,7 +60,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 ```
 - REPLACE WITH:
 ```html
-.wecd-btn:hover { background: #b17f24; border-color: #b17f24; text-decoration: none; }
+.wecd-btn:hover { background: #b28025; border-color: #b28025; text-decoration: none; }
 ```
 - Why: same as change 1.
 
@@ -95,7 +96,7 @@ WP Admin â†’ Pages â†’ edit Construction and demolition waste services
 
 ## Not fixed here
 - **Not visible (truncated) â€” check by hand:** code module #5 (MATERIAL ROUTER) from its base64 image onward, and all later code modules (about sections 06â€“17).
-  - In each one, Ctrl+F `#b07f24` and apply the same hover replacement (#b17f24). The rule applies page-wide and the last copy on the page wins, so one missed copy keeps the failing hover.
+  - In each one, Ctrl+F `#b07f24` and apply the same hover replacement (#b28025). The rule applies page-wide and the last copy on the page wins, so one missed copy keeps the failing hover.
   - Also check those modules for: any extra `<h1>` (demote to `<h2>`), vague links ("Learn more", "Full answer â†’", repeated identical buttons), "Ã—" close buttons with no aria-label, â˜Ž/âœ“ symbols in the HTML, and iframes (map/video) with no `title`.
 - **CSS checkmarks:** modules #1 and #2 add a âœ“ to each hero badge with `.wecd-badges span::before { content: "\2713"; }`. Some screen readers announce it. The fix would be CSS (`content: "\2713" / "";`), and only the gold-hover CSS is in scope, so this is left for Paul/Echo to decide.
 - **Divi text/video modules (non-code):** none in the visible part. Anything outside code modules â†’ Echo.
