@@ -666,13 +666,16 @@ function historyNote(){
   return `Compared with ${h.earlier} earlier DAR${h.earlier === 1 ? "" : "s"}. ${rule}`;
 }
 const countCodes = rs => Object.entries(rs.reduce((m,r)=>(m[r.code]=(m[r.code]||0)+1,m),{})).map(([c,n])=>`${c} ×${n}`).join(", ");
+// Each code on the account, one per line (×n if it repeats); non-standard codes highlighted like other tables
+const newCodes = rs => Object.entries(rs.reduce((m,r)=>(r.code && (m[r.code]=(m[r.code]||0)+1), m),{}))
+  .map(([c,n]) => `<div class="${isStdCode(c) ? "" : "codehi"}">${esc(c)}${n > 1 ? ` ×${n}` : ""}</div>`).join("") || "—";
 function newTable(list, showMarked){
   if (!list.length) return '<div class="empty">No new accounts on this report.</div>';
   return `<div class="tbl-wrap"><table><thead><tr><th>AcctNbr</th><th>Customer / site</th><th>Contact</th>
-    <th>Zip / rep</th><th class="num">Txns</th><th class="num">Total</th><th></th></tr></thead><tbody>
+    <th>Zip / rep</th><th>Code</th><th class="num">Txns</th><th class="num">Total</th><th></th></tr></thead><tbody>
     ${list.map(n => { const marked = notNew.has(n.acct); return `<tr>
       <td class="nw">${esc(n.acct)}</td><td>${two(n.customer, n.address, "strong")}</td><td>${two(n.contact, n.phone)}</td>
-      <td class="nw">${two(n.zip, repFor(n.zip))}</td><td class="num">${n.rows.length}</td><td class="num">${money(n.total)}</td>
+      <td class="nw">${two(n.zip, repFor(n.zip))}</td><td class="nw">${newCodes(n.rows)}</td><td class="num">${n.rows.length}</td><td class="num">${money(n.total)}</td>
       <td class="nw act">${marked ? `<button class="btn sm" data-undo="${esc(n.acct)}">Undo</button>`
                    : `<button class="btn sm" data-notnew="${esc(n.acct)}">Not new</button>`}</td></tr>`; }).join("")}
     </tbody></table></div>`;
