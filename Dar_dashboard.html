@@ -355,7 +355,9 @@ const money = n => n.toLocaleString("en-US", {style:"currency", currency:"USD"})
 const SITE_RE = new RegExp("\\b(" + CFG.cancelSiteNames.join("|") + ")\\b", "i");
 const isMrf = r => r.code.includes(String(CFG.mrfCodeText).toUpperCase());
 const salesRows = () => state.rows.filter(r => !isMrf(r));
-const isCancel = r => SITE_RE.test(r.site2) && /F$/.test(r.code);
+// Combo codes (two codes joined, e.g. 40D-30F, 30D/20F, 40D+30F, "40D 30F") never count as a possible cancellation
+const isCombo = code => /[-\/+&,\s]/.test(String(code || "").trim());
+const isCancel = r => SITE_RE.test(r.site2) && /F$/.test(r.code) && !isCombo(r.code);
 const CODE_RE = new RegExp("^(" + CFG.normalSizes.join("|") + ")(" + CFG.normalSuffixes.join("|") + ")$", "i");
 const EXTRA_STD = new Set((CFG.extraStandardCodes || []).map(c => String(c).toUpperCase().replace(/\s+/g,"")));
 const FL_TEXT = String(CFG.frontLoadCodeText || "FL").toUpperCase();
@@ -989,7 +991,7 @@ function sectionsHtml(a, p){
   const hiddenCount = a.newAll.length - a.newAccts.length;
   const cards =
     card(p+"-cancel","Possible cancellations", a.cancel.length,
-      `SiteName2 is ${CFG.cancelSiteNames.join(" or ")} and the code is a final (ends in F). The customer may be ending service.`,
+      `SiteName2 is ${CFG.cancelSiteNames.join(" or ")} and the code is a single final (ends in F, e.g. 40F, LBCMF). Combo codes like 40D-30F are not flagged. The customer may be ending service.`,
       txTable(a.cancel, a, {rep:true, site2:true}))
   + card(p+"-quote","Different from quote", qCount(a.qc, true), quoteNote(a.qc), quoteBody(a.qc))
   + card(p+"-chg","Price changes", a.changes.length, historyNote(), chgTable(a.changes))
