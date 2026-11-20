@@ -758,6 +758,7 @@
 .hist-reply-h .hist-filed{font-size:11px;}
 .hist-reply-b{font-size:12.5px;color:#3d4750;line-height:1.5;white-space:pre-wrap;}
 .hist-edit-btn{margin-top:8px;margin-right:12px;background:none;border:none;color:var(--blue);font-weight:700;font-size:12px;cursor:pointer;padding:0;}
+.hist-del-btn{margin-top:8px;margin-right:12px;background:none;border:none;color:#C00000;font-weight:700;font-size:12px;cursor:pointer;padding:0;}
 .hist-edit-form{display:none;margin-top:8px;}
 .hist-card.editing .hist-edit-form{display:block;}
 .hist-edit-lab{display:block;font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;}
@@ -3832,6 +3833,26 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       if(!rows||!rows.length){alert("Saved on this device, but the database didn't accept the change (it may need an UPDATE permission on the entries table). It will revert on the next refresh.");}
     });
   }
+  /* ---- Deleting: leadership only — for entries filed under the wrong agent. Removes the entry and its replies. ---- */
+  var DEL_TYPES={supervisor:1,coaching:1,manager:1,oneonone:1,escalation:1,lcomment:1};
+  function recQuery(rec,a){if(rec.rid!==""&&rec.rid!=null)return "id=eq."+encodeURIComponent(rec.rid);if(rec.fa)return "agent=eq."+encodeURIComponent(rec.agent||a)+"&source=eq."+encodeURIComponent(rec.src||(T2S[rec.type]||"Manager"))+"&filed_at=eq."+encodeURIComponent(rec.fa);return null;}
+  function deleteEntry(card){
+    if(!canEdit()){alert("Only supervisors and above can delete History entries.");return;}
+    var id=card.getAttribute("data-id"),a=curAgent(),all=load(),arr=all[a]||[],rec=null;
+    for(var i=0;i<arr.length;i++){if(arr[i].id===id){rec=arr[i];break;}}
+    if(!rec||!DEL_TYPES[rec.type])return;
+    var reps=buildThreads(arr).replies[rec.id]||[];
+    var msg="Delete this entry from "+a+"'s History?\n\n"+(rec.title||"Entry")+(rec.edate?" ("+rec.edate+")":"")+(rec.summary?"\n"+rec.summary:"")+(reps.length?"\n\nIts "+reps.length+" repl"+(reps.length>1?"ies":"y")+" will be deleted too.":"")+"\n\nThis can't be undone.";
+    if(!confirm(msg))return;
+    var gone=[rec].concat(reps);
+    all[a]=arr.filter(function(x){return gone.indexOf(x)<0;});save(all);_editing=null;renderHistory();
+    if(!window.sbReady())return;
+    var qs=gone.map(function(x){return recQuery(x,a);}).filter(Boolean);
+    if(!qs.length){alert("Removed on this device. This entry hasn't synced from the database yet, so refresh History and delete it again to remove it for everyone.");return;}
+    Promise.all(qs.map(function(q){return window.sbDelete("entries",q);})).then(function(){return window.sbSelect("entries",qs[0]+"&select=id");}).then(function(left){
+      if(left&&left.length){alert("Removed on this device, but the database didn't allow the delete (the entries table may need a DELETE permission for supervisors and managers). It will come back on the next refresh.");pullFromCloud();}
+    }).catch(function(){});
+  }
   function setCommentBoxLabel(){var lab=document.querySelector("#histPanel .hist-cb-lab"),ta=document.getElementById("histCommentNote");if(!lab)return;if(isAgentViewer()){lab.innerHTML="&#128172; Add a comment";if(ta)ta.placeholder="Add a comment to your history anytime (optional)…";}else{var rn=leaderRoleName();lab.innerHTML="&#128172; Add a "+rn.toLowerCase()+" comment";if(ta)ta.placeholder="Posts as "+rn+" — agents see it in their History…";}}
   function renderHistory(){
     var wrap=document.getElementById("histBody");if(!wrap)return;setCommentBoxLabel();
@@ -3858,9 +3879,10 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       var thread=reps.length?('<div class="hist-thread">'+reps.map(function(x){var xl=lblFor(x),xd=new Date(x.submitted);var body=splitRef(x.detail).text.replace(/^Re: [\s\S]*?\n\n/,"");
         return '<div class="hist-reply"><div class="hist-reply-h"><span class="hist-badge '+xl[1]+'">'+xl[0]+'</span><span class="hist-filed">'+xd.toLocaleDateString()+' '+xd.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+'</span></div><div class="hist-reply-b">'+esc(body)+'</div></div>';}).join("")+'</div>'):"";
       var respond='<div class="hist-respond"><button class="hist-resp-btn" type="button">↩ Reply'+(reps.length?' ('+reps.length+')':'')+'</button><div class="hist-resp-form"><textarea class="hist-resp-note" rows="2" placeholder="Write a reply — it stays with this entry…"></textarea><br><button class="hist-resp-send" type="button">Send reply</button></div></div>';
-      var editHtml=(canEdit()&&EDIT_TYPES[r.type])?'<button class="hist-edit-btn" type="button">✎ Edit</button><div class="hist-edit-form"></div>':'';
+      var editHtml=((canEdit()&&EDIT_TYPES[r.type])?'<button class="hist-edit-btn" type="button">✎ Edit</button>':'')+((canEdit()&&DEL_TYPES[r.type])?'<button class="hist-del-btn" type="button">🗑 Delete</button>':'')+((canEdit()&&EDIT_TYPES[r.type])?'<div class="hist-edit-form"></div>':'');
       return '<div class="hist-card" data-id="'+esc(r.id||"")+'" data-sub="'+esc(String(r.submitted))+'" data-etitle="'+esc(r.title||"")+'" data-edate="'+esc(r.edate||"")+'"><div class="hist-when"><span class="hist-badge '+lb[1]+'">'+lb[0]+'</span>'+when+readMark+clip+'</div><div class="hist-sum"><b>'+esc(r.title||"")+"</b>"+(summary?" — "+esc(summary):"")+"</div>"+((dtl||atts.length)?'<div class="hist-more">View detail ▾</div><div class="hist-detail">'+esc(dtl)+attHtml+"</div>":"")+editHtml+thread+respond+"</div>";
     }).join("");
+    wrap.querySelectorAll(".hist-del-btn").forEach(function(b){b.addEventListener("click",function(){deleteEntry(this.closest(".hist-card"));});});
     wrap.querySelectorAll(".hist-edit-btn").forEach(function(b){b.addEventListener("click",function(){var c=this.closest(".hist-card");if(c.classList.contains("editing"))c.classList.remove("editing");else openEdit(c);});});
     wrap.querySelectorAll(".hist-more").forEach(function(m){m.addEventListener("click",function(){var c=this.closest(".hist-card");var opening=!c.classList.contains("open");c.classList.toggle("open");this.innerHTML=c.classList.contains("open")?"Hide detail ▴":"View detail ▾";if(opening&&document.body.classList.contains("liveagent"))markRead(c.getAttribute("data-sub"),c);});});
     wrap.querySelectorAll(".hist-resp-btn").forEach(function(b){b.addEventListener("click",function(){var c=this.closest(".hist-card");c.classList.toggle("responding");if(c.classList.contains("responding")){var n=c.querySelector(".hist-resp-note");if(n)n.focus();}});});
