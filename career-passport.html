@@ -3641,8 +3641,16 @@ window.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 (function(){
   "use strict";
   var HK="we_history";
-  function load(){try{return JSON.parse(localStorage.getItem(HK)||"{}");}catch(e){return{};}}
-  function save(o){localStorage.setItem(HK,JSON.stringify(o));}
+  /* History lives in memory for this session; the browser copy is only a cache. Browser storage holds ~5 MB,
+     and attachments (call recordings, photos) can fill it. A failed write used to throw, which stopped new
+     entries from reaching the database and stopped History from refreshing. Now: try the full copy, then a
+     copy without attachment data (they reload from the database), and never throw. */
+  var _histMem=null;
+  function load(){if(_histMem)return _histMem;try{_histMem=JSON.parse(localStorage.getItem(HK)||"{}");}catch(e){_histMem={};}return _histMem;}
+  function stripAttCache(o){var M="\u0001ATT\u0001",out={};Object.keys(o||{}).forEach(function(k){out[k]=(o[k]||[]).map(function(r){var d=(r&&r.detail)||"",i=d.indexOf(M);if(i<0)return r;var c={};for(var x in r)c[x]=r[x];c.detail=d.slice(0,i);c.attStripped=true;return c;});});return out;}
+  function save(o){_histMem=o;try{localStorage.setItem(HK,JSON.stringify(o));return;}catch(e){}
+    try{localStorage.setItem(HK,JSON.stringify(stripAttCache(o)));return;}catch(e){}
+    try{localStorage.removeItem(HK);}catch(e){}}
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function uid(){return "h"+Date.now()+"_"+Math.floor(Math.random()*1e4);}
   function curAgent(){if(document.body.classList.contains("liveagent")&&window.__weAgentName)return window.__weAgentName;var s=document.getElementById("agentSelect");if(s&&s.value){var o=s.options&&s.options[s.selectedIndex];return (o&&o.text)||s.value;}if(window.__PP__&&window.__PP__.agent)return window.__PP__.agent;return "self";}
